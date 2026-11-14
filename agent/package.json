@@ -12,7 +12,8 @@
     "try-brain": "node --env-file=../.env try-brain.mjs",
     "recaps": "node serve-recaps.mjs",
     "send-recap": "node --env-file=../.env send-recap.mjs",
-    "status": "node --env-file=../.env status.mjs"
+    "status": "node --env-file=../.env status.mjs",
+    "check-keys": "node --env-file=../.env check-keys.mjs"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "1.8.0",
