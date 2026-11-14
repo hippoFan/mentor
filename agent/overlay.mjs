@@ -51,12 +51,12 @@ export function render(frame, marks = [], opts = {}) {
   }
 
   const pulse = 1 + 0.12 * Math.sin(tick * 0.4);
-  for (const m of marks) {
-    const px = rect.x + m.x * rect.w, py = rect.y + m.y * rect.h;
-    drawRing(px, py, 16 * pulse);
-    const tail = tailFor(px, py);
-    if (m.kind !== 'circle') drawArrow(px, py, tail);
-    drawLabel(m.label, m.kind === 'circle' ? { x: px, y: py + (py < HEIGHT / 2 ? 50 : -50) } : tail);
+  const pts = marks.map(m => ({ ...m, px: rect.x + m.x * rect.w, py: rect.y + m.y * rect.h }));
+  for (const c of layoutCallouts(pts)) {
+    if (c.kind === 'circle') drawLeader(c.join, c.px, c.py);
+    else drawArrow(c.px, c.py, c.join);
+    drawRing(c.px, c.py, 16 * pulse);
+    drawBox(c);
   }
 
   if (caption) drawCaption(caption);
@@ -71,9 +71,42 @@ function drawRing(x, y, r) {
   g.lineWidth = 3; g.strokeStyle = ACCENT; g.beginPath(); g.arc(x, y, r, 0, Math.PI * 2); g.stroke();
 }
 
-// Arrow comes in from the side with more room, so it never leaves the picture; its label sits on the tail.
-function tailFor(x, y) {
-  return { x: x < WIDTH / 2 ? x + 90 : x - 90, y: y < HEIGHT / 2 ? y + 70 : y - 70 };
+// Callouts: each label sits beside its own mark (left of marks in the left half, right of marks in the right half),
+// joined to it by a line, and labels on the same side are pushed apart vertically so they never stack.
+const GAP = 55, BH = 24;
+function layoutCallouts(pts) {
+  g.font = 'bold 15px sans-serif';
+  const out = pts.filter(p => p.label).map(p => {
+    const w = g.measureText(p.label).width + 16;
+    const left = p.px >= WIDTH / 2 ? false : p.px - GAP - w >= 4;   // fall back to the right if no room on the left
+    const x = left ? p.px - GAP - w : Math.min(WIDTH - w - 4, p.px + GAP);
+    return { ...p, left, w, x, y: p.py - BH / 2 };
+  });
+  for (const side of [true, false]) {
+    const col = out.filter(c => c.left === side).sort((a, b) => a.y - b.y);
+    for (let i = 0; i < col.length; i++) {
+      col[i].y = Math.max(4, Math.min(HEIGHT - BH - 44, col[i].y));
+      if (i && col[i].y < col[i - 1].y + BH + 8) col[i].y = col[i - 1].y + BH + 8;
+    }
+  }
+  for (const c of out) c.join = { x: c.left ? c.x + c.w : c.x, y: c.y + BH / 2 };
+  return out;
+}
+
+function drawBox(c) {
+  g.font = 'bold 15px sans-serif';
+  g.fillStyle = INK; roundRect(c.x - 2, c.y - 2, c.w + 4, BH + 4, 14); g.fill();
+  g.fillStyle = ACCENT; roundRect(c.x, c.y, c.w, BH, 12); g.fill();
+  g.fillStyle = INK; g.fillText(c.label, c.x + 8, c.y + 17);
+}
+
+function drawLeader(a, x, y) {
+  const ang = Math.atan2(y - a.y, x - a.x);
+  const ex = x - Math.cos(ang) * 18, ey = y - Math.sin(ang) * 18;
+  for (const [w, c] of [[5, INK], [2.5, ACCENT]]) {
+    g.lineWidth = w; g.strokeStyle = c; g.lineCap = 'round';
+    g.beginPath(); g.moveTo(a.x, a.y); g.lineTo(ex, ey); g.stroke();
+  }
 }
 
 function drawArrow(x, y, tail) {
@@ -90,19 +123,6 @@ function drawArrow(x, y, tail) {
     g.lineTo(tipX - h * Math.cos(ang + 0.45), tipY - h * Math.sin(ang + 0.45));
     g.closePath(); g.fill();
   }
-}
-
-function drawLabel(text, at) {
-  if (!text) return;
-  g.font = 'bold 15px sans-serif';
-  const tw = g.measureText(text).width;
-  const bw = tw + 16, bh = 24;
-  let bx = at.x - bw / 2;
-  let by = at.y < HEIGHT / 2 ? at.y - bh - 4 : at.y + 4;
-  bx = Math.max(4, Math.min(WIDTH - bw - 4, bx));
-  by = Math.max(4, Math.min(HEIGHT - bh - 44, by));
-  g.fillStyle = ACCENT; roundRect(bx, by, bw, bh, 12); g.fill();
-  g.fillStyle = INK; g.fillText(text, bx + 8, by + 17);
 }
 
 function drawCaption(text) {

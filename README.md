@@ -104,11 +104,19 @@ cloudflared tunnel --url http://localhost:8787   # put the https URL in MENTOR_P
 With `MENTOR_SEND_RECAP=1`, Mentor texts the recap to `MENTOR_RECAP_TO` when the call ends. Without it, the recap is
 only saved locally in `runs/<call>/`. On the trial line, the phone must have texted the line within the last 24 hours.
 
-### Try the brain without a call
+### Test without a phone
 
 ```sh
-npm run try-brain -- photo.jpg "how do I make it blink?"   # writes photo.jpg.mentor.png with the marks drawn on
+# the brain on a still photo; writes photo.jpg.mentor.png with the marks drawn on
+npm run try-brain -- photo.jpg "how do I make it blink?"
+
+# the whole video path on your LiveKit project: a fake caller streams the photo as its camera,
+# Mentor answers one scripted question, and the frames Mentor sends back are saved as out-*.png
+MENTOR_TEST_TURN="how do I make it blink?" npm start     # terminal 1
+npm run e2e -- photo.jpg ./e2e-out                      # terminal 2
 ```
+
+Without an ElevenLabs key the agent runs video-only (it logs what it would have said).
 
 ## Configuration
 
@@ -145,6 +153,8 @@ mentor/
 │   ├── serve-recaps.mjs   read-only server for recap pages
 │   ├── status.mjs         checks the Chert line's readiness flags
 │   ├── try-brain.mjs      test the brain on a still photo
+│   ├── check-keys.mjs     checks every key in .env without printing it
+│   ├── test/e2e-video.mjs fake caller for an end-to-end video test on LiveKit
 │   ├── chert-rooms.mjs    from Chert's video-agent starter (unchanged)
 │   └── greet.mjs          from Chert's video-agent starter (unchanged)
 ├── env.example

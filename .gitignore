@@ -10,3 +10,4 @@ BLUEPRINT.md
 logs/
 *.mentor.png
 .DS_Store
+e2e-out/

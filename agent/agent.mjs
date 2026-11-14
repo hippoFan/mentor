@@ -17,11 +17,14 @@ import { greetOnBridgeReady } from './greet.mjs';
 import { FPS, HEIGHT, WIDTH, frameJpeg, render, rotate, snapshotPng } from './overlay.mjs';
 
 // Accept the common alternative names for the same keys.
-process.env.ELEVEN_API_KEY ||= process.env.ELEVENLABS_API_KEY;
+// (process.env stores strings: assigning undefined would make the text "undefined", so only copy a real value.)
+if (!process.env.ELEVEN_API_KEY && process.env.ELEVENLABS_API_KEY) process.env.ELEVEN_API_KEY = process.env.ELEVENLABS_API_KEY;
 
 const GREETING = process.env.MENTOR_GREETING
   || "Hi, I'm Mentor, an AI. Show me what you're building and tell me what you want it to do.";
 const TASK = process.env.MENTOR_TASK || '';
+const VOICE = Boolean(process.env.ELEVEN_API_KEY);   // without an ElevenLabs key: video-only test mode, no voice
+const TEST_TURN = process.env.MENTOR_TEST_TURN || '';  // test hook: ask the brain this once the first camera frame arrives
 const MARK_TTL_MS = 25_000;
 const FILLER_MS = 1500;      // if the brain is slower than this, say a short filler so the call isn't silent
 const FILLERS = ['Let me take a look.', 'One sec, looking.', 'Okay, checking.'];   // marks fade if nobody talks for a while (camera moved, they are stale)
@@ -109,18 +112,20 @@ const agent = defineAgent({
     console.log(`[mentor] brain: ${brain.provider}`);
     let turnSeq = 0, stepNo = 0;
     const recap = [];
-    const session = new voice.AgentSession({
+    const session = VOICE ? new voice.AgentSession({
       stt: new elevenlabs.STT({ model: 'scribe_v2_realtime', languageCode: 'en' }),
       tts: new elevenlabs.TTS({
         model: 'eleven_flash_v2_5',
         ...(process.env.ELEVEN_VOICE_ID ? { voiceId: process.env.ELEVEN_VOICE_ID } : {}),
       }),
-    });
-    session.on(voice.AgentSessionEventTypes.AgentStateChanged, ev => { speaking = ev.newState === 'speaking'; });
+    }) : null;
+    if (!VOICE) console.warn('[mentor] no ELEVENLABS_API_KEY: voice off (video-only test mode)');
+    session?.on(voice.AgentSessionEventTypes.AgentStateChanged, ev => { speaking = ev.newState === 'speaking'; });
 
     let ended = false;
     const say = text => {   // never throws: the call may have ended while the brain was thinking
       if (ended || !text) return;
+      if (!session) { console.log(`[say:muted] ${text}`); return; }
       try { session.say(text); } catch (error) { console.error('[mentor] say failed', error?.message || error); }
     };
     const onTurn = async heard => {
@@ -170,12 +175,17 @@ const agent = defineAgent({
         }
       } catch (error) { console.error('[mentor] recap start failed', error?.message || error); }
       console.log(`[mentor] call ended; ${recap.length} recap steps in ${runDir}`);
-      for (const close of [() => session.close(), () => track.close(), () => source.close()]) {
+      for (const close of [() => session?.close(), () => track.close(), () => source.close()]) {
         try { await close(); } catch { /* already closed */ }
       }
     });
 
-    await session.start({
+    if (TEST_TURN) {   // test hook: once a camera frame exists, run one scripted turn
+      const waitFrame = setInterval(() => { if (raw) { clearInterval(waitFrame); setTimeout(() => void onTurn(TEST_TURN).catch(() => {}), 800); } }, 200);
+      ctx.addShutdownCallback(async () => clearInterval(waitFrame));
+    }
+
+    if (session) await session.start({
       room: ctx.room,
       agent: new MentorAgent({ onTurn: text => { onTurn(text).catch(e => console.error('[mentor] turn failed', e?.message || e)); } }),
       record: false,

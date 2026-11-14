@@ -8,12 +8,14 @@
   },
   "scripts": {
     "start": "node --env-file=../.env agent.mjs start",
-    "check": "for f in *.mjs; do node --check $f || exit 1; done",
+    "check": "for f in *.mjs test/*.mjs; do node --check $f || exit 1; done",
     "try-brain": "node --env-file=../.env try-brain.mjs",
     "recaps": "node serve-recaps.mjs",
     "send-recap": "node --env-file=../.env send-recap.mjs",
     "status": "node --env-file=../.env status.mjs",
-    "check-keys": "node --env-file=../.env check-keys.mjs"
+    "check-keys": "node --env-file=../.env check-keys.mjs",
+    "e2e": "node --env-file=../.env test/e2e-video.mjs",
+    "dev-agent": "node --env-file=../.env agent.mjs dev"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "1.8.0",
