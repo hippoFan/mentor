@@ -1,0 +1,12 @@
+# secrets: only env.example is committed
+.env
+.env.*
+!env.example
+
+# local only
+node_modules/
+runs/
+BLUEPRINT.md
+logs/
+*.mentor.png
+.DS_Store

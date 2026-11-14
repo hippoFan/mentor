@@ -1,0 +1,26 @@
+{
+  "name": "mentor-agent",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": "^22.23.2 || ^24.0.0 || ^26.0.0"
+  },
+  "scripts": {
+    "start": "node --env-file=../.env agent.mjs start",
+    "check": "for f in *.mjs; do node --check $f || exit 1; done",
+    "try-brain": "node --env-file=../.env try-brain.mjs",
+    "recaps": "node serve-recaps.mjs",
+    "send-recap": "node --env-file=../.env send-recap.mjs",
+    "status": "node --env-file=../.env status.mjs"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "1.8.0",
+    "@livekit/agents": "1.8.0",
+    "@livekit/agents-plugin-elevenlabs": "1.8.0",
+    "@livekit/rtc-node": "0.13.35",
+    "@napi-rs/canvas": "1.1.1"
+  },
+  "description": "Mentor: FaceTime an AI that sees your project and points at it",
+  "license": "MIT"
+}
