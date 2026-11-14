@@ -22,7 +22,9 @@ process.env.ELEVEN_API_KEY ||= process.env.ELEVENLABS_API_KEY;
 const GREETING = process.env.MENTOR_GREETING
   || "Hi, I'm Mentor, an AI. Show me what you're building and tell me what you want it to do.";
 const TASK = process.env.MENTOR_TASK || '';
-const MARK_TTL_MS = 25_000;   // marks fade if nobody talks for a while (camera moved, they are stale)
+const MARK_TTL_MS = 25_000;
+const FILLER_MS = 1500;      // if the brain is slower than this, say a short filler so the call isn't silent
+const FILLERS = ['Let me take a look.', 'One sec, looking.', 'Okay, checking.'];   // marks fade if nobody talks for a while (camera moved, they are stale)
 const RUNS_DIR = fileURLToPath(new URL('../runs/', import.meta.url));
 
 class MentorAgent extends voice.Agent {
@@ -124,12 +126,14 @@ const agent = defineAgent({
       const seq = ++turnSeq;
       console.log(`[heard] ${heard}`);
       try {
+        const filler = setTimeout(() => { if (seq === turnSeq) say(FILLERS[seq % FILLERS.length]); }, FILLER_MS);
         const now = getLatest();
         const image = now ? await frameJpeg(now) : null;
-        const reply = await brain.turn(heard, image);
+        const reply = await brain.turn(heard, image).finally(() => clearTimeout(filler));
         if (seq !== turnSeq || ended) return;   // they spoke again while we were thinking; answer the newer turn
         marks = reply.marks; marksAt = Date.now();
         if (reply.step) caption = reply.step;
+        if (reply.done) caption = `Done! ${reply.step || ''}`.trim();
         console.log(`[say] ${reply.say}  marks=${JSON.stringify(reply.marks)}`);
         say(reply.say);
         if (reply.note || reply.marks.length) {
