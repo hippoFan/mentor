@@ -2,7 +2,7 @@
 // Writes <photo>.mentor.png with the marks drawn on. Each run is one paid Claude request.
 import { readFile, writeFile } from 'node:fs/promises';
 import { createCanvas, loadImage } from '@napi-rs/canvas';
-import { Brain } from './brain.mjs';
+import { createBrain } from './brain.mjs';
 import { render, snapshotPng, frameJpeg } from './overlay.mjs';
 
 const [photo, ...words] = process.argv.slice(2);
@@ -11,7 +11,9 @@ const img = await loadImage(await readFile(photo));
 const c = createCanvas(img.width, img.height); c.getContext('2d').drawImage(img, 0, 0);
 const d = c.getContext('2d').getImageData(0, 0, img.width, img.height);
 const frame = { data: new Uint8Array(d.data.buffer), width: img.width, height: img.height };
-const reply = await new Brain({ task: process.env.MENTOR_TASK || '' }).turn(words.join(' ') || 'What am I looking at?', await frameJpeg(frame));
+const brain = await createBrain({ task: process.env.MENTOR_TASK || '' });
+console.log(`brain: ${brain.provider}`);
+const reply = await brain.turn(words.join(' ') || 'What am I looking at?', await frameJpeg(frame));
 console.log(JSON.stringify(reply, null, 2));
 render(frame, reply.marks, { caption: reply.step });
 await writeFile(`${photo}.mentor.png`, await snapshotPng());

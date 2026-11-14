@@ -2,13 +2,13 @@
 // The agent starts this detached when a call ends; you can re-run it by hand (it re-sends the iMessage).
 import { readFile, writeFile } from 'node:fs/promises';
 import { basename, resolve } from 'node:path';
-import { Brain } from './brain.mjs';
+import { createBrain } from './brain.mjs';
 import { recapText, sendRecap, writeRecapPage } from './recap.mjs';
 
 const runDir = resolve(process.argv[2] || '') + '/';
 const noSend = process.argv.includes('--no-send');
 const saved = JSON.parse(await readFile(`${runDir}recap.json`, 'utf8'));
-const brain = new Brain({ task: saved.task || '' });
+const brain = await createBrain({ task: saved.task || '', provider: saved.provider });
 try { brain.messages = JSON.parse(await readFile(`${runDir}conversation.json`, 'utf8')); } catch { /* no turns */ }
 
 let story = null;

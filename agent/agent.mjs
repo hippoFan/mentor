@@ -11,7 +11,7 @@ import * as elevenlabs from '@livekit/agents-plugin-elevenlabs';
 import {
   LocalVideoTrack, RoomEvent, TrackKind, TrackSource, VideoBufferType, VideoFrame, VideoSource, VideoStream,
 } from '@livekit/rtc-node';
-import { Brain } from './brain.mjs';
+import { createBrain } from './brain.mjs';
 import { runAgent } from './chert-rooms.mjs';
 import { greetOnBridgeReady } from './greet.mjs';
 import { FPS, HEIGHT, WIDTH, frameJpeg, render, rotate, snapshotPng } from './overlay.mjs';
@@ -105,7 +105,8 @@ const agent = defineAgent({
     const timer = setInterval(frame, 1000 / FPS);
 
     // ---- voice: ElevenLabs Scribe (hearing) + ElevenLabs TTS (speaking); no session LLM ----
-    const brain = new Brain({ task: TASK });
+    const brain = await createBrain({ task: TASK });
+    console.log(`[mentor] brain: ${brain.provider}`);
     let turnSeq = 0, stepNo = 0;
     const recap = [];
     const session = new voice.AgentSession({
@@ -141,7 +142,7 @@ const agent = defineAgent({
           const file = `${runDir}step-${String(++stepNo).padStart(2, '0')}.png`;
           await writeFile(file, await snapshotPng());
           recap.push({ step: reply.step, note: reply.note, say: reply.say, image: file });
-          await writeFile(`${runDir}recap.json`, JSON.stringify({ callId, task: TASK, recap }, null, 2));
+          await writeFile(`${runDir}recap.json`, JSON.stringify({ callId, task: TASK, provider: brain.provider, recap }, null, 2));
         }
       } catch (error) {
         console.error('[mentor] brain failed', error?.status || '', error?.message || error);
@@ -159,7 +160,7 @@ const agent = defineAgent({
       try {
         if (brain.messages.length) {
           await brain.idle();
-          await writeFile(`${runDir}recap.json`, JSON.stringify({ callId, task: TASK, recap }, null, 2));
+          await writeFile(`${runDir}recap.json`, JSON.stringify({ callId, task: TASK, provider: brain.provider, recap }, null, 2));
           await writeFile(`${runDir}conversation.json`, JSON.stringify(brain.messages));
           const log = openSync(`${runDir}recap.log`, 'a');
           const here = fileURLToPath(new URL('.', import.meta.url));

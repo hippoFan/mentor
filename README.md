@@ -56,7 +56,7 @@ flowchart LR
 - **The agent** (Node, `@livekit/agents`) joins that room. It keeps only the newest frame of the caller's camera and
   publishes its own video track at 15 fps: the caller's frame with Mentor's marks drawn on top.
 - **ElevenLabs** does the listening (Scribe v2 realtime) and the speaking (Flash v2.5).
-- **Claude Fable 5.2** is the brain. Each time you finish speaking, it gets what you said plus the current frame and
+- **Claude Fable 5.2** is the brain (Gemini works too, via `MENTOR_BRAIN=gemini`). Each time you finish speaking, it gets what you said plus the current frame and
   returns structured JSON: a sentence to say, up to three pixel coordinates to mark, the current step, and a recap note.
   It is called once per spoken turn, never per frame.
 
@@ -68,7 +68,8 @@ flowchart LR
 - An iPhone with FaceTime
 - A **Chert** line (free trial): `npx @trychert/facetime@0.1.0-beta.21 onboard`
 - A **LiveKit Cloud** project (free tier) for the room
-- An **Anthropic** API key (Claude Fable 5.2) and an **ElevenLabs** API key
+- A brain key: **Anthropic** (Claude Fable 5.2) *or* **Gemini** (free via Google AI Studio)
+- An **ElevenLabs** API key
 
 ### Set up
 
@@ -117,7 +118,9 @@ All settings are environment variables in `mentor/.env` (see [`env.example`](env
 |---|---|---|
 | `LIVEKIT_URL`, `LIVEKIT_API_KEY`, `LIVEKIT_API_SECRET` | yes | One LiveKit project, the same one `chert setup` uses |
 | `AGENT_NAME` | yes | Unique dispatch name, the same one passed to `chert dev --agent` |
-| `ANTHROPIC_API_KEY` | yes | Claude API key |
+| `ANTHROPIC_API_KEY` | one brain key | Claude API key (Claude Fable 5.2 brain) |
+| `GEMINI_API_KEY` | one brain key | Gemini API key (Gemini brain, points on its native 0-1000 grid) |
+| `MENTOR_BRAIN` | no | `claude` or `gemini` to force one; otherwise Claude if its key is set, else Gemini |
 | `ELEVENLABS_API_KEY` | yes | ElevenLabs key with Text to Speech + Speech to Text (`ELEVEN_API_KEY` also works) |
 | `ELEVEN_VOICE_ID` | no | Voice for Mentor; ElevenLabs default if unset |
 | `MENTOR_TASK` | no | The task Mentor guides, e.g. `Make the Arduino Uno's onboard LED blink` |
@@ -134,7 +137,8 @@ All settings are environment variables in `mentor/.env` (see [`env.example`](env
 mentor/
 ├── agent/
 │   ├── agent.mjs          the call: camera in, annotated video out, voice, step screenshots
-│   ├── brain.mjs          Claude Fable 5.2, one structured request per spoken turn
+│   ├── brain.mjs          Claude Fable 5.2, one structured request per spoken turn (+ brain picker)
+│   ├── brain-gemini.mjs   same contract on Gemini
 │   ├── overlay.mjs        draws what the caller sees (≈3 ms per frame)
 │   ├── recap.mjs          recap page + iMessage text (Chert API)
 │   ├── send-recap.mjs     runs after each call in its own process
@@ -175,7 +179,7 @@ Built in 12 hours for the HackUTA 2026 theme *Homer's Odyssey*, for the **Best U
 **Best Use of ElevenLabs** tracks.
 
 **Built with:** Chert · LiveKit Agents · ElevenLabs (Scribe v2 realtime, Flash v2.5) · Claude Fable 5.2 (Anthropic) ·
-@napi-rs/canvas · Node.js
+Gemini (optional) · @napi-rs/canvas · Node.js
 
 ## License
 
