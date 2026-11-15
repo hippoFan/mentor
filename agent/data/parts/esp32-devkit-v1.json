@@ -1,0 +1,277 @@
+{
+ "id": "esp32-devkit-v1",
+ "name": "ESP32 DevKit V1 (DOIT)",
+ "aliases": [
+  "ESP32 DevKit V1",
+  "DOIT ESP32 DevKit V1",
+  "ESP32 DevKit",
+  "ESP-WROOM-32 DevKit",
+  "ESP32 Dev Module",
+  "ESP32"
+ ],
+ "source": "wokwi/wokwi-elements@5178c0c:src/esp32-devkit-v1-element.ts",
+ "license": "MIT",
+ "attribution": "Pin geometry from wokwi/wokwi-elements (MIT License, Copyright (c) 2019 Uri Shaked and contributors). Mentor code is MIT; this data file keeps the license above.",
+ "outline_mm": {
+  "w": 28.2,
+  "h": 54.053
+ },
+ "frame": "x_mm to the right along the top view from the left edge of outline_mm, y_mm DOWN from its top edge, z up from the top face; all in millimetres. Origin = top-left corner of the outline box as drawn.",
+ "pins": [
+  {
+   "name": "VIN",
+   "x_mm": 1.323,
+   "y_mm": 41.988,
+   "kind": "header",
+   "function": "power"
+  },
+  {
+   "name": "GND.2",
+   "x_mm": 1.323,
+   "y_mm": 39.448,
+   "kind": "header",
+   "function": "GND"
+  },
+  {
+   "name": "D13",
+   "x_mm": 1.323,
+   "y_mm": 36.908,
+   "kind": "header",
+   "function": "SPI MOSI, PWM"
+  },
+  {
+   "name": "D12",
+   "x_mm": 1.323,
+   "y_mm": 34.368,
+   "kind": "header",
+   "function": "SPI MISO, PWM"
+  },
+  {
+   "name": "D14",
+   "x_mm": 1.323,
+   "y_mm": 31.828,
+   "kind": "header",
+   "function": "SPI SCK, PWM"
+  },
+  {
+   "name": "D27",
+   "x_mm": 1.323,
+   "y_mm": 29.288,
+   "kind": "header",
+   "function": "PWM"
+  },
+  {
+   "name": "D26",
+   "x_mm": 1.323,
+   "y_mm": 26.748,
+   "kind": "header",
+   "function": "PWM"
+  },
+  {
+   "name": "D25",
+   "x_mm": 1.323,
+   "y_mm": 24.208,
+   "kind": "header",
+   "function": "PWM"
+  },
+  {
+   "name": "D33",
+   "x_mm": 1.323,
+   "y_mm": 21.668,
+   "kind": "header",
+   "function": "PWM"
+  },
+  {
+   "name": "D32",
+   "x_mm": 1.323,
+   "y_mm": 19.128,
+   "kind": "header",
+   "function": "PWM"
+  },
+  {
+   "name": "D35",
+   "x_mm": 1.323,
+   "y_mm": 16.588,
+   "kind": "header"
+  },
+  {
+   "name": "D34",
+   "x_mm": 1.323,
+   "y_mm": 14.048,
+   "kind": "header"
+  },
+  {
+   "name": "VN",
+   "x_mm": 1.323,
+   "y_mm": 11.508,
+   "kind": "header"
+  },
+  {
+   "name": "VP",
+   "x_mm": 1.323,
+   "y_mm": 8.968,
+   "kind": "header"
+  },
+  {
+   "name": "EN",
+   "x_mm": 1.323,
+   "y_mm": 6.428,
+   "kind": "header"
+  },
+  {
+   "name": "3V3",
+   "x_mm": 26.802,
+   "y_mm": 41.988,
+   "kind": "header",
+   "function": "power 3.3 V"
+  },
+  {
+   "name": "GND.1",
+   "x_mm": 26.802,
+   "y_mm": 39.448,
+   "kind": "header",
+   "function": "GND"
+  },
+  {
+   "name": "D15",
+   "x_mm": 26.802,
+   "y_mm": 36.908,
+   "kind": "header",
+   "function": "SPI SS, PWM"
+  },
+  {
+   "name": "D2",
+   "x_mm": 26.802,
+   "y_mm": 34.368,
+   "kind": "header",
+   "function": "PWM"
+  },
+  {
+   "name": "D4",
+   "x_mm": 26.802,
+   "y_mm": 31.828,
+   "kind": "header",
+   "function": "PWM"
+  },
+  {
+   "name": "RX2",
+   "x_mm": 26.802,
+   "y_mm": 29.288,
+   "kind": "header",
+   "function": "UART RX, PWM"
+  },
+  {
+   "name": "TX2",
+   "x_mm": 26.802,
+   "y_mm": 26.748,
+   "kind": "header",
+   "function": "UART TX, PWM"
+  },
+  {
+   "name": "D5",
+   "x_mm": 26.802,
+   "y_mm": 24.208,
+   "kind": "header",
+   "function": "SPI SS, PWM"
+  },
+  {
+   "name": "D18",
+   "x_mm": 26.802,
+   "y_mm": 21.668,
+   "kind": "header",
+   "function": "SPI SCK, PWM"
+  },
+  {
+   "name": "D19",
+   "x_mm": 26.802,
+   "y_mm": 19.128,
+   "kind": "header",
+   "function": "SPI MISO, PWM"
+  },
+  {
+   "name": "D21",
+   "x_mm": 26.802,
+   "y_mm": 16.588,
+   "kind": "header",
+   "function": "I2C SDA, PWM"
+  },
+  {
+   "name": "RX0",
+   "x_mm": 26.802,
+   "y_mm": 14.048,
+   "kind": "header",
+   "function": "UART RX, PWM"
+  },
+  {
+   "name": "TX0",
+   "x_mm": 26.802,
+   "y_mm": 11.508,
+   "kind": "header",
+   "function": "UART TX, PWM"
+  },
+  {
+   "name": "D22",
+   "x_mm": 26.802,
+   "y_mm": 8.968,
+   "kind": "header",
+   "function": "I2C SCL, PWM"
+  },
+  {
+   "name": "D23",
+   "x_mm": 26.802,
+   "y_mm": 6.428,
+   "kind": "header",
+   "function": "SPI MOSI, PWM"
+  }
+ ],
+ "headers": [
+  {
+   "name": "H1",
+   "side": "left",
+   "orientation": "column",
+   "pitch_mm": 2.54,
+   "snapped_to_grid": true,
+   "pins": [
+    "EN",
+    "VP",
+    "VN",
+    "D34",
+    "D35",
+    "D32",
+    "D33",
+    "D25",
+    "D26",
+    "D27",
+    "D14",
+    "D12",
+    "D13",
+    "GND.2",
+    "VIN"
+   ]
+  },
+  {
+   "name": "H2",
+   "side": "right",
+   "orientation": "column",
+   "pitch_mm": 2.54,
+   "snapped_to_grid": true,
+   "pins": [
+    "D23",
+    "D22",
+    "TX0",
+    "RX0",
+    "D21",
+    "D19",
+    "D18",
+    "D5",
+    "TX2",
+    "RX2",
+    "D4",
+    "D2",
+    "D15",
+    "GND.1",
+    "3V3"
+   ]
+  }
+ ]
+}

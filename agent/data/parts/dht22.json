@@ -1,0 +1,65 @@
+{
+ "id": "dht22",
+ "name": "DHT22 / DHT11 temperature-humidity sensor",
+ "aliases": [
+  "DHT22",
+  "DHT11",
+  "DHT-11",
+  "DHT-22",
+  "AM2302",
+  "Temperature and humidity sensor",
+  "Humidity sensor"
+ ],
+ "source": "wokwi/wokwi-elements@5178c0c:src/dht22-element.ts",
+ "license": "MIT",
+ "attribution": "Pin geometry from wokwi/wokwi-elements (MIT License, Copyright (c) 2019 Uri Shaked and contributors). Mentor code is MIT; this data file keeps the license above.",
+ "outline_mm": {
+  "w": 15.1,
+  "h": 30.885
+ },
+ "frame": "x_mm to the right along the top view from the left edge of outline_mm, y_mm DOWN from its top edge, z up from the top face; all in millimetres. Origin = top-left corner of the outline box as drawn.",
+ "notes": "DHT11 has the same 4-pin 2.54 mm pinout (VCC, DATA, NC, GND); body is slightly smaller (outline here is the DHT22).",
+ "pins": [
+  {
+   "name": "VCC",
+   "x_mm": 3.956,
+   "y_mm": 30.401,
+   "kind": "header",
+   "function": "power"
+  },
+  {
+   "name": "SDA",
+   "x_mm": 6.496,
+   "y_mm": 30.401,
+   "kind": "header"
+  },
+  {
+   "name": "NC",
+   "x_mm": 9.036,
+   "y_mm": 30.401,
+   "kind": "header"
+  },
+  {
+   "name": "GND",
+   "x_mm": 11.576,
+   "y_mm": 30.401,
+   "kind": "header",
+   "function": "GND"
+  }
+ ],
+ "headers": [
+  {
+   "name": "H1",
+   "side": "bottom",
+   "orientation": "row",
+   "pitch_mm": 2.54,
+   "snapped_to_grid": true,
+   "pins": [
+    "VCC",
+    "SDA",
+    "NC",
+    "GND"
+   ]
+  }
+ ]
+}

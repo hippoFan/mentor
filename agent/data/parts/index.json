@@ -1,0 +1,489 @@
+{
+ "_doc": "Part registry. lookup maps a normalised alias (lowercase, non-alphanumerics removed, e.g. \"ESP32 DevKit V1\" -> \"esp32devkitv1\") to a part id. Parts: data/parts/<id>.json. Licensing: see LICENSES.md.",
+ "parts": {
+  "arduino-uno": {
+   "name": "Arduino UNO R3",
+   "file": "arduino-uno.json",
+   "aliases": [
+    "Arduino UNO",
+    "UNO",
+    "UNO R3",
+    "Arduino UNO R4",
+    "UNO R4 WiFi",
+    "Arduino",
+    "ATmega328P UNO"
+   ],
+   "license": "MIT",
+   "source": "wokwi/wokwi-elements@5178c0c:src/arduino-uno-element.ts",
+   "pins": 31,
+   "outline_mm": {
+    "w": 68.58,
+    "h": 53.34
+   }
+  },
+  "arduino-mega-2560": {
+   "name": "Arduino Mega 2560",
+   "file": "arduino-mega-2560.json",
+   "aliases": [
+    "Arduino Mega",
+    "Mega 2560",
+    "Mega2560",
+    "Mega",
+    "ATmega2560"
+   ],
+   "license": "MIT",
+   "source": "wokwi/wokwi-elements@5178c0c:src/arduino-mega-element.ts",
+   "pins": 85,
+   "outline_mm": {
+    "w": 101.6,
+    "h": 53.34
+   }
+  },
+  "arduino-nano": {
+   "name": "Arduino Nano",
+   "file": "arduino-nano.json",
+   "aliases": [
+    "Nano",
+    "Arduino Nano V3",
+    "Nano V3",
+    "ATmega328P Nano"
+   ],
+   "license": "MIT",
+   "source": "wokwi/wokwi-elements@5178c0c:src/arduino-nano-element.ts",
+   "pins": 36,
+   "outline_mm": {
+    "w": 43.18,
+    "h": 17.78
+   }
+  },
+  "esp32-devkit-v1": {
+   "name": "ESP32 DevKit V1 (DOIT)",
+   "file": "esp32-devkit-v1.json",
+   "aliases": [
+    "ESP32 DevKit V1",
+    "DOIT ESP32 DevKit V1",
+    "ESP32 DevKit",
+    "ESP-WROOM-32 DevKit",
+    "ESP32 Dev Module",
+    "ESP32"
+   ],
+   "license": "MIT",
+   "source": "wokwi/wokwi-elements@5178c0c:src/esp32-devkit-v1-element.ts",
+   "pins": 30,
+   "outline_mm": {
+    "w": 28.2,
+    "h": 54.053
+   }
+  },
+  "esp32-devkitc": {
+   "name": "ESP32 DevKitC",
+   "file": "esp32-devkitc.json",
+   "aliases": [
+    "ESP32-DevKitC",
+    "ESP32 DevKitC V4",
+    "ESP32 DevKit C",
+    "Espressif ESP32-DevKitC",
+    "ESP32 WROOM DevKitC"
+   ],
+   "license": "unspecified",
+   "source": "wokwi/wokwi-boards@962b19d:boards/esp32-devkit-c-v4/board.json",
+   "pins": 38,
+   "outline_mm": {
+    "w": 27.9,
+    "h": 56.628
+   }
+  },
+  "raspberry-pi-pico": {
+   "name": "Raspberry Pi Pico",
+   "file": "raspberry-pi-pico.json",
+   "aliases": [
+    "Pi Pico",
+    "Pico",
+    "RP2040 Pico",
+    "Raspberry Pico",
+    "RPi Pico"
+   ],
+   "license": "unspecified",
+   "source": "wokwi/wokwi-boards@962b19d:boards/pi-pico/board.json",
+   "pins": 40,
+   "outline_mm": {
+    "w": 20.9,
+    "h": 52.75
+   }
+  },
+  "raspberry-pi-pico-w": {
+   "name": "Raspberry Pi Pico W",
+   "file": "raspberry-pi-pico-w.json",
+   "aliases": [
+    "Pi Pico W",
+    "Pico W",
+    "Pico WH",
+    "Raspberry Pi Pico WH"
+   ],
+   "license": "unspecified",
+   "source": "wokwi/wokwi-boards@962b19d:boards/pi-pico-w/board.json",
+   "pins": 40,
+   "outline_mm": {
+    "w": 20.9,
+    "h": 52.75
+   }
+  },
+  "raspberry-pi-4": {
+   "name": "Raspberry Pi 4 / 5 (40-pin GPIO)",
+   "file": "raspberry-pi-4.json",
+   "aliases": [
+    "Raspberry Pi 4",
+    "Pi 4",
+    "Pi4",
+    "Raspberry Pi 4B",
+    "Raspberry Pi 4 Model B",
+    "Raspberry Pi 5",
+    "Pi 5",
+    "Pi5",
+    "RPi 4",
+    "RPi 5",
+    "Raspberry Pi 3",
+    "Pi 3",
+    "Raspberry Pi 3B+",
+    "Raspberry Pi",
+    "Pi",
+    "Raspberry Pi GPIO"
+   ],
+   "license": "CC-BY-SA-3.0",
+   "source": "fritzing/fritzing-parts@27535f2:core/raspberry-pi-4B_1.fzp + fritzing/fritzing-parts@27535f2:svg/core/breadboard/raspberry-pi-4B_1_breadboard.svg",
+   "pins": 40,
+   "outline_mm": {
+    "w": 85,
+    "h": 56
+   }
+  },
+  "nodemcu-esp8266": {
+   "name": "NodeMCU ESP8266 (Amica DevKit 1.0)",
+   "file": "nodemcu-esp8266.json",
+   "aliases": [
+    "NodeMCU",
+    "Node MCU",
+    "NodeMCU ESP8266",
+    "NodeMCU v2",
+    "NodeMCU v3",
+    "ESP8266 NodeMCU",
+    "ESP8266",
+    "ESP-12E DevKit",
+    "Amica NodeMCU"
+   ],
+   "license": "CC-BY-SA-3.0",
+   "source": "fritzing/fritzing-parts@27535f2:core/Amica_NodeMCU_DEVKIT_1.0.fzp + fritzing/fritzing-parts@27535f2:svg/core/breadboard/Amica_NodeMCU_DEVKIT_1.0_breadboard.svg",
+   "pins": 30,
+   "outline_mm": {
+    "w": 24.801,
+    "h": 48.743
+   }
+  },
+  "breadboard-half": {
+   "name": "Half-size breadboard (400 tie points)",
+   "file": "breadboard-half.json",
+   "aliases": [
+    "Breadboard",
+    "Half breadboard",
+    "Half-size breadboard",
+    "Half size breadboard",
+    "400 point breadboard",
+    "Solderless breadboard",
+    "Protoboard"
+   ],
+   "license": "CC-BY-SA-3.0",
+   "source": "fritzing/fritzing-parts@27535f2:svg/core/breadboard/Half_breadboard56a.svg",
+   "pins": 400,
+   "outline_mm": {
+    "w": 82.5,
+    "h": 53.34
+   }
+  },
+  "hc-sr04": {
+   "name": "HC-SR04 ultrasonic sensor",
+   "file": "hc-sr04.json",
+   "aliases": [
+    "HC-SR04",
+    "HCSR04",
+    "Ultrasonic sensor",
+    "Ultrasonic distance sensor",
+    "Ultrasonic module",
+    "SR04"
+   ],
+   "license": "MIT",
+   "source": "wokwi/wokwi-elements@5178c0c:src/hc-sr04-element.ts",
+   "pins": 4,
+   "outline_mm": {
+    "w": 45,
+    "h": 25
+   }
+  },
+  "dht22": {
+   "name": "DHT22 / DHT11 temperature-humidity sensor",
+   "file": "dht22.json",
+   "aliases": [
+    "DHT22",
+    "DHT11",
+    "DHT-11",
+    "DHT-22",
+    "AM2302",
+    "Temperature and humidity sensor",
+    "Humidity sensor"
+   ],
+   "license": "MIT",
+   "source": "wokwi/wokwi-elements@5178c0c:src/dht22-element.ts",
+   "pins": 4,
+   "outline_mm": {
+    "w": 15.1,
+    "h": 30.885
+   }
+  },
+  "servo-sg90": {
+   "name": "SG90 micro servo",
+   "file": "servo-sg90.json",
+   "aliases": [
+    "SG90",
+    "SG90 servo",
+    "Micro servo",
+    "Servo",
+    "Servo motor",
+    "9g servo",
+    "MG90S"
+   ],
+   "license": "MIT",
+   "source": "wokwi/wokwi-elements@5178c0c:src/servo-element.ts",
+   "pins": 3,
+   "outline_mm": {
+    "w": 45,
+    "h": 31.63
+   }
+  },
+  "potentiometer": {
+   "name": "Rotary potentiometer",
+   "file": "potentiometer.json",
+   "aliases": [
+    "Potentiometer",
+    "Pot",
+    "Trimpot",
+    "Rotary potentiometer",
+    "Variable resistor",
+    "Trimmer",
+    "Knob"
+   ],
+   "license": "MIT",
+   "source": "wokwi/wokwi-elements@5178c0c:src/potentiometer-element.ts",
+   "pins": 3,
+   "outline_mm": {
+    "w": 20,
+    "h": 20
+   }
+  },
+  "led-5mm": {
+   "name": "LED (5 mm)",
+   "file": "led-5mm.json",
+   "aliases": [
+    "LED",
+    "5mm LED",
+    "Light emitting diode",
+    "Red LED",
+    "Green LED",
+    "Light"
+   ],
+   "license": "MIT",
+   "source": "wokwi/wokwi-elements@5178c0c:src/led-element.ts",
+   "pins": 2,
+   "outline_mm": {
+    "w": 10.583,
+    "h": 13.229
+   }
+  },
+  "pushbutton-12mm": {
+   "name": "Pushbutton (12 mm tactile)",
+   "file": "pushbutton-12mm.json",
+   "aliases": [
+    "Pushbutton",
+    "Push button",
+    "Button",
+    "Tactile switch",
+    "Tact switch",
+    "Momentary switch"
+   ],
+   "license": "MIT",
+   "source": "wokwi/wokwi-elements@5178c0c:src/pushbutton-element.ts",
+   "pins": 4,
+   "outline_mm": {
+    "w": 17.802,
+    "h": 12
+   }
+  },
+  "pushbutton-6mm": {
+   "name": "Pushbutton (6 mm tactile)",
+   "file": "pushbutton-6mm.json",
+   "aliases": [
+    "6mm pushbutton",
+    "6mm tactile switch",
+    "Small button",
+    "Tiny pushbutton"
+   ],
+   "license": "MIT",
+   "source": "wokwi/wokwi-elements@5178c0c:src/pushbutton-6mm-element.ts",
+   "pins": 4,
+   "outline_mm": {
+    "w": 7.413,
+    "h": 6
+   }
+  },
+  "mpu6050": {
+   "name": "MPU-6050 IMU (GY-521)",
+   "file": "mpu6050.json",
+   "aliases": [
+    "MPU6050",
+    "MPU-6050",
+    "GY-521",
+    "Accelerometer gyroscope",
+    "IMU"
+   ],
+   "license": "MIT",
+   "source": "wokwi/wokwi-elements@5178c0c:src/mpu6050-element.ts",
+   "pins": 8,
+   "outline_mm": {
+    "w": 21.6,
+    "h": 16.2
+   }
+  }
+ },
+ "lookup": {
+  "arduinouno": "arduino-uno",
+  "arduinounor3": "arduino-uno",
+  "uno": "arduino-uno",
+  "unor3": "arduino-uno",
+  "arduinounor4": "arduino-uno",
+  "unor4wifi": "arduino-uno",
+  "arduino": "arduino-uno",
+  "atmega328puno": "arduino-uno",
+  "arduinomega2560": "arduino-mega-2560",
+  "arduinomega": "arduino-mega-2560",
+  "mega2560": "arduino-mega-2560",
+  "mega": "arduino-mega-2560",
+  "atmega2560": "arduino-mega-2560",
+  "arduinonano": "arduino-nano",
+  "nano": "arduino-nano",
+  "arduinonanov3": "arduino-nano",
+  "nanov3": "arduino-nano",
+  "atmega328pnano": "arduino-nano",
+  "esp32devkitv1": "esp32-devkit-v1",
+  "esp32devkitv1doit": "esp32-devkit-v1",
+  "doitesp32devkitv1": "esp32-devkit-v1",
+  "esp32devkit": "esp32-devkit-v1",
+  "espwroom32devkit": "esp32-devkit-v1",
+  "esp32devmodule": "esp32-devkit-v1",
+  "esp32": "esp32-devkit-v1",
+  "esp32devkitc": "esp32-devkitc",
+  "esp32devkitcv4": "esp32-devkitc",
+  "espressifesp32devkitc": "esp32-devkitc",
+  "esp32wroomdevkitc": "esp32-devkitc",
+  "raspberrypipico": "raspberry-pi-pico",
+  "pipico": "raspberry-pi-pico",
+  "pico": "raspberry-pi-pico",
+  "rp2040pico": "raspberry-pi-pico",
+  "raspberrypico": "raspberry-pi-pico",
+  "rpipico": "raspberry-pi-pico",
+  "raspberrypipicow": "raspberry-pi-pico-w",
+  "pipicow": "raspberry-pi-pico-w",
+  "picow": "raspberry-pi-pico-w",
+  "picowh": "raspberry-pi-pico-w",
+  "raspberrypipicowh": "raspberry-pi-pico-w",
+  "raspberrypi4": "raspberry-pi-4",
+  "raspberrypi4540pingpio": "raspberry-pi-4",
+  "pi4": "raspberry-pi-4",
+  "raspberrypi4b": "raspberry-pi-4",
+  "raspberrypi4modelb": "raspberry-pi-4",
+  "raspberrypi5": "raspberry-pi-4",
+  "pi5": "raspberry-pi-4",
+  "rpi4": "raspberry-pi-4",
+  "rpi5": "raspberry-pi-4",
+  "raspberrypi3": "raspberry-pi-4",
+  "pi3": "raspberry-pi-4",
+  "raspberrypi3b": "raspberry-pi-4",
+  "raspberrypi": "raspberry-pi-4",
+  "pi": "raspberry-pi-4",
+  "raspberrypigpio": "raspberry-pi-4",
+  "nodemcuesp8266": "nodemcu-esp8266",
+  "nodemcuesp8266amicadevkit10": "nodemcu-esp8266",
+  "nodemcu": "nodemcu-esp8266",
+  "nodemcuv2": "nodemcu-esp8266",
+  "nodemcuv3": "nodemcu-esp8266",
+  "esp8266nodemcu": "nodemcu-esp8266",
+  "esp8266": "nodemcu-esp8266",
+  "esp12edevkit": "nodemcu-esp8266",
+  "amicanodemcu": "nodemcu-esp8266",
+  "breadboardhalf": "breadboard-half",
+  "halfsizebreadboard400tiepoints": "breadboard-half",
+  "breadboard": "breadboard-half",
+  "halfbreadboard": "breadboard-half",
+  "halfsizebreadboard": "breadboard-half",
+  "400pointbreadboard": "breadboard-half",
+  "solderlessbreadboard": "breadboard-half",
+  "protoboard": "breadboard-half",
+  "hcsr04": "hc-sr04",
+  "hcsr04ultrasonicsensor": "hc-sr04",
+  "ultrasonicsensor": "hc-sr04",
+  "ultrasonicdistancesensor": "hc-sr04",
+  "ultrasonicmodule": "hc-sr04",
+  "sr04": "hc-sr04",
+  "dht22": "dht22",
+  "dht22dht11temperaturehumiditysensor": "dht22",
+  "dht11": "dht22",
+  "am2302": "dht22",
+  "temperatureandhumiditysensor": "dht22",
+  "humiditysensor": "dht22",
+  "servosg90": "servo-sg90",
+  "sg90microservo": "servo-sg90",
+  "sg90": "servo-sg90",
+  "sg90servo": "servo-sg90",
+  "microservo": "servo-sg90",
+  "servo": "servo-sg90",
+  "servomotor": "servo-sg90",
+  "9gservo": "servo-sg90",
+  "mg90s": "servo-sg90",
+  "potentiometer": "potentiometer",
+  "rotarypotentiometer": "potentiometer",
+  "pot": "potentiometer",
+  "trimpot": "potentiometer",
+  "variableresistor": "potentiometer",
+  "trimmer": "potentiometer",
+  "knob": "potentiometer",
+  "led5mm": "led-5mm",
+  "led": "led-5mm",
+  "5mmled": "led-5mm",
+  "lightemittingdiode": "led-5mm",
+  "redled": "led-5mm",
+  "greenled": "led-5mm",
+  "light": "led-5mm",
+  "pushbutton12mm": "pushbutton-12mm",
+  "pushbutton12mmtactile": "pushbutton-12mm",
+  "pushbutton": "pushbutton-12mm",
+  "button": "pushbutton-12mm",
+  "tactileswitch": "pushbutton-12mm",
+  "tactswitch": "pushbutton-12mm",
+  "momentaryswitch": "pushbutton-12mm",
+  "pushbutton6mm": "pushbutton-6mm",
+  "pushbutton6mmtactile": "pushbutton-6mm",
+  "6mmpushbutton": "pushbutton-6mm",
+  "6mmtactileswitch": "pushbutton-6mm",
+  "smallbutton": "pushbutton-6mm",
+  "tinypushbutton": "pushbutton-6mm",
+  "mpu6050": "mpu6050",
+  "mpu6050imugy521": "mpu6050",
+  "gy521": "mpu6050",
+  "accelerometergyroscope": "mpu6050",
+  "imu": "mpu6050"
+ },
+ "not_available": [
+  {
+   "id": "l298n",
+   "name": "L298N motor driver module",
+   "reason": "No L298N dual H-bridge module exists in wokwi-elements or Fritzing core (only SparkFun bare L298 ICs); not imported."
+  }
+ ]
+}

@@ -1,0 +1,358 @@
+{
+ "id": "raspberry-pi-pico",
+ "name": "Raspberry Pi Pico",
+ "aliases": [
+  "Pi Pico",
+  "Pico",
+  "RP2040 Pico",
+  "Raspberry Pico",
+  "RPi Pico"
+ ],
+ "source": "wokwi/wokwi-boards@962b19d:boards/pi-pico/board.json",
+ "license": "unspecified",
+ "attribution": "Pin geometry (physical board layout, a published fact of the Raspberry Pi Pico / Espressif ESP32-DevKitC design) read from wokwi/wokwi-boards, whose repository carries no LICENSE file. Only coordinates and pin names are used; no artwork or code is copied. Mentor code is MIT; this data file keeps the license above.",
+ "outline_mm": {
+  "w": 20.9,
+  "h": 52.75
+ },
+ "frame": "x_mm to the right along the top view from the left edge of outline_mm, y_mm DOWN from its top edge, z up from the top face; all in millimetres. Origin = top-left corner of the outline box as drawn.",
+ "pins": [
+  {
+   "name": "GP0",
+   "x_mm": 1.6,
+   "y_mm": 3.4,
+   "kind": "header",
+   "function": "GPIO0"
+  },
+  {
+   "name": "GP1",
+   "x_mm": 1.6,
+   "y_mm": 5.94,
+   "kind": "header",
+   "function": "GPIO1"
+  },
+  {
+   "name": "GND.1",
+   "x_mm": 1.6,
+   "y_mm": 8.48,
+   "kind": "header",
+   "function": "GND"
+  },
+  {
+   "name": "GP2",
+   "x_mm": 1.6,
+   "y_mm": 11.02,
+   "kind": "header",
+   "function": "GPIO2"
+  },
+  {
+   "name": "GP3",
+   "x_mm": 1.6,
+   "y_mm": 13.56,
+   "kind": "header",
+   "function": "GPIO3"
+  },
+  {
+   "name": "GP4",
+   "x_mm": 1.6,
+   "y_mm": 16.1,
+   "kind": "header",
+   "function": "GPIO4"
+  },
+  {
+   "name": "GP5",
+   "x_mm": 1.6,
+   "y_mm": 18.64,
+   "kind": "header",
+   "function": "GPIO5"
+  },
+  {
+   "name": "GND.2",
+   "x_mm": 1.6,
+   "y_mm": 21.18,
+   "kind": "header",
+   "function": "GND"
+  },
+  {
+   "name": "GP6",
+   "x_mm": 1.6,
+   "y_mm": 23.72,
+   "kind": "header",
+   "function": "GPIO6"
+  },
+  {
+   "name": "GP7",
+   "x_mm": 1.6,
+   "y_mm": 26.26,
+   "kind": "header",
+   "function": "GPIO7"
+  },
+  {
+   "name": "GP8",
+   "x_mm": 1.6,
+   "y_mm": 28.8,
+   "kind": "header",
+   "function": "GPIO8"
+  },
+  {
+   "name": "GP9",
+   "x_mm": 1.6,
+   "y_mm": 31.34,
+   "kind": "header",
+   "function": "GPIO9"
+  },
+  {
+   "name": "GND.3",
+   "x_mm": 1.6,
+   "y_mm": 33.88,
+   "kind": "header",
+   "function": "GND"
+  },
+  {
+   "name": "GP10",
+   "x_mm": 1.6,
+   "y_mm": 36.42,
+   "kind": "header",
+   "function": "GPIO10"
+  },
+  {
+   "name": "GP11",
+   "x_mm": 1.6,
+   "y_mm": 38.96,
+   "kind": "header",
+   "function": "GPIO11"
+  },
+  {
+   "name": "GP12",
+   "x_mm": 1.6,
+   "y_mm": 41.49,
+   "kind": "header",
+   "function": "GPIO12"
+  },
+  {
+   "name": "GP13",
+   "x_mm": 1.6,
+   "y_mm": 44.03,
+   "kind": "header",
+   "function": "GPIO13"
+  },
+  {
+   "name": "GND.4",
+   "x_mm": 1.6,
+   "y_mm": 46.57,
+   "kind": "header",
+   "function": "GND"
+  },
+  {
+   "name": "GP14",
+   "x_mm": 1.6,
+   "y_mm": 49.11,
+   "kind": "header",
+   "function": "GPIO14"
+  },
+  {
+   "name": "GP15",
+   "x_mm": 1.6,
+   "y_mm": 51.65,
+   "kind": "header",
+   "function": "GPIO15"
+  },
+  {
+   "name": "GP16",
+   "x_mm": 19.3,
+   "y_mm": 51.65,
+   "kind": "header",
+   "function": "GPIO16"
+  },
+  {
+   "name": "GP17",
+   "x_mm": 19.3,
+   "y_mm": 49.11,
+   "kind": "header",
+   "function": "GPIO17"
+  },
+  {
+   "name": "GND.5",
+   "x_mm": 19.3,
+   "y_mm": 46.57,
+   "kind": "header",
+   "function": "GND"
+  },
+  {
+   "name": "GP18",
+   "x_mm": 19.3,
+   "y_mm": 44.03,
+   "kind": "header",
+   "function": "GPIO18"
+  },
+  {
+   "name": "GP19",
+   "x_mm": 19.3,
+   "y_mm": 41.49,
+   "kind": "header",
+   "function": "GPIO19"
+  },
+  {
+   "name": "GP20",
+   "x_mm": 19.3,
+   "y_mm": 38.96,
+   "kind": "header",
+   "function": "GPIO20"
+  },
+  {
+   "name": "GP21",
+   "x_mm": 19.3,
+   "y_mm": 36.42,
+   "kind": "header",
+   "function": "GPIO21"
+  },
+  {
+   "name": "GND.6",
+   "x_mm": 19.3,
+   "y_mm": 33.88,
+   "kind": "header",
+   "function": "GND"
+  },
+  {
+   "name": "GP22",
+   "x_mm": 19.3,
+   "y_mm": 31.34,
+   "kind": "header",
+   "function": "GPIO22"
+  },
+  {
+   "name": "RUN",
+   "x_mm": 19.3,
+   "y_mm": 28.8,
+   "kind": "header"
+  },
+  {
+   "name": "GP26",
+   "x_mm": 19.3,
+   "y_mm": 26.26,
+   "kind": "header",
+   "function": "GPIO26"
+  },
+  {
+   "name": "GP27",
+   "x_mm": 19.3,
+   "y_mm": 23.72,
+   "kind": "header",
+   "function": "GPIO27"
+  },
+  {
+   "name": "GND.7",
+   "x_mm": 19.3,
+   "y_mm": 21.18,
+   "kind": "header",
+   "function": "GND"
+  },
+  {
+   "name": "GP28",
+   "x_mm": 19.3,
+   "y_mm": 18.64,
+   "kind": "header",
+   "function": "GPIO28"
+  },
+  {
+   "name": "ADC_VREF",
+   "x_mm": 19.3,
+   "y_mm": 16.1,
+   "kind": "header"
+  },
+  {
+   "name": "3V3",
+   "x_mm": 19.3,
+   "y_mm": 13.56,
+   "kind": "header",
+   "function": "power(3.3)"
+  },
+  {
+   "name": "3V3_EN",
+   "x_mm": 19.3,
+   "y_mm": 11.02,
+   "kind": "header"
+  },
+  {
+   "name": "GND.8",
+   "x_mm": 19.3,
+   "y_mm": 8.48,
+   "kind": "header",
+   "function": "GND"
+  },
+  {
+   "name": "VSYS",
+   "x_mm": 19.3,
+   "y_mm": 5.94,
+   "kind": "header",
+   "function": "power(3.3)"
+  },
+  {
+   "name": "VBUS",
+   "x_mm": 19.3,
+   "y_mm": 3.4,
+   "kind": "header",
+   "function": "power(5)"
+  }
+ ],
+ "headers": [
+  {
+   "name": "H1",
+   "side": "left",
+   "orientation": "column",
+   "pitch_mm": 2.539,
+   "snapped_to_grid": false,
+   "pins": [
+    "GP0",
+    "GP1",
+    "GND.1",
+    "GP2",
+    "GP3",
+    "GP4",
+    "GP5",
+    "GND.2",
+    "GP6",
+    "GP7",
+    "GP8",
+    "GP9",
+    "GND.3",
+    "GP10",
+    "GP11",
+    "GP12",
+    "GP13",
+    "GND.4",
+    "GP14",
+    "GP15"
+   ]
+  },
+  {
+   "name": "H2",
+   "side": "right",
+   "orientation": "column",
+   "pitch_mm": 2.539,
+   "snapped_to_grid": false,
+   "pins": [
+    "VBUS",
+    "VSYS",
+    "GND.8",
+    "3V3_EN",
+    "3V3",
+    "ADC_VREF",
+    "GP28",
+    "GND.7",
+    "GP27",
+    "GP26",
+    "RUN",
+    "GP22",
+    "GND.6",
+    "GP21",
+    "GP20",
+    "GP19",
+    "GP18",
+    "GND.5",
+    "GP17",
+    "GP16"
+   ]
+  }
+ ]
+}

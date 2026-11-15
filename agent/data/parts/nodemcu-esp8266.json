@@ -1,0 +1,286 @@
+{
+ "id": "nodemcu-esp8266",
+ "name": "NodeMCU ESP8266 (Amica DevKit 1.0)",
+ "aliases": [
+  "NodeMCU",
+  "Node MCU",
+  "NodeMCU ESP8266",
+  "NodeMCU v2",
+  "NodeMCU v3",
+  "ESP8266 NodeMCU",
+  "ESP8266",
+  "ESP-12E DevKit",
+  "Amica NodeMCU"
+ ],
+ "source": "fritzing/fritzing-parts@27535f2:core/Amica_NodeMCU_DEVKIT_1.0.fzp + fritzing/fritzing-parts@27535f2:svg/core/breadboard/Amica_NodeMCU_DEVKIT_1.0_breadboard.svg",
+ "license": "CC-BY-SA-3.0",
+ "attribution": "Connector names/positions derived from Fritzing parts (https://github.com/fritzing/fritzing-parts), licensed CC-BY-SA 3.0. Share-alike applies to this file. Original part author(s): Peter Harrison. Mentor code is MIT; this data file keeps the license above.",
+ "outline_mm": {
+  "w": 24.801,
+  "h": 48.743
+ },
+ "frame": "x_mm to the right along the top view from the left edge of outline_mm, y_mm DOWN from its top edge, z up from the top face; all in millimetres. Origin = top-left corner of the outline box as drawn.",
+ "notes": "Pin labels are the silkscreen names of the NodeMCU v1.0 (Amica) board, mapped from the Fritzing connector order (ESP-12 module pin descriptions kept in \"function\"). Orientation: USB connector at the bottom edge, antenna at the top; D0..D8 are on the right column, A0/SD*/EN/RST/VIN on the left.",
+ "pins": [
+  {
+   "name": "3V3.1",
+   "x_mm": 23.763,
+   "y_mm": 41.593,
+   "kind": "header",
+   "function": "3.3 Volts (1)"
+  },
+  {
+   "name": "GND.1",
+   "x_mm": 23.763,
+   "y_mm": 39.053,
+   "kind": "header",
+   "function": "Ground (2)"
+  },
+  {
+   "name": "TX",
+   "x_mm": 23.763,
+   "y_mm": 36.513,
+   "kind": "header",
+   "function": "GPIO1, TXD0"
+  },
+  {
+   "name": "RX",
+   "x_mm": 23.763,
+   "y_mm": 33.973,
+   "kind": "header",
+   "function": "GPIO3, RXD0"
+  },
+  {
+   "name": "D8",
+   "x_mm": 23.763,
+   "y_mm": 31.433,
+   "kind": "header",
+   "function": "GPIO15, RTS0, HCS"
+  },
+  {
+   "name": "D7",
+   "x_mm": 23.763,
+   "y_mm": 28.893,
+   "kind": "header",
+   "function": "GPIO13, CTS0, HMOSI"
+  },
+  {
+   "name": "D6",
+   "x_mm": 23.763,
+   "y_mm": 26.353,
+   "kind": "header",
+   "function": "GPIO12, HMISO"
+  },
+  {
+   "name": "D5",
+   "x_mm": 23.763,
+   "y_mm": 23.813,
+   "kind": "header",
+   "function": "GPIO14, HSCLK"
+  },
+  {
+   "name": "GND.2",
+   "x_mm": 23.763,
+   "y_mm": 21.273,
+   "kind": "header",
+   "function": "Ground (9)"
+  },
+  {
+   "name": "3V3.2",
+   "x_mm": 23.763,
+   "y_mm": 18.733,
+   "kind": "header",
+   "function": "3.3 Volts (10)"
+  },
+  {
+   "name": "D4",
+   "x_mm": 23.763,
+   "y_mm": 16.193,
+   "kind": "header",
+   "function": "GPIO2, TXD1"
+  },
+  {
+   "name": "D3",
+   "x_mm": 23.763,
+   "y_mm": 13.653,
+   "kind": "header",
+   "function": "GPIO0, FLASH"
+  },
+  {
+   "name": "D2",
+   "x_mm": 23.763,
+   "y_mm": 11.113,
+   "kind": "header",
+   "function": "GPIO4, SDA"
+  },
+  {
+   "name": "D1",
+   "x_mm": 23.763,
+   "y_mm": 8.573,
+   "kind": "header",
+   "function": "GPIO5, SCL"
+  },
+  {
+   "name": "D0",
+   "x_mm": 23.763,
+   "y_mm": 6.033,
+   "kind": "header",
+   "function": "GPIO16, USER, WAKE"
+  },
+  {
+   "name": "A0",
+   "x_mm": 1.087,
+   "y_mm": 6.033,
+   "kind": "header",
+   "function": "ADC0, TOUT"
+  },
+  {
+   "name": "RSV.1",
+   "x_mm": 1.087,
+   "y_mm": 8.573,
+   "kind": "header",
+   "function": "Reserved"
+  },
+  {
+   "name": "RSV.2",
+   "x_mm": 1.087,
+   "y_mm": 11.113,
+   "kind": "header",
+   "function": "Reserved"
+  },
+  {
+   "name": "SD3",
+   "x_mm": 1.087,
+   "y_mm": 13.653,
+   "kind": "header",
+   "function": "GPIO10, SDD3"
+  },
+  {
+   "name": "SD2",
+   "x_mm": 1.087,
+   "y_mm": 16.193,
+   "kind": "header",
+   "function": "SPIO9, SDD2"
+  },
+  {
+   "name": "SD1",
+   "x_mm": 1.087,
+   "y_mm": 18.733,
+   "kind": "header",
+   "function": "GPIO8, MOSI, SDD1"
+  },
+  {
+   "name": "CMD",
+   "x_mm": 1.087,
+   "y_mm": 21.273,
+   "kind": "header",
+   "function": "GPIO11, CS, SDCMD"
+  },
+  {
+   "name": "SD0",
+   "x_mm": 1.087,
+   "y_mm": 23.813,
+   "kind": "header",
+   "function": "GPIO7, MISO, SDD0"
+  },
+  {
+   "name": "CLK",
+   "x_mm": 1.087,
+   "y_mm": 26.353,
+   "kind": "header",
+   "function": "GPIO6, SCLK, SDCLK"
+  },
+  {
+   "name": "GND.3",
+   "x_mm": 1.087,
+   "y_mm": 28.893,
+   "kind": "header",
+   "function": "Ground (25)"
+  },
+  {
+   "name": "3V3.3",
+   "x_mm": 1.087,
+   "y_mm": 31.433,
+   "kind": "header",
+   "function": "3.3 Volts (26)"
+  },
+  {
+   "name": "EN",
+   "x_mm": 1.087,
+   "y_mm": 33.973,
+   "kind": "header",
+   "function": "EN, CH_PD"
+  },
+  {
+   "name": "RST",
+   "x_mm": 1.087,
+   "y_mm": 36.513,
+   "kind": "header",
+   "function": "RST"
+  },
+  {
+   "name": "GND.4",
+   "x_mm": 1.087,
+   "y_mm": 39.053,
+   "kind": "header",
+   "function": "Ground (29)"
+  },
+  {
+   "name": "VIN",
+   "x_mm": 1.087,
+   "y_mm": 41.593,
+   "kind": "header",
+   "function": "Vin"
+  }
+ ],
+ "headers": [
+  {
+   "name": "H1",
+   "side": "left",
+   "orientation": "column",
+   "pitch_mm": 2.54,
+   "snapped_to_grid": true,
+   "pins": [
+    "A0",
+    "RSV.1",
+    "RSV.2",
+    "SD3",
+    "SD2",
+    "SD1",
+    "CMD",
+    "SD0",
+    "CLK",
+    "GND.3",
+    "3V3.3",
+    "EN",
+    "RST",
+    "GND.4",
+    "VIN"
+   ]
+  },
+  {
+   "name": "H2",
+   "side": "right",
+   "orientation": "column",
+   "pitch_mm": 2.54,
+   "snapped_to_grid": true,
+   "pins": [
+    "D0",
+    "D1",
+    "D2",
+    "D3",
+    "D4",
+    "3V3.2",
+    "GND.2",
+    "D5",
+    "D6",
+    "D7",
+    "D8",
+    "RX",
+    "TX",
+    "GND.1",
+    "3V3.1"
+   ]
+  }
+ ]
+}

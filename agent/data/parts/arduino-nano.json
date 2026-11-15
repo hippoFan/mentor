@@ -1,0 +1,347 @@
+{
+ "id": "arduino-nano",
+ "name": "Arduino Nano",
+ "aliases": [
+  "Nano",
+  "Arduino Nano V3",
+  "Nano V3",
+  "ATmega328P Nano"
+ ],
+ "source": "wokwi/wokwi-elements@5178c0c:src/arduino-nano-element.ts",
+ "license": "MIT",
+ "attribution": "Pin geometry from wokwi/wokwi-elements (MIT License, Copyright (c) 2019 Uri Shaked and contributors). Mentor code is MIT; this data file keeps the license above.",
+ "outline_mm": {
+  "w": 43.18,
+  "h": 17.78
+ },
+ "frame": "x_mm to the right along the top view from the left edge of outline_mm, y_mm DOWN from its top edge, z up from the top face; all in millimetres. Origin = top-left corner of the outline box as drawn.",
+ "pins": [
+  {
+   "name": "12",
+   "x_mm": 3.812,
+   "y_mm": 1.27,
+   "kind": "header",
+   "function": "SPI MISO"
+  },
+  {
+   "name": "11",
+   "x_mm": 6.352,
+   "y_mm": 1.27,
+   "kind": "header",
+   "function": "SPI MOSI, PWM"
+  },
+  {
+   "name": "10",
+   "x_mm": 8.892,
+   "y_mm": 1.27,
+   "kind": "header",
+   "function": "SPI SS, PWM"
+  },
+  {
+   "name": "9",
+   "x_mm": 11.432,
+   "y_mm": 1.27,
+   "kind": "header",
+   "function": "PWM"
+  },
+  {
+   "name": "8",
+   "x_mm": 13.972,
+   "y_mm": 1.27,
+   "kind": "header"
+  },
+  {
+   "name": "7",
+   "x_mm": 16.512,
+   "y_mm": 1.27,
+   "kind": "header"
+  },
+  {
+   "name": "6",
+   "x_mm": 19.052,
+   "y_mm": 1.27,
+   "kind": "header",
+   "function": "PWM"
+  },
+  {
+   "name": "5",
+   "x_mm": 21.592,
+   "y_mm": 1.27,
+   "kind": "header",
+   "function": "PWM"
+  },
+  {
+   "name": "4",
+   "x_mm": 24.132,
+   "y_mm": 1.27,
+   "kind": "header"
+  },
+  {
+   "name": "3",
+   "x_mm": 26.672,
+   "y_mm": 1.27,
+   "kind": "header",
+   "function": "PWM"
+  },
+  {
+   "name": "2",
+   "x_mm": 29.212,
+   "y_mm": 1.27,
+   "kind": "header"
+  },
+  {
+   "name": "GND.2",
+   "x_mm": 31.752,
+   "y_mm": 1.27,
+   "kind": "header",
+   "function": "GND"
+  },
+  {
+   "name": "RESET.2",
+   "x_mm": 34.292,
+   "y_mm": 1.27,
+   "kind": "header"
+  },
+  {
+   "name": "0",
+   "x_mm": 36.832,
+   "y_mm": 1.27,
+   "kind": "header",
+   "function": "UART TX"
+  },
+  {
+   "name": "1",
+   "x_mm": 39.372,
+   "y_mm": 1.27,
+   "kind": "header",
+   "function": "UART RX"
+  },
+  {
+   "name": "13",
+   "x_mm": 3.812,
+   "y_mm": 16.51,
+   "kind": "header",
+   "function": "SPI SCK"
+  },
+  {
+   "name": "3.3V",
+   "x_mm": 6.352,
+   "y_mm": 16.51,
+   "kind": "header",
+   "function": "power 3.3 V"
+  },
+  {
+   "name": "AREF",
+   "x_mm": 8.892,
+   "y_mm": 16.51,
+   "kind": "header"
+  },
+  {
+   "name": "A0",
+   "x_mm": 11.432,
+   "y_mm": 16.51,
+   "kind": "header",
+   "function": "ADC 0"
+  },
+  {
+   "name": "A1",
+   "x_mm": 13.972,
+   "y_mm": 16.51,
+   "kind": "header",
+   "function": "ADC 1"
+  },
+  {
+   "name": "A2",
+   "x_mm": 16.512,
+   "y_mm": 16.51,
+   "kind": "header",
+   "function": "ADC 2"
+  },
+  {
+   "name": "A3",
+   "x_mm": 19.052,
+   "y_mm": 16.51,
+   "kind": "header",
+   "function": "ADC 3"
+  },
+  {
+   "name": "A4",
+   "x_mm": 21.592,
+   "y_mm": 16.51,
+   "kind": "header",
+   "function": "I2C SDA, ADC 4"
+  },
+  {
+   "name": "A5",
+   "x_mm": 24.132,
+   "y_mm": 16.51,
+   "kind": "header",
+   "function": "I2C SCL, ADC 5"
+  },
+  {
+   "name": "A6",
+   "x_mm": 26.672,
+   "y_mm": 16.51,
+   "kind": "header",
+   "function": "ADC 6"
+  },
+  {
+   "name": "A7",
+   "x_mm": 29.212,
+   "y_mm": 16.51,
+   "kind": "header",
+   "function": "ADC 7"
+  },
+  {
+   "name": "5V",
+   "x_mm": 31.752,
+   "y_mm": 16.51,
+   "kind": "header",
+   "function": "power 5 V"
+  },
+  {
+   "name": "RESET",
+   "x_mm": 34.292,
+   "y_mm": 16.51,
+   "kind": "header"
+  },
+  {
+   "name": "GND.1",
+   "x_mm": 36.832,
+   "y_mm": 16.51,
+   "kind": "header",
+   "function": "GND"
+  },
+  {
+   "name": "VIN",
+   "x_mm": 39.372,
+   "y_mm": 16.51,
+   "kind": "header",
+   "function": "power"
+  },
+  {
+   "name": "12.2",
+   "x_mm": 41.912,
+   "y_mm": 11.43,
+   "kind": "header",
+   "function": "SPI MISO"
+  },
+  {
+   "name": "5V.2",
+   "x_mm": 39.372,
+   "y_mm": 11.43,
+   "kind": "header",
+   "function": "power 5 V"
+  },
+  {
+   "name": "13.2",
+   "x_mm": 41.912,
+   "y_mm": 8.89,
+   "kind": "header",
+   "function": "SPI SCK"
+  },
+  {
+   "name": "11.2",
+   "x_mm": 39.372,
+   "y_mm": 8.89,
+   "kind": "header",
+   "function": "SPI MOSI, PWM"
+  },
+  {
+   "name": "RESET.3",
+   "x_mm": 41.912,
+   "y_mm": 6.35,
+   "kind": "header"
+  },
+  {
+   "name": "GND.3",
+   "x_mm": 39.372,
+   "y_mm": 6.35,
+   "kind": "header",
+   "function": "GND"
+  }
+ ],
+ "headers": [
+  {
+   "name": "H1",
+   "side": "top",
+   "orientation": "row",
+   "pitch_mm": 2.54,
+   "snapped_to_grid": true,
+   "pins": [
+    "12",
+    "11",
+    "10",
+    "9",
+    "8",
+    "7",
+    "6",
+    "5",
+    "4",
+    "3",
+    "2",
+    "GND.2",
+    "RESET.2",
+    "0",
+    "1"
+   ]
+  },
+  {
+   "name": "H2",
+   "side": "right",
+   "orientation": "row",
+   "pitch_mm": 2.54,
+   "snapped_to_grid": true,
+   "pins": [
+    "GND.3",
+    "RESET.3"
+   ]
+  },
+  {
+   "name": "H3",
+   "side": "right",
+   "orientation": "row",
+   "pitch_mm": 2.54,
+   "snapped_to_grid": true,
+   "pins": [
+    "11.2",
+    "13.2"
+   ]
+  },
+  {
+   "name": "H4",
+   "side": "right",
+   "orientation": "row",
+   "pitch_mm": 2.54,
+   "snapped_to_grid": true,
+   "pins": [
+    "5V.2",
+    "12.2"
+   ]
+  },
+  {
+   "name": "H5",
+   "side": "bottom",
+   "orientation": "row",
+   "pitch_mm": 2.54,
+   "snapped_to_grid": true,
+   "pins": [
+    "13",
+    "3.3V",
+    "AREF",
+    "A0",
+    "A1",
+    "A2",
+    "A3",
+    "A4",
+    "A5",
+    "A6",
+    "A7",
+    "5V",
+    "RESET",
+    "GND.1",
+    "VIN"
+   ]
+  }
+ ]
+}

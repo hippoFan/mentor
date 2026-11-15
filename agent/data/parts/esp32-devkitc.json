@@ -1,0 +1,345 @@
+{
+ "id": "esp32-devkitc",
+ "name": "ESP32 DevKitC",
+ "aliases": [
+  "ESP32-DevKitC",
+  "ESP32 DevKitC V4",
+  "ESP32 DevKit C",
+  "Espressif ESP32-DevKitC",
+  "ESP32 WROOM DevKitC"
+ ],
+ "source": "wokwi/wokwi-boards@962b19d:boards/esp32-devkit-c-v4/board.json",
+ "license": "unspecified",
+ "attribution": "Pin geometry (physical board layout, a published fact of the Raspberry Pi Pico / Espressif ESP32-DevKitC design) read from wokwi/wokwi-boards, whose repository carries no LICENSE file. Only coordinates and pin names are used; no artwork or code is copied. Mentor code is MIT; this data file keeps the license above.",
+ "outline_mm": {
+  "w": 27.9,
+  "h": 56.628
+ },
+ "frame": "x_mm to the right along the top view from the left edge of outline_mm, y_mm DOWN from its top edge, z up from the top face; all in millimetres. Origin = top-left corner of the outline box as drawn.",
+ "pins": [
+  {
+   "name": "0",
+   "x_mm": 26.66,
+   "y_mm": 40.64,
+   "kind": "header",
+   "function": "GPIO0"
+  },
+  {
+   "name": "2",
+   "x_mm": 26.66,
+   "y_mm": 43.18,
+   "kind": "header",
+   "function": "GPIO2"
+  },
+  {
+   "name": "4",
+   "x_mm": 26.66,
+   "y_mm": 38.1,
+   "kind": "header",
+   "function": "GPIO4"
+  },
+  {
+   "name": "5",
+   "x_mm": 26.66,
+   "y_mm": 30.48,
+   "kind": "header",
+   "function": "GPIO5"
+  },
+  {
+   "name": "12",
+   "x_mm": 1.22,
+   "y_mm": 38.1,
+   "kind": "header",
+   "function": "GPIO12"
+  },
+  {
+   "name": "13",
+   "x_mm": 1.22,
+   "y_mm": 43.18,
+   "kind": "header",
+   "function": "GPIO13"
+  },
+  {
+   "name": "14",
+   "x_mm": 1.22,
+   "y_mm": 35.56,
+   "kind": "header",
+   "function": "GPIO14"
+  },
+  {
+   "name": "15",
+   "x_mm": 26.66,
+   "y_mm": 45.72,
+   "kind": "header",
+   "function": "GPIO15"
+  },
+  {
+   "name": "16",
+   "x_mm": 26.66,
+   "y_mm": 35.56,
+   "kind": "header",
+   "function": "GPIO16"
+  },
+  {
+   "name": "17",
+   "x_mm": 26.66,
+   "y_mm": 33.02,
+   "kind": "header",
+   "function": "GPIO17"
+  },
+  {
+   "name": "18",
+   "x_mm": 26.66,
+   "y_mm": 27.94,
+   "kind": "header",
+   "function": "GPIO18"
+  },
+  {
+   "name": "19",
+   "x_mm": 26.66,
+   "y_mm": 25.4,
+   "kind": "header",
+   "function": "GPIO19"
+  },
+  {
+   "name": "21",
+   "x_mm": 26.66,
+   "y_mm": 20.32,
+   "kind": "header",
+   "function": "GPIO21"
+  },
+  {
+   "name": "22",
+   "x_mm": 26.66,
+   "y_mm": 12.7,
+   "kind": "header",
+   "function": "GPIO22"
+  },
+  {
+   "name": "23",
+   "x_mm": 26.66,
+   "y_mm": 10.16,
+   "kind": "header",
+   "function": "GPIO23"
+  },
+  {
+   "name": "25",
+   "x_mm": 1.22,
+   "y_mm": 27.94,
+   "kind": "header",
+   "function": "GPIO25"
+  },
+  {
+   "name": "26",
+   "x_mm": 1.22,
+   "y_mm": 30.48,
+   "kind": "header",
+   "function": "GPIO26"
+  },
+  {
+   "name": "27",
+   "x_mm": 1.22,
+   "y_mm": 33.02,
+   "kind": "header",
+   "function": "GPIO27"
+  },
+  {
+   "name": "32",
+   "x_mm": 1.22,
+   "y_mm": 22.86,
+   "kind": "header",
+   "function": "GPIO32"
+  },
+  {
+   "name": "33",
+   "x_mm": 1.22,
+   "y_mm": 25.4,
+   "kind": "header",
+   "function": "GPIO33"
+  },
+  {
+   "name": "34",
+   "x_mm": 1.22,
+   "y_mm": 17.78,
+   "kind": "header",
+   "function": "GPIO34"
+  },
+  {
+   "name": "35",
+   "x_mm": 1.22,
+   "y_mm": 20.32,
+   "kind": "header",
+   "function": "GPIO35"
+  },
+  {
+   "name": "3V3",
+   "x_mm": 1.22,
+   "y_mm": 7.62,
+   "kind": "header",
+   "function": "power(3.3)"
+  },
+  {
+   "name": "EN",
+   "x_mm": 1.22,
+   "y_mm": 10.16,
+   "kind": "header",
+   "function": "CHIP_PU"
+  },
+  {
+   "name": "VP",
+   "x_mm": 1.22,
+   "y_mm": 12.7,
+   "kind": "header",
+   "function": "GPIO36"
+  },
+  {
+   "name": "VN",
+   "x_mm": 1.22,
+   "y_mm": 15.24,
+   "kind": "header",
+   "function": "GPIO39"
+  },
+  {
+   "name": "GND.1",
+   "x_mm": 1.22,
+   "y_mm": 40.64,
+   "kind": "header",
+   "function": "GND"
+  },
+  {
+   "name": "D2",
+   "x_mm": 1.22,
+   "y_mm": 45.72,
+   "kind": "header",
+   "function": "GPIO9"
+  },
+  {
+   "name": "D3",
+   "x_mm": 1.22,
+   "y_mm": 48.26,
+   "kind": "header",
+   "function": "GPIO10"
+  },
+  {
+   "name": "CMD",
+   "x_mm": 1.22,
+   "y_mm": 50.8,
+   "kind": "header",
+   "function": "GPIO11"
+  },
+  {
+   "name": "5V",
+   "x_mm": 1.22,
+   "y_mm": 53.34,
+   "kind": "header",
+   "function": "power(5)"
+  },
+  {
+   "name": "GND.2",
+   "x_mm": 26.66,
+   "y_mm": 7.62,
+   "kind": "header",
+   "function": "GND"
+  },
+  {
+   "name": "TX",
+   "x_mm": 26.66,
+   "y_mm": 15.24,
+   "kind": "header",
+   "function": "GPIO1"
+  },
+  {
+   "name": "RX",
+   "x_mm": 26.66,
+   "y_mm": 17.78,
+   "kind": "header",
+   "function": "GPIO3"
+  },
+  {
+   "name": "GND.3",
+   "x_mm": 26.66,
+   "y_mm": 22.86,
+   "kind": "header",
+   "function": "GND"
+  },
+  {
+   "name": "D1",
+   "x_mm": 26.66,
+   "y_mm": 48.26,
+   "kind": "header",
+   "function": "GPIO8"
+  },
+  {
+   "name": "D0",
+   "x_mm": 26.66,
+   "y_mm": 50.8,
+   "kind": "header",
+   "function": "GPIO7"
+  },
+  {
+   "name": "CLK",
+   "x_mm": 26.66,
+   "y_mm": 53.34,
+   "kind": "header",
+   "function": "GPIO6"
+  }
+ ],
+ "headers": [
+  {
+   "name": "H1",
+   "side": "left",
+   "orientation": "column",
+   "pitch_mm": 2.54,
+   "snapped_to_grid": false,
+   "pins": [
+    "3V3",
+    "EN",
+    "VP",
+    "VN",
+    "34",
+    "35",
+    "32",
+    "33",
+    "25",
+    "26",
+    "27",
+    "14",
+    "12",
+    "GND.1",
+    "13",
+    "D2",
+    "D3",
+    "CMD",
+    "5V"
+   ]
+  },
+  {
+   "name": "H2",
+   "side": "right",
+   "orientation": "column",
+   "pitch_mm": 2.54,
+   "snapped_to_grid": false,
+   "pins": [
+    "GND.2",
+    "23",
+    "22",
+    "TX",
+    "RX",
+    "21",
+    "GND.3",
+    "19",
+    "18",
+    "5",
+    "17",
+    "16",
+    "4",
+    "0",
+    "2",
+    "15",
+    "D1",
+    "D0",
+    "CLK"
+   ]
+  }
+ ]
+}

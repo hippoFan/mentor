@@ -1,0 +1,58 @@
+{
+ "id": "potentiometer",
+ "name": "Rotary potentiometer",
+ "aliases": [
+  "Potentiometer",
+  "Pot",
+  "Trimpot",
+  "Rotary potentiometer",
+  "Variable resistor",
+  "Trimmer",
+  "Knob"
+ ],
+ "source": "wokwi/wokwi-elements@5178c0c:src/potentiometer-element.ts",
+ "license": "MIT",
+ "attribution": "Pin geometry from wokwi/wokwi-elements (MIT License, Copyright (c) 2019 Uri Shaked and contributors). Mentor code is MIT; this data file keeps the license above.",
+ "outline_mm": {
+  "w": 20,
+  "h": 20
+ },
+ "frame": "x_mm to the right along the top view from the left edge of outline_mm, y_mm DOWN from its top edge, z up from the top face; all in millimetres. Origin = top-left corner of the outline box as drawn.",
+ "pins": [
+  {
+   "name": "GND",
+   "x_mm": 7.779,
+   "y_mm": 18.124,
+   "kind": "header",
+   "function": "GND"
+  },
+  {
+   "name": "SIG",
+   "x_mm": 10.319,
+   "y_mm": 18.124,
+   "kind": "header",
+   "function": "ADC 0"
+  },
+  {
+   "name": "VCC",
+   "x_mm": 12.859,
+   "y_mm": 18.124,
+   "kind": "header",
+   "function": "power"
+  }
+ ],
+ "headers": [
+  {
+   "name": "H1",
+   "side": "bottom",
+   "orientation": "row",
+   "pitch_mm": 2.54,
+   "snapped_to_grid": true,
+   "pins": [
+    "GND",
+    "SIG",
+    "VCC"
+   ]
+  }
+ ]
+}

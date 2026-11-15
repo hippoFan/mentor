@@ -1,0 +1,2425 @@
+{
+ "id": "breadboard-half",
+ "name": "Half-size breadboard (400 tie points)",
+ "aliases": [
+  "Breadboard",
+  "Half breadboard",
+  "Half-size breadboard",
+  "Half size breadboard",
+  "400 point breadboard",
+  "Solderless breadboard",
+  "Protoboard"
+ ],
+ "source": "fritzing/fritzing-parts@27535f2:svg/core/breadboard/Half_breadboard56a.svg",
+ "license": "CC-BY-SA-3.0",
+ "attribution": "Connector names/positions derived from Fritzing parts (https://github.com/fritzing/fritzing-parts), licensed CC-BY-SA 3.0. Share-alike applies to this file. Mentor code is MIT; this data file keeps the license above.",
+ "outline_mm": {
+  "w": 82.5,
+  "h": 53.34
+ },
+ "frame": "x_mm to the right along the top view from the left edge of outline_mm, y_mm DOWN from its top edge, z up from the top face; all in millimetres. Origin = top-left corner of the outline box as drawn.",
+ "notes": "Pad names: <column><row letter>, columns 1-30, rows A-E (one strip) and F-J (other strip). W/X/Y/Z are the four power-rail strips.",
+ "pins": [
+  {
+   "name": "1A",
+   "x_mm": 3.852,
+   "y_mm": 40.64,
+   "kind": "pad"
+  },
+  {
+   "name": "1B",
+   "x_mm": 3.852,
+   "y_mm": 38.1,
+   "kind": "pad"
+  },
+  {
+   "name": "1C",
+   "x_mm": 3.852,
+   "y_mm": 35.56,
+   "kind": "pad"
+  },
+  {
+   "name": "1D",
+   "x_mm": 3.852,
+   "y_mm": 33.02,
+   "kind": "pad"
+  },
+  {
+   "name": "1E",
+   "x_mm": 3.852,
+   "y_mm": 30.48,
+   "kind": "pad"
+  },
+  {
+   "name": "1F",
+   "x_mm": 3.852,
+   "y_mm": 22.86,
+   "kind": "pad"
+  },
+  {
+   "name": "1G",
+   "x_mm": 3.852,
+   "y_mm": 20.32,
+   "kind": "pad"
+  },
+  {
+   "name": "1H",
+   "x_mm": 3.852,
+   "y_mm": 17.78,
+   "kind": "pad"
+  },
+  {
+   "name": "1I",
+   "x_mm": 3.852,
+   "y_mm": 15.24,
+   "kind": "pad"
+  },
+  {
+   "name": "1J",
+   "x_mm": 3.852,
+   "y_mm": 12.7,
+   "kind": "pad"
+  },
+  {
+   "name": "2A",
+   "x_mm": 6.392,
+   "y_mm": 40.64,
+   "kind": "pad"
+  },
+  {
+   "name": "2B",
+   "x_mm": 6.392,
+   "y_mm": 38.1,
+   "kind": "pad"
+  },
+  {
+   "name": "2C",
+   "x_mm": 6.392,
+   "y_mm": 35.56,
+   "kind": "pad"
+  },
+  {
+   "name": "2D",
+   "x_mm": 6.392,
+   "y_mm": 33.02,
+   "kind": "pad"
+  },
+  {
+   "name": "2E",
+   "x_mm": 6.392,
+   "y_mm": 30.48,
+   "kind": "pad"
+  },
+  {
+   "name": "2F",
+   "x_mm": 6.392,
+   "y_mm": 22.86,
+   "kind": "pad"
+  },
+  {
+   "name": "2G",
+   "x_mm": 6.392,
+   "y_mm": 20.32,
+   "kind": "pad"
+  },
+  {
+   "name": "2H",
+   "x_mm": 6.392,
+   "y_mm": 17.78,
+   "kind": "pad"
+  },
+  {
+   "name": "2I",
+   "x_mm": 6.392,
+   "y_mm": 15.24,
+   "kind": "pad"
+  },
+  {
+   "name": "2J",
+   "x_mm": 6.392,
+   "y_mm": 12.7,
+   "kind": "pad"
+  },
+  {
+   "name": "3A",
+   "x_mm": 8.932,
+   "y_mm": 40.64,
+   "kind": "pad"
+  },
+  {
+   "name": "3B",
+   "x_mm": 8.932,
+   "y_mm": 38.1,
+   "kind": "pad"
+  },
+  {
+   "name": "3C",
+   "x_mm": 8.932,
+   "y_mm": 35.56,
+   "kind": "pad"
+  },
+  {
+   "name": "3D",
+   "x_mm": 8.932,
+   "y_mm": 33.02,
+   "kind": "pad"
+  },
+  {
+   "name": "3E",
+   "x_mm": 8.932,
+   "y_mm": 30.48,
+   "kind": "pad"
+  },
+  {
+   "name": "3F",
+   "x_mm": 8.932,
+   "y_mm": 22.86,
+   "kind": "pad"
+  },
+  {
+   "name": "3G",
+   "x_mm": 8.932,
+   "y_mm": 20.32,
+   "kind": "pad"
+  },
+  {
+   "name": "3H",
+   "x_mm": 8.932,
+   "y_mm": 17.78,
+   "kind": "pad"
+  },
+  {
+   "name": "3I",
+   "x_mm": 8.932,
+   "y_mm": 15.24,
+   "kind": "pad"
+  },
+  {
+   "name": "3J",
+   "x_mm": 8.932,
+   "y_mm": 12.7,
+   "kind": "pad"
+  },
+  {
+   "name": "3W",
+   "x_mm": 4.798,
+   "y_mm": 50.8,
+   "kind": "pad"
+  },
+  {
+   "name": "3X",
+   "x_mm": 4.798,
+   "y_mm": 48.26,
+   "kind": "pad"
+  },
+  {
+   "name": "3Y",
+   "x_mm": 4.798,
+   "y_mm": 5.08,
+   "kind": "pad"
+  },
+  {
+   "name": "3Z",
+   "x_mm": 4.798,
+   "y_mm": 2.54,
+   "kind": "pad"
+  },
+  {
+   "name": "4A",
+   "x_mm": 11.472,
+   "y_mm": 40.64,
+   "kind": "pad"
+  },
+  {
+   "name": "4B",
+   "x_mm": 11.472,
+   "y_mm": 38.1,
+   "kind": "pad"
+  },
+  {
+   "name": "4C",
+   "x_mm": 11.472,
+   "y_mm": 35.56,
+   "kind": "pad"
+  },
+  {
+   "name": "4D",
+   "x_mm": 11.472,
+   "y_mm": 33.02,
+   "kind": "pad"
+  },
+  {
+   "name": "4E",
+   "x_mm": 11.472,
+   "y_mm": 30.48,
+   "kind": "pad"
+  },
+  {
+   "name": "4F",
+   "x_mm": 11.472,
+   "y_mm": 22.86,
+   "kind": "pad"
+  },
+  {
+   "name": "4G",
+   "x_mm": 11.472,
+   "y_mm": 20.32,
+   "kind": "pad"
+  },
+  {
+   "name": "4H",
+   "x_mm": 11.472,
+   "y_mm": 17.78,
+   "kind": "pad"
+  },
+  {
+   "name": "4I",
+   "x_mm": 11.472,
+   "y_mm": 15.24,
+   "kind": "pad"
+  },
+  {
+   "name": "4J",
+   "x_mm": 11.472,
+   "y_mm": 12.7,
+   "kind": "pad"
+  },
+  {
+   "name": "4W",
+   "x_mm": 7.338,
+   "y_mm": 50.8,
+   "kind": "pad"
+  },
+  {
+   "name": "4X",
+   "x_mm": 7.338,
+   "y_mm": 48.26,
+   "kind": "pad"
+  },
+  {
+   "name": "4Y",
+   "x_mm": 7.338,
+   "y_mm": 5.08,
+   "kind": "pad"
+  },
+  {
+   "name": "4Z",
+   "x_mm": 7.338,
+   "y_mm": 2.54,
+   "kind": "pad"
+  },
+  {
+   "name": "5A",
+   "x_mm": 14.012,
+   "y_mm": 40.64,
+   "kind": "pad"
+  },
+  {
+   "name": "5B",
+   "x_mm": 14.012,
+   "y_mm": 38.1,
+   "kind": "pad"
+  },
+  {
+   "name": "5C",
+   "x_mm": 14.012,
+   "y_mm": 35.56,
+   "kind": "pad"
+  },
+  {
+   "name": "5D",
+   "x_mm": 14.012,
+   "y_mm": 33.02,
+   "kind": "pad"
+  },
+  {
+   "name": "5E",
+   "x_mm": 14.012,
+   "y_mm": 30.48,
+   "kind": "pad"
+  },
+  {
+   "name": "5F",
+   "x_mm": 14.012,
+   "y_mm": 22.86,
+   "kind": "pad"
+  },
+  {
+   "name": "5G",
+   "x_mm": 14.012,
+   "y_mm": 20.32,
+   "kind": "pad"
+  },
+  {
+   "name": "5H",
+   "x_mm": 14.012,
+   "y_mm": 17.78,
+   "kind": "pad"
+  },
+  {
+   "name": "5I",
+   "x_mm": 14.012,
+   "y_mm": 15.24,
+   "kind": "pad"
+  },
+  {
+   "name": "5J",
+   "x_mm": 14.012,
+   "y_mm": 12.7,
+   "kind": "pad"
+  },
+  {
+   "name": "5W",
+   "x_mm": 9.878,
+   "y_mm": 50.8,
+   "kind": "pad"
+  },
+  {
+   "name": "5X",
+   "x_mm": 9.878,
+   "y_mm": 48.26,
+   "kind": "pad"
+  },
+  {
+   "name": "5Y",
+   "x_mm": 9.878,
+   "y_mm": 5.08,
+   "kind": "pad"
+  },
+  {
+   "name": "5Z",
+   "x_mm": 9.878,
+   "y_mm": 2.54,
+   "kind": "pad"
+  },
+  {
+   "name": "6A",
+   "x_mm": 16.552,
+   "y_mm": 40.64,
+   "kind": "pad"
+  },
+  {
+   "name": "6B",
+   "x_mm": 16.552,
+   "y_mm": 38.1,
+   "kind": "pad"
+  },
+  {
+   "name": "6C",
+   "x_mm": 16.552,
+   "y_mm": 35.56,
+   "kind": "pad"
+  },
+  {
+   "name": "6D",
+   "x_mm": 16.552,
+   "y_mm": 33.02,
+   "kind": "pad"
+  },
+  {
+   "name": "6E",
+   "x_mm": 16.552,
+   "y_mm": 30.48,
+   "kind": "pad"
+  },
+  {
+   "name": "6F",
+   "x_mm": 16.552,
+   "y_mm": 22.86,
+   "kind": "pad"
+  },
+  {
+   "name": "6G",
+   "x_mm": 16.552,
+   "y_mm": 20.32,
+   "kind": "pad"
+  },
+  {
+   "name": "6H",
+   "x_mm": 16.552,
+   "y_mm": 17.78,
+   "kind": "pad"
+  },
+  {
+   "name": "6I",
+   "x_mm": 16.552,
+   "y_mm": 15.24,
+   "kind": "pad"
+  },
+  {
+   "name": "6J",
+   "x_mm": 16.552,
+   "y_mm": 12.7,
+   "kind": "pad"
+  },
+  {
+   "name": "6W",
+   "x_mm": 12.418,
+   "y_mm": 50.8,
+   "kind": "pad"
+  },
+  {
+   "name": "6X",
+   "x_mm": 12.418,
+   "y_mm": 48.26,
+   "kind": "pad"
+  },
+  {
+   "name": "6Y",
+   "x_mm": 12.418,
+   "y_mm": 5.08,
+   "kind": "pad"
+  },
+  {
+   "name": "6Z",
+   "x_mm": 12.418,
+   "y_mm": 2.54,
+   "kind": "pad"
+  },
+  {
+   "name": "7A",
+   "x_mm": 19.092,
+   "y_mm": 40.64,
+   "kind": "pad"
+  },
+  {
+   "name": "7B",
+   "x_mm": 19.092,
+   "y_mm": 38.1,
+   "kind": "pad"
+  },
+  {
+   "name": "7C",
+   "x_mm": 19.092,
+   "y_mm": 35.56,
+   "kind": "pad"
+  },
+  {
+   "name": "7D",
+   "x_mm": 19.092,
+   "y_mm": 33.02,
+   "kind": "pad"
+  },
+  {
+   "name": "7E",
+   "x_mm": 19.092,
+   "y_mm": 30.48,
+   "kind": "pad"
+  },
+  {
+   "name": "7F",
+   "x_mm": 19.092,
+   "y_mm": 22.86,
+   "kind": "pad"
+  },
+  {
+   "name": "7G",
+   "x_mm": 19.092,
+   "y_mm": 20.32,
+   "kind": "pad"
+  },
+  {
+   "name": "7H",
+   "x_mm": 19.092,
+   "y_mm": 17.78,
+   "kind": "pad"
+  },
+  {
+   "name": "7I",
+   "x_mm": 19.092,
+   "y_mm": 15.24,
+   "kind": "pad"
+  },
+  {
+   "name": "7J",
+   "x_mm": 19.092,
+   "y_mm": 12.7,
+   "kind": "pad"
+  },
+  {
+   "name": "7W",
+   "x_mm": 14.958,
+   "y_mm": 50.8,
+   "kind": "pad"
+  },
+  {
+   "name": "7X",
+   "x_mm": 14.958,
+   "y_mm": 48.26,
+   "kind": "pad"
+  },
+  {
+   "name": "7Y",
+   "x_mm": 14.958,
+   "y_mm": 5.08,
+   "kind": "pad"
+  },
+  {
+   "name": "7Z",
+   "x_mm": 14.958,
+   "y_mm": 2.54,
+   "kind": "pad"
+  },
+  {
+   "name": "8A",
+   "x_mm": 21.632,
+   "y_mm": 40.64,
+   "kind": "pad"
+  },
+  {
+   "name": "8B",
+   "x_mm": 21.632,
+   "y_mm": 38.1,
+   "kind": "pad"
+  },
+  {
+   "name": "8C",
+   "x_mm": 21.632,
+   "y_mm": 35.56,
+   "kind": "pad"
+  },
+  {
+   "name": "8D",
+   "x_mm": 21.632,
+   "y_mm": 33.02,
+   "kind": "pad"
+  },
+  {
+   "name": "8E",
+   "x_mm": 21.632,
+   "y_mm": 30.48,
+   "kind": "pad"
+  },
+  {
+   "name": "8F",
+   "x_mm": 21.632,
+   "y_mm": 22.86,
+   "kind": "pad"
+  },
+  {
+   "name": "8G",
+   "x_mm": 21.632,
+   "y_mm": 20.32,
+   "kind": "pad"
+  },
+  {
+   "name": "8H",
+   "x_mm": 21.632,
+   "y_mm": 17.78,
+   "kind": "pad"
+  },
+  {
+   "name": "8I",
+   "x_mm": 21.632,
+   "y_mm": 15.24,
+   "kind": "pad"
+  },
+  {
+   "name": "8J",
+   "x_mm": 21.632,
+   "y_mm": 12.7,
+   "kind": "pad"
+  },
+  {
+   "name": "9A",
+   "x_mm": 24.172,
+   "y_mm": 40.64,
+   "kind": "pad"
+  },
+  {
+   "name": "9B",
+   "x_mm": 24.172,
+   "y_mm": 38.1,
+   "kind": "pad"
+  },
+  {
+   "name": "9C",
+   "x_mm": 24.172,
+   "y_mm": 35.56,
+   "kind": "pad"
+  },
+  {
+   "name": "9D",
+   "x_mm": 24.172,
+   "y_mm": 33.02,
+   "kind": "pad"
+  },
+  {
+   "name": "9E",
+   "x_mm": 24.172,
+   "y_mm": 30.48,
+   "kind": "pad"
+  },
+  {
+   "name": "9F",
+   "x_mm": 24.172,
+   "y_mm": 22.86,
+   "kind": "pad"
+  },
+  {
+   "name": "9G",
+   "x_mm": 24.172,
+   "y_mm": 20.32,
+   "kind": "pad"
+  },
+  {
+   "name": "9H",
+   "x_mm": 24.172,
+   "y_mm": 17.78,
+   "kind": "pad"
+  },
+  {
+   "name": "9I",
+   "x_mm": 24.172,
+   "y_mm": 15.24,
+   "kind": "pad"
+  },
+  {
+   "name": "9J",
+   "x_mm": 24.172,
+   "y_mm": 12.7,
+   "kind": "pad"
+  },
+  {
+   "name": "9W",
+   "x_mm": 20.038,
+   "y_mm": 50.8,
+   "kind": "pad"
+  },
+  {
+   "name": "9X",
+   "x_mm": 20.038,
+   "y_mm": 48.26,
+   "kind": "pad"
+  },
+  {
+   "name": "9Y",
+   "x_mm": 20.038,
+   "y_mm": 5.08,
+   "kind": "pad"
+  },
+  {
+   "name": "9Z",
+   "x_mm": 20.038,
+   "y_mm": 2.54,
+   "kind": "pad"
+  },
+  {
+   "name": "10A",
+   "x_mm": 26.712,
+   "y_mm": 40.64,
+   "kind": "pad"
+  },
+  {
+   "name": "10B",
+   "x_mm": 26.712,
+   "y_mm": 38.1,
+   "kind": "pad"
+  },
+  {
+   "name": "10C",
+   "x_mm": 26.712,
+   "y_mm": 35.56,
+   "kind": "pad"
+  },
+  {
+   "name": "10D",
+   "x_mm": 26.712,
+   "y_mm": 33.02,
+   "kind": "pad"
+  },
+  {
+   "name": "10E",
+   "x_mm": 26.712,
+   "y_mm": 30.48,
+   "kind": "pad"
+  },
+  {
+   "name": "10F",
+   "x_mm": 26.712,
+   "y_mm": 22.86,
+   "kind": "pad"
+  },
+  {
+   "name": "10G",
+   "x_mm": 26.712,
+   "y_mm": 20.32,
+   "kind": "pad"
+  },
+  {
+   "name": "10H",
+   "x_mm": 26.712,
+   "y_mm": 17.78,
+   "kind": "pad"
+  },
+  {
+   "name": "10I",
+   "x_mm": 26.712,
+   "y_mm": 15.24,
+   "kind": "pad"
+  },
+  {
+   "name": "10J",
+   "x_mm": 26.712,
+   "y_mm": 12.7,
+   "kind": "pad"
+  },
+  {
+   "name": "10W",
+   "x_mm": 22.578,
+   "y_mm": 50.8,
+   "kind": "pad"
+  },
+  {
+   "name": "10X",
+   "x_mm": 22.578,
+   "y_mm": 48.26,
+   "kind": "pad"
+  },
+  {
+   "name": "10Y",
+   "x_mm": 22.578,
+   "y_mm": 5.08,
+   "kind": "pad"
+  },
+  {
+   "name": "10Z",
+   "x_mm": 22.578,
+   "y_mm": 2.54,
+   "kind": "pad"
+  },
+  {
+   "name": "11A",
+   "x_mm": 29.252,
+   "y_mm": 40.64,
+   "kind": "pad"
+  },
+  {
+   "name": "11B",
+   "x_mm": 29.252,
+   "y_mm": 38.1,
+   "kind": "pad"
+  },
+  {
+   "name": "11C",
+   "x_mm": 29.252,
+   "y_mm": 35.56,
+   "kind": "pad"
+  },
+  {
+   "name": "11D",
+   "x_mm": 29.252,
+   "y_mm": 33.02,
+   "kind": "pad"
+  },
+  {
+   "name": "11E",
+   "x_mm": 29.252,
+   "y_mm": 30.48,
+   "kind": "pad"
+  },
+  {
+   "name": "11F",
+   "x_mm": 29.252,
+   "y_mm": 22.86,
+   "kind": "pad"
+  },
+  {
+   "name": "11G",
+   "x_mm": 29.252,
+   "y_mm": 20.32,
+   "kind": "pad"
+  },
+  {
+   "name": "11H",
+   "x_mm": 29.252,
+   "y_mm": 17.78,
+   "kind": "pad"
+  },
+  {
+   "name": "11I",
+   "x_mm": 29.252,
+   "y_mm": 15.24,
+   "kind": "pad"
+  },
+  {
+   "name": "11J",
+   "x_mm": 29.252,
+   "y_mm": 12.7,
+   "kind": "pad"
+  },
+  {
+   "name": "11W",
+   "x_mm": 25.118,
+   "y_mm": 50.8,
+   "kind": "pad"
+  },
+  {
+   "name": "11X",
+   "x_mm": 25.118,
+   "y_mm": 48.26,
+   "kind": "pad"
+  },
+  {
+   "name": "11Y",
+   "x_mm": 25.118,
+   "y_mm": 5.08,
+   "kind": "pad"
+  },
+  {
+   "name": "11Z",
+   "x_mm": 25.118,
+   "y_mm": 2.54,
+   "kind": "pad"
+  },
+  {
+   "name": "12A",
+   "x_mm": 31.792,
+   "y_mm": 40.64,
+   "kind": "pad"
+  },
+  {
+   "name": "12B",
+   "x_mm": 31.792,
+   "y_mm": 38.1,
+   "kind": "pad"
+  },
+  {
+   "name": "12C",
+   "x_mm": 31.792,
+   "y_mm": 35.56,
+   "kind": "pad"
+  },
+  {
+   "name": "12D",
+   "x_mm": 31.792,
+   "y_mm": 33.02,
+   "kind": "pad"
+  },
+  {
+   "name": "12E",
+   "x_mm": 31.792,
+   "y_mm": 30.48,
+   "kind": "pad"
+  },
+  {
+   "name": "12F",
+   "x_mm": 31.792,
+   "y_mm": 22.86,
+   "kind": "pad"
+  },
+  {
+   "name": "12G",
+   "x_mm": 31.792,
+   "y_mm": 20.32,
+   "kind": "pad"
+  },
+  {
+   "name": "12H",
+   "x_mm": 31.792,
+   "y_mm": 17.78,
+   "kind": "pad"
+  },
+  {
+   "name": "12I",
+   "x_mm": 31.792,
+   "y_mm": 15.24,
+   "kind": "pad"
+  },
+  {
+   "name": "12J",
+   "x_mm": 31.792,
+   "y_mm": 12.7,
+   "kind": "pad"
+  },
+  {
+   "name": "12W",
+   "x_mm": 27.658,
+   "y_mm": 50.8,
+   "kind": "pad"
+  },
+  {
+   "name": "12X",
+   "x_mm": 27.658,
+   "y_mm": 48.26,
+   "kind": "pad"
+  },
+  {
+   "name": "12Y",
+   "x_mm": 27.658,
+   "y_mm": 5.08,
+   "kind": "pad"
+  },
+  {
+   "name": "12Z",
+   "x_mm": 27.658,
+   "y_mm": 2.54,
+   "kind": "pad"
+  },
+  {
+   "name": "13A",
+   "x_mm": 34.332,
+   "y_mm": 40.64,
+   "kind": "pad"
+  },
+  {
+   "name": "13B",
+   "x_mm": 34.332,
+   "y_mm": 38.1,
+   "kind": "pad"
+  },
+  {
+   "name": "13C",
+   "x_mm": 34.332,
+   "y_mm": 35.56,
+   "kind": "pad"
+  },
+  {
+   "name": "13D",
+   "x_mm": 34.332,
+   "y_mm": 33.02,
+   "kind": "pad"
+  },
+  {
+   "name": "13E",
+   "x_mm": 34.332,
+   "y_mm": 30.48,
+   "kind": "pad"
+  },
+  {
+   "name": "13F",
+   "x_mm": 34.332,
+   "y_mm": 22.86,
+   "kind": "pad"
+  },
+  {
+   "name": "13G",
+   "x_mm": 34.332,
+   "y_mm": 20.32,
+   "kind": "pad"
+  },
+  {
+   "name": "13H",
+   "x_mm": 34.332,
+   "y_mm": 17.78,
+   "kind": "pad"
+  },
+  {
+   "name": "13I",
+   "x_mm": 34.332,
+   "y_mm": 15.24,
+   "kind": "pad"
+  },
+  {
+   "name": "13J",
+   "x_mm": 34.332,
+   "y_mm": 12.7,
+   "kind": "pad"
+  },
+  {
+   "name": "13W",
+   "x_mm": 30.198,
+   "y_mm": 50.8,
+   "kind": "pad"
+  },
+  {
+   "name": "13X",
+   "x_mm": 30.198,
+   "y_mm": 48.26,
+   "kind": "pad"
+  },
+  {
+   "name": "13Y",
+   "x_mm": 30.198,
+   "y_mm": 5.08,
+   "kind": "pad"
+  },
+  {
+   "name": "13Z",
+   "x_mm": 30.198,
+   "y_mm": 2.54,
+   "kind": "pad"
+  },
+  {
+   "name": "14A",
+   "x_mm": 36.872,
+   "y_mm": 40.64,
+   "kind": "pad"
+  },
+  {
+   "name": "14B",
+   "x_mm": 36.872,
+   "y_mm": 38.1,
+   "kind": "pad"
+  },
+  {
+   "name": "14C",
+   "x_mm": 36.872,
+   "y_mm": 35.56,
+   "kind": "pad"
+  },
+  {
+   "name": "14D",
+   "x_mm": 36.872,
+   "y_mm": 33.02,
+   "kind": "pad"
+  },
+  {
+   "name": "14E",
+   "x_mm": 36.872,
+   "y_mm": 30.48,
+   "kind": "pad"
+  },
+  {
+   "name": "14F",
+   "x_mm": 36.872,
+   "y_mm": 22.86,
+   "kind": "pad"
+  },
+  {
+   "name": "14G",
+   "x_mm": 36.872,
+   "y_mm": 20.32,
+   "kind": "pad"
+  },
+  {
+   "name": "14H",
+   "x_mm": 36.872,
+   "y_mm": 17.78,
+   "kind": "pad"
+  },
+  {
+   "name": "14I",
+   "x_mm": 36.872,
+   "y_mm": 15.24,
+   "kind": "pad"
+  },
+  {
+   "name": "14J",
+   "x_mm": 36.872,
+   "y_mm": 12.7,
+   "kind": "pad"
+  },
+  {
+   "name": "15A",
+   "x_mm": 39.412,
+   "y_mm": 40.64,
+   "kind": "pad"
+  },
+  {
+   "name": "15B",
+   "x_mm": 39.412,
+   "y_mm": 38.1,
+   "kind": "pad"
+  },
+  {
+   "name": "15C",
+   "x_mm": 39.412,
+   "y_mm": 35.56,
+   "kind": "pad"
+  },
+  {
+   "name": "15D",
+   "x_mm": 39.412,
+   "y_mm": 33.02,
+   "kind": "pad"
+  },
+  {
+   "name": "15E",
+   "x_mm": 39.412,
+   "y_mm": 30.48,
+   "kind": "pad"
+  },
+  {
+   "name": "15F",
+   "x_mm": 39.412,
+   "y_mm": 22.86,
+   "kind": "pad"
+  },
+  {
+   "name": "15G",
+   "x_mm": 39.412,
+   "y_mm": 20.32,
+   "kind": "pad"
+  },
+  {
+   "name": "15H",
+   "x_mm": 39.412,
+   "y_mm": 17.78,
+   "kind": "pad"
+  },
+  {
+   "name": "15I",
+   "x_mm": 39.412,
+   "y_mm": 15.24,
+   "kind": "pad"
+  },
+  {
+   "name": "15J",
+   "x_mm": 39.412,
+   "y_mm": 12.7,
+   "kind": "pad"
+  },
+  {
+   "name": "15W",
+   "x_mm": 35.278,
+   "y_mm": 50.8,
+   "kind": "pad"
+  },
+  {
+   "name": "15X",
+   "x_mm": 35.278,
+   "y_mm": 48.26,
+   "kind": "pad"
+  },
+  {
+   "name": "15Y",
+   "x_mm": 35.278,
+   "y_mm": 5.08,
+   "kind": "pad"
+  },
+  {
+   "name": "15Z",
+   "x_mm": 35.278,
+   "y_mm": 2.54,
+   "kind": "pad"
+  },
+  {
+   "name": "16A",
+   "x_mm": 41.952,
+   "y_mm": 40.64,
+   "kind": "pad"
+  },
+  {
+   "name": "16B",
+   "x_mm": 41.952,
+   "y_mm": 38.1,
+   "kind": "pad"
+  },
+  {
+   "name": "16C",
+   "x_mm": 41.952,
+   "y_mm": 35.56,
+   "kind": "pad"
+  },
+  {
+   "name": "16D",
+   "x_mm": 41.952,
+   "y_mm": 33.02,
+   "kind": "pad"
+  },
+  {
+   "name": "16E",
+   "x_mm": 41.952,
+   "y_mm": 30.48,
+   "kind": "pad"
+  },
+  {
+   "name": "16F",
+   "x_mm": 41.952,
+   "y_mm": 22.86,
+   "kind": "pad"
+  },
+  {
+   "name": "16G",
+   "x_mm": 41.952,
+   "y_mm": 20.32,
+   "kind": "pad"
+  },
+  {
+   "name": "16H",
+   "x_mm": 41.952,
+   "y_mm": 17.78,
+   "kind": "pad"
+  },
+  {
+   "name": "16I",
+   "x_mm": 41.952,
+   "y_mm": 15.24,
+   "kind": "pad"
+  },
+  {
+   "name": "16J",
+   "x_mm": 41.952,
+   "y_mm": 12.7,
+   "kind": "pad"
+  },
+  {
+   "name": "16W",
+   "x_mm": 37.818,
+   "y_mm": 50.8,
+   "kind": "pad"
+  },
+  {
+   "name": "16X",
+   "x_mm": 37.818,
+   "y_mm": 48.26,
+   "kind": "pad"
+  },
+  {
+   "name": "16Y",
+   "x_mm": 37.818,
+   "y_mm": 5.08,
+   "kind": "pad"
+  },
+  {
+   "name": "16Z",
+   "x_mm": 37.818,
+   "y_mm": 2.54,
+   "kind": "pad"
+  },
+  {
+   "name": "17A",
+   "x_mm": 44.492,
+   "y_mm": 40.64,
+   "kind": "pad"
+  },
+  {
+   "name": "17B",
+   "x_mm": 44.492,
+   "y_mm": 38.1,
+   "kind": "pad"
+  },
+  {
+   "name": "17C",
+   "x_mm": 44.492,
+   "y_mm": 35.56,
+   "kind": "pad"
+  },
+  {
+   "name": "17D",
+   "x_mm": 44.492,
+   "y_mm": 33.02,
+   "kind": "pad"
+  },
+  {
+   "name": "17E",
+   "x_mm": 44.492,
+   "y_mm": 30.48,
+   "kind": "pad"
+  },
+  {
+   "name": "17F",
+   "x_mm": 44.492,
+   "y_mm": 22.86,
+   "kind": "pad"
+  },
+  {
+   "name": "17G",
+   "x_mm": 44.492,
+   "y_mm": 20.32,
+   "kind": "pad"
+  },
+  {
+   "name": "17H",
+   "x_mm": 44.492,
+   "y_mm": 17.78,
+   "kind": "pad"
+  },
+  {
+   "name": "17I",
+   "x_mm": 44.492,
+   "y_mm": 15.24,
+   "kind": "pad"
+  },
+  {
+   "name": "17J",
+   "x_mm": 44.492,
+   "y_mm": 12.7,
+   "kind": "pad"
+  },
+  {
+   "name": "17W",
+   "x_mm": 40.358,
+   "y_mm": 50.8,
+   "kind": "pad"
+  },
+  {
+   "name": "17X",
+   "x_mm": 40.358,
+   "y_mm": 48.26,
+   "kind": "pad"
+  },
+  {
+   "name": "17Y",
+   "x_mm": 40.358,
+   "y_mm": 5.08,
+   "kind": "pad"
+  },
+  {
+   "name": "17Z",
+   "x_mm": 40.358,
+   "y_mm": 2.54,
+   "kind": "pad"
+  },
+  {
+   "name": "18A",
+   "x_mm": 47.032,
+   "y_mm": 40.64,
+   "kind": "pad"
+  },
+  {
+   "name": "18B",
+   "x_mm": 47.032,
+   "y_mm": 38.1,
+   "kind": "pad"
+  },
+  {
+   "name": "18C",
+   "x_mm": 47.032,
+   "y_mm": 35.56,
+   "kind": "pad"
+  },
+  {
+   "name": "18D",
+   "x_mm": 47.032,
+   "y_mm": 33.02,
+   "kind": "pad"
+  },
+  {
+   "name": "18E",
+   "x_mm": 47.032,
+   "y_mm": 30.48,
+   "kind": "pad"
+  },
+  {
+   "name": "18F",
+   "x_mm": 47.032,
+   "y_mm": 22.86,
+   "kind": "pad"
+  },
+  {
+   "name": "18G",
+   "x_mm": 47.032,
+   "y_mm": 20.32,
+   "kind": "pad"
+  },
+  {
+   "name": "18H",
+   "x_mm": 47.032,
+   "y_mm": 17.78,
+   "kind": "pad"
+  },
+  {
+   "name": "18I",
+   "x_mm": 47.032,
+   "y_mm": 15.24,
+   "kind": "pad"
+  },
+  {
+   "name": "18J",
+   "x_mm": 47.032,
+   "y_mm": 12.7,
+   "kind": "pad"
+  },
+  {
+   "name": "18W",
+   "x_mm": 42.898,
+   "y_mm": 50.8,
+   "kind": "pad"
+  },
+  {
+   "name": "18X",
+   "x_mm": 42.898,
+   "y_mm": 48.26,
+   "kind": "pad"
+  },
+  {
+   "name": "18Y",
+   "x_mm": 42.898,
+   "y_mm": 5.08,
+   "kind": "pad"
+  },
+  {
+   "name": "18Z",
+   "x_mm": 42.898,
+   "y_mm": 2.54,
+   "kind": "pad"
+  },
+  {
+   "name": "19A",
+   "x_mm": 49.572,
+   "y_mm": 40.64,
+   "kind": "pad"
+  },
+  {
+   "name": "19B",
+   "x_mm": 49.572,
+   "y_mm": 38.1,
+   "kind": "pad"
+  },
+  {
+   "name": "19C",
+   "x_mm": 49.572,
+   "y_mm": 35.56,
+   "kind": "pad"
+  },
+  {
+   "name": "19D",
+   "x_mm": 49.572,
+   "y_mm": 33.02,
+   "kind": "pad"
+  },
+  {
+   "name": "19E",
+   "x_mm": 49.572,
+   "y_mm": 30.48,
+   "kind": "pad"
+  },
+  {
+   "name": "19F",
+   "x_mm": 49.572,
+   "y_mm": 22.86,
+   "kind": "pad"
+  },
+  {
+   "name": "19G",
+   "x_mm": 49.572,
+   "y_mm": 20.32,
+   "kind": "pad"
+  },
+  {
+   "name": "19H",
+   "x_mm": 49.572,
+   "y_mm": 17.78,
+   "kind": "pad"
+  },
+  {
+   "name": "19I",
+   "x_mm": 49.572,
+   "y_mm": 15.24,
+   "kind": "pad"
+  },
+  {
+   "name": "19J",
+   "x_mm": 49.572,
+   "y_mm": 12.7,
+   "kind": "pad"
+  },
+  {
+   "name": "19W",
+   "x_mm": 45.438,
+   "y_mm": 50.8,
+   "kind": "pad"
+  },
+  {
+   "name": "19X",
+   "x_mm": 45.438,
+   "y_mm": 48.26,
+   "kind": "pad"
+  },
+  {
+   "name": "19Y",
+   "x_mm": 45.438,
+   "y_mm": 5.08,
+   "kind": "pad"
+  },
+  {
+   "name": "19Z",
+   "x_mm": 45.438,
+   "y_mm": 2.54,
+   "kind": "pad"
+  },
+  {
+   "name": "20A",
+   "x_mm": 52.112,
+   "y_mm": 40.64,
+   "kind": "pad"
+  },
+  {
+   "name": "20B",
+   "x_mm": 52.112,
+   "y_mm": 38.1,
+   "kind": "pad"
+  },
+  {
+   "name": "20C",
+   "x_mm": 52.112,
+   "y_mm": 35.56,
+   "kind": "pad"
+  },
+  {
+   "name": "20D",
+   "x_mm": 52.112,
+   "y_mm": 33.02,
+   "kind": "pad"
+  },
+  {
+   "name": "20E",
+   "x_mm": 52.112,
+   "y_mm": 30.48,
+   "kind": "pad"
+  },
+  {
+   "name": "20F",
+   "x_mm": 52.112,
+   "y_mm": 22.86,
+   "kind": "pad"
+  },
+  {
+   "name": "20G",
+   "x_mm": 52.112,
+   "y_mm": 20.32,
+   "kind": "pad"
+  },
+  {
+   "name": "20H",
+   "x_mm": 52.112,
+   "y_mm": 17.78,
+   "kind": "pad"
+  },
+  {
+   "name": "20I",
+   "x_mm": 52.112,
+   "y_mm": 15.24,
+   "kind": "pad"
+  },
+  {
+   "name": "20J",
+   "x_mm": 52.112,
+   "y_mm": 12.7,
+   "kind": "pad"
+  },
+  {
+   "name": "21A",
+   "x_mm": 54.652,
+   "y_mm": 40.64,
+   "kind": "pad"
+  },
+  {
+   "name": "21B",
+   "x_mm": 54.652,
+   "y_mm": 38.1,
+   "kind": "pad"
+  },
+  {
+   "name": "21C",
+   "x_mm": 54.652,
+   "y_mm": 35.56,
+   "kind": "pad"
+  },
+  {
+   "name": "21D",
+   "x_mm": 54.652,
+   "y_mm": 33.02,
+   "kind": "pad"
+  },
+  {
+   "name": "21E",
+   "x_mm": 54.652,
+   "y_mm": 30.48,
+   "kind": "pad"
+  },
+  {
+   "name": "21F",
+   "x_mm": 54.652,
+   "y_mm": 22.86,
+   "kind": "pad"
+  },
+  {
+   "name": "21G",
+   "x_mm": 54.652,
+   "y_mm": 20.32,
+   "kind": "pad"
+  },
+  {
+   "name": "21H",
+   "x_mm": 54.652,
+   "y_mm": 17.78,
+   "kind": "pad"
+  },
+  {
+   "name": "21I",
+   "x_mm": 54.652,
+   "y_mm": 15.24,
+   "kind": "pad"
+  },
+  {
+   "name": "21J",
+   "x_mm": 54.652,
+   "y_mm": 12.7,
+   "kind": "pad"
+  },
+  {
+   "name": "21W",
+   "x_mm": 50.518,
+   "y_mm": 50.8,
+   "kind": "pad"
+  },
+  {
+   "name": "21X",
+   "x_mm": 50.518,
+   "y_mm": 48.26,
+   "kind": "pad"
+  },
+  {
+   "name": "21Y",
+   "x_mm": 50.518,
+   "y_mm": 5.08,
+   "kind": "pad"
+  },
+  {
+   "name": "21Z",
+   "x_mm": 50.518,
+   "y_mm": 2.54,
+   "kind": "pad"
+  },
+  {
+   "name": "22A",
+   "x_mm": 57.192,
+   "y_mm": 40.64,
+   "kind": "pad"
+  },
+  {
+   "name": "22B",
+   "x_mm": 57.192,
+   "y_mm": 38.1,
+   "kind": "pad"
+  },
+  {
+   "name": "22C",
+   "x_mm": 57.192,
+   "y_mm": 35.56,
+   "kind": "pad"
+  },
+  {
+   "name": "22D",
+   "x_mm": 57.192,
+   "y_mm": 33.02,
+   "kind": "pad"
+  },
+  {
+   "name": "22E",
+   "x_mm": 57.192,
+   "y_mm": 30.48,
+   "kind": "pad"
+  },
+  {
+   "name": "22F",
+   "x_mm": 57.192,
+   "y_mm": 22.86,
+   "kind": "pad"
+  },
+  {
+   "name": "22G",
+   "x_mm": 57.192,
+   "y_mm": 20.32,
+   "kind": "pad"
+  },
+  {
+   "name": "22H",
+   "x_mm": 57.192,
+   "y_mm": 17.78,
+   "kind": "pad"
+  },
+  {
+   "name": "22I",
+   "x_mm": 57.192,
+   "y_mm": 15.24,
+   "kind": "pad"
+  },
+  {
+   "name": "22J",
+   "x_mm": 57.192,
+   "y_mm": 12.7,
+   "kind": "pad"
+  },
+  {
+   "name": "22W",
+   "x_mm": 53.058,
+   "y_mm": 50.8,
+   "kind": "pad"
+  },
+  {
+   "name": "22X",
+   "x_mm": 53.058,
+   "y_mm": 48.26,
+   "kind": "pad"
+  },
+  {
+   "name": "22Y",
+   "x_mm": 53.058,
+   "y_mm": 5.08,
+   "kind": "pad"
+  },
+  {
+   "name": "22Z",
+   "x_mm": 53.058,
+   "y_mm": 2.54,
+   "kind": "pad"
+  },
+  {
+   "name": "23A",
+   "x_mm": 59.732,
+   "y_mm": 40.64,
+   "kind": "pad"
+  },
+  {
+   "name": "23B",
+   "x_mm": 59.732,
+   "y_mm": 38.1,
+   "kind": "pad"
+  },
+  {
+   "name": "23C",
+   "x_mm": 59.732,
+   "y_mm": 35.56,
+   "kind": "pad"
+  },
+  {
+   "name": "23D",
+   "x_mm": 59.732,
+   "y_mm": 33.02,
+   "kind": "pad"
+  },
+  {
+   "name": "23E",
+   "x_mm": 59.732,
+   "y_mm": 30.48,
+   "kind": "pad"
+  },
+  {
+   "name": "23F",
+   "x_mm": 59.732,
+   "y_mm": 22.86,
+   "kind": "pad"
+  },
+  {
+   "name": "23G",
+   "x_mm": 59.732,
+   "y_mm": 20.32,
+   "kind": "pad"
+  },
+  {
+   "name": "23H",
+   "x_mm": 59.732,
+   "y_mm": 17.78,
+   "kind": "pad"
+  },
+  {
+   "name": "23I",
+   "x_mm": 59.732,
+   "y_mm": 15.24,
+   "kind": "pad"
+  },
+  {
+   "name": "23J",
+   "x_mm": 59.732,
+   "y_mm": 12.7,
+   "kind": "pad"
+  },
+  {
+   "name": "23W",
+   "x_mm": 55.598,
+   "y_mm": 50.8,
+   "kind": "pad"
+  },
+  {
+   "name": "23X",
+   "x_mm": 55.598,
+   "y_mm": 48.26,
+   "kind": "pad"
+  },
+  {
+   "name": "23Y",
+   "x_mm": 55.598,
+   "y_mm": 5.08,
+   "kind": "pad"
+  },
+  {
+   "name": "23Z",
+   "x_mm": 55.598,
+   "y_mm": 2.54,
+   "kind": "pad"
+  },
+  {
+   "name": "24A",
+   "x_mm": 62.272,
+   "y_mm": 40.64,
+   "kind": "pad"
+  },
+  {
+   "name": "24B",
+   "x_mm": 62.272,
+   "y_mm": 38.1,
+   "kind": "pad"
+  },
+  {
+   "name": "24C",
+   "x_mm": 62.272,
+   "y_mm": 35.56,
+   "kind": "pad"
+  },
+  {
+   "name": "24D",
+   "x_mm": 62.272,
+   "y_mm": 33.02,
+   "kind": "pad"
+  },
+  {
+   "name": "24E",
+   "x_mm": 62.272,
+   "y_mm": 30.48,
+   "kind": "pad"
+  },
+  {
+   "name": "24F",
+   "x_mm": 62.272,
+   "y_mm": 22.86,
+   "kind": "pad"
+  },
+  {
+   "name": "24G",
+   "x_mm": 62.272,
+   "y_mm": 20.32,
+   "kind": "pad"
+  },
+  {
+   "name": "24H",
+   "x_mm": 62.272,
+   "y_mm": 17.78,
+   "kind": "pad"
+  },
+  {
+   "name": "24I",
+   "x_mm": 62.272,
+   "y_mm": 15.24,
+   "kind": "pad"
+  },
+  {
+   "name": "24J",
+   "x_mm": 62.272,
+   "y_mm": 12.7,
+   "kind": "pad"
+  },
+  {
+   "name": "24W",
+   "x_mm": 58.138,
+   "y_mm": 50.8,
+   "kind": "pad"
+  },
+  {
+   "name": "24X",
+   "x_mm": 58.138,
+   "y_mm": 48.26,
+   "kind": "pad"
+  },
+  {
+   "name": "24Y",
+   "x_mm": 58.138,
+   "y_mm": 5.08,
+   "kind": "pad"
+  },
+  {
+   "name": "24Z",
+   "x_mm": 58.138,
+   "y_mm": 2.54,
+   "kind": "pad"
+  },
+  {
+   "name": "25A",
+   "x_mm": 64.812,
+   "y_mm": 40.64,
+   "kind": "pad"
+  },
+  {
+   "name": "25B",
+   "x_mm": 64.812,
+   "y_mm": 38.1,
+   "kind": "pad"
+  },
+  {
+   "name": "25C",
+   "x_mm": 64.812,
+   "y_mm": 35.56,
+   "kind": "pad"
+  },
+  {
+   "name": "25D",
+   "x_mm": 64.812,
+   "y_mm": 33.02,
+   "kind": "pad"
+  },
+  {
+   "name": "25E",
+   "x_mm": 64.812,
+   "y_mm": 30.48,
+   "kind": "pad"
+  },
+  {
+   "name": "25F",
+   "x_mm": 64.812,
+   "y_mm": 22.86,
+   "kind": "pad"
+  },
+  {
+   "name": "25G",
+   "x_mm": 64.812,
+   "y_mm": 20.32,
+   "kind": "pad"
+  },
+  {
+   "name": "25H",
+   "x_mm": 64.812,
+   "y_mm": 17.78,
+   "kind": "pad"
+  },
+  {
+   "name": "25I",
+   "x_mm": 64.812,
+   "y_mm": 15.24,
+   "kind": "pad"
+  },
+  {
+   "name": "25J",
+   "x_mm": 64.812,
+   "y_mm": 12.7,
+   "kind": "pad"
+  },
+  {
+   "name": "25W",
+   "x_mm": 60.678,
+   "y_mm": 50.8,
+   "kind": "pad"
+  },
+  {
+   "name": "25X",
+   "x_mm": 60.678,
+   "y_mm": 48.26,
+   "kind": "pad"
+  },
+  {
+   "name": "25Y",
+   "x_mm": 60.678,
+   "y_mm": 5.08,
+   "kind": "pad"
+  },
+  {
+   "name": "25Z",
+   "x_mm": 60.678,
+   "y_mm": 2.54,
+   "kind": "pad"
+  },
+  {
+   "name": "26A",
+   "x_mm": 67.352,
+   "y_mm": 40.64,
+   "kind": "pad"
+  },
+  {
+   "name": "26B",
+   "x_mm": 67.352,
+   "y_mm": 38.1,
+   "kind": "pad"
+  },
+  {
+   "name": "26C",
+   "x_mm": 67.352,
+   "y_mm": 35.56,
+   "kind": "pad"
+  },
+  {
+   "name": "26D",
+   "x_mm": 67.352,
+   "y_mm": 33.02,
+   "kind": "pad"
+  },
+  {
+   "name": "26E",
+   "x_mm": 67.352,
+   "y_mm": 30.48,
+   "kind": "pad"
+  },
+  {
+   "name": "26F",
+   "x_mm": 67.352,
+   "y_mm": 22.86,
+   "kind": "pad"
+  },
+  {
+   "name": "26G",
+   "x_mm": 67.352,
+   "y_mm": 20.32,
+   "kind": "pad"
+  },
+  {
+   "name": "26H",
+   "x_mm": 67.352,
+   "y_mm": 17.78,
+   "kind": "pad"
+  },
+  {
+   "name": "26I",
+   "x_mm": 67.352,
+   "y_mm": 15.24,
+   "kind": "pad"
+  },
+  {
+   "name": "26J",
+   "x_mm": 67.352,
+   "y_mm": 12.7,
+   "kind": "pad"
+  },
+  {
+   "name": "27A",
+   "x_mm": 69.892,
+   "y_mm": 40.64,
+   "kind": "pad"
+  },
+  {
+   "name": "27B",
+   "x_mm": 69.892,
+   "y_mm": 38.1,
+   "kind": "pad"
+  },
+  {
+   "name": "27C",
+   "x_mm": 69.892,
+   "y_mm": 35.56,
+   "kind": "pad"
+  },
+  {
+   "name": "27D",
+   "x_mm": 69.892,
+   "y_mm": 33.02,
+   "kind": "pad"
+  },
+  {
+   "name": "27E",
+   "x_mm": 69.892,
+   "y_mm": 30.48,
+   "kind": "pad"
+  },
+  {
+   "name": "27F",
+   "x_mm": 69.892,
+   "y_mm": 22.86,
+   "kind": "pad"
+  },
+  {
+   "name": "27G",
+   "x_mm": 69.892,
+   "y_mm": 20.32,
+   "kind": "pad"
+  },
+  {
+   "name": "27H",
+   "x_mm": 69.892,
+   "y_mm": 17.78,
+   "kind": "pad"
+  },
+  {
+   "name": "27I",
+   "x_mm": 69.892,
+   "y_mm": 15.24,
+   "kind": "pad"
+  },
+  {
+   "name": "27J",
+   "x_mm": 69.892,
+   "y_mm": 12.7,
+   "kind": "pad"
+  },
+  {
+   "name": "27W",
+   "x_mm": 65.758,
+   "y_mm": 50.8,
+   "kind": "pad"
+  },
+  {
+   "name": "27X",
+   "x_mm": 65.758,
+   "y_mm": 48.26,
+   "kind": "pad"
+  },
+  {
+   "name": "27Y",
+   "x_mm": 65.758,
+   "y_mm": 5.08,
+   "kind": "pad"
+  },
+  {
+   "name": "27Z",
+   "x_mm": 65.758,
+   "y_mm": 2.54,
+   "kind": "pad"
+  },
+  {
+   "name": "28A",
+   "x_mm": 72.432,
+   "y_mm": 40.64,
+   "kind": "pad"
+  },
+  {
+   "name": "28B",
+   "x_mm": 72.432,
+   "y_mm": 38.1,
+   "kind": "pad"
+  },
+  {
+   "name": "28C",
+   "x_mm": 72.432,
+   "y_mm": 35.56,
+   "kind": "pad"
+  },
+  {
+   "name": "28D",
+   "x_mm": 72.432,
+   "y_mm": 33.02,
+   "kind": "pad"
+  },
+  {
+   "name": "28E",
+   "x_mm": 72.432,
+   "y_mm": 30.48,
+   "kind": "pad"
+  },
+  {
+   "name": "28F",
+   "x_mm": 72.432,
+   "y_mm": 22.86,
+   "kind": "pad"
+  },
+  {
+   "name": "28G",
+   "x_mm": 72.432,
+   "y_mm": 20.32,
+   "kind": "pad"
+  },
+  {
+   "name": "28H",
+   "x_mm": 72.432,
+   "y_mm": 17.78,
+   "kind": "pad"
+  },
+  {
+   "name": "28I",
+   "x_mm": 72.432,
+   "y_mm": 15.24,
+   "kind": "pad"
+  },
+  {
+   "name": "28J",
+   "x_mm": 72.432,
+   "y_mm": 12.7,
+   "kind": "pad"
+  },
+  {
+   "name": "28W",
+   "x_mm": 68.298,
+   "y_mm": 50.8,
+   "kind": "pad"
+  },
+  {
+   "name": "28X",
+   "x_mm": 68.298,
+   "y_mm": 48.26,
+   "kind": "pad"
+  },
+  {
+   "name": "28Y",
+   "x_mm": 68.298,
+   "y_mm": 5.08,
+   "kind": "pad"
+  },
+  {
+   "name": "28Z",
+   "x_mm": 68.298,
+   "y_mm": 2.54,
+   "kind": "pad"
+  },
+  {
+   "name": "29A",
+   "x_mm": 74.972,
+   "y_mm": 40.64,
+   "kind": "pad"
+  },
+  {
+   "name": "29B",
+   "x_mm": 74.972,
+   "y_mm": 38.1,
+   "kind": "pad"
+  },
+  {
+   "name": "29C",
+   "x_mm": 74.972,
+   "y_mm": 35.56,
+   "kind": "pad"
+  },
+  {
+   "name": "29D",
+   "x_mm": 74.972,
+   "y_mm": 33.02,
+   "kind": "pad"
+  },
+  {
+   "name": "29E",
+   "x_mm": 74.972,
+   "y_mm": 30.48,
+   "kind": "pad"
+  },
+  {
+   "name": "29F",
+   "x_mm": 74.972,
+   "y_mm": 22.86,
+   "kind": "pad"
+  },
+  {
+   "name": "29G",
+   "x_mm": 74.972,
+   "y_mm": 20.32,
+   "kind": "pad"
+  },
+  {
+   "name": "29H",
+   "x_mm": 74.972,
+   "y_mm": 17.78,
+   "kind": "pad"
+  },
+  {
+   "name": "29I",
+   "x_mm": 74.972,
+   "y_mm": 15.24,
+   "kind": "pad"
+  },
+  {
+   "name": "29J",
+   "x_mm": 74.972,
+   "y_mm": 12.7,
+   "kind": "pad"
+  },
+  {
+   "name": "29W",
+   "x_mm": 70.838,
+   "y_mm": 50.8,
+   "kind": "pad"
+  },
+  {
+   "name": "29X",
+   "x_mm": 70.838,
+   "y_mm": 48.26,
+   "kind": "pad"
+  },
+  {
+   "name": "29Y",
+   "x_mm": 70.838,
+   "y_mm": 5.08,
+   "kind": "pad"
+  },
+  {
+   "name": "29Z",
+   "x_mm": 70.838,
+   "y_mm": 2.54,
+   "kind": "pad"
+  },
+  {
+   "name": "30A",
+   "x_mm": 77.512,
+   "y_mm": 40.64,
+   "kind": "pad"
+  },
+  {
+   "name": "30B",
+   "x_mm": 77.512,
+   "y_mm": 38.1,
+   "kind": "pad"
+  },
+  {
+   "name": "30C",
+   "x_mm": 77.512,
+   "y_mm": 35.56,
+   "kind": "pad"
+  },
+  {
+   "name": "30D",
+   "x_mm": 77.512,
+   "y_mm": 33.02,
+   "kind": "pad"
+  },
+  {
+   "name": "30E",
+   "x_mm": 77.512,
+   "y_mm": 30.48,
+   "kind": "pad"
+  },
+  {
+   "name": "30F",
+   "x_mm": 77.512,
+   "y_mm": 22.86,
+   "kind": "pad"
+  },
+  {
+   "name": "30G",
+   "x_mm": 77.512,
+   "y_mm": 20.32,
+   "kind": "pad"
+  },
+  {
+   "name": "30H",
+   "x_mm": 77.512,
+   "y_mm": 17.78,
+   "kind": "pad"
+  },
+  {
+   "name": "30I",
+   "x_mm": 77.512,
+   "y_mm": 15.24,
+   "kind": "pad"
+  },
+  {
+   "name": "30J",
+   "x_mm": 77.512,
+   "y_mm": 12.7,
+   "kind": "pad"
+  },
+  {
+   "name": "30W",
+   "x_mm": 73.378,
+   "y_mm": 50.8,
+   "kind": "pad"
+  },
+  {
+   "name": "30X",
+   "x_mm": 73.378,
+   "y_mm": 48.26,
+   "kind": "pad"
+  },
+  {
+   "name": "30Y",
+   "x_mm": 73.378,
+   "y_mm": 5.08,
+   "kind": "pad"
+  },
+  {
+   "name": "30Z",
+   "x_mm": 73.378,
+   "y_mm": 2.54,
+   "kind": "pad"
+  },
+  {
+   "name": "31W",
+   "x_mm": 75.918,
+   "y_mm": 50.8,
+   "kind": "pad"
+  },
+  {
+   "name": "31X",
+   "x_mm": 75.918,
+   "y_mm": 48.26,
+   "kind": "pad"
+  },
+  {
+   "name": "31Y",
+   "x_mm": 75.918,
+   "y_mm": 5.08,
+   "kind": "pad"
+  },
+  {
+   "name": "31Z",
+   "x_mm": 75.918,
+   "y_mm": 2.54,
+   "kind": "pad"
+  }
+ ],
+ "headers": []
+}

@@ -1,0 +1,59 @@
+{
+ "id": "servo-sg90",
+ "name": "SG90 micro servo",
+ "aliases": [
+  "SG90",
+  "SG90 servo",
+  "Micro servo",
+  "Servo",
+  "Servo motor",
+  "9g servo",
+  "MG90S"
+ ],
+ "source": "wokwi/wokwi-elements@5178c0c:src/servo-element.ts",
+ "license": "MIT",
+ "attribution": "Pin geometry from wokwi/wokwi-elements (MIT License, Copyright (c) 2019 Uri Shaked and contributors). Mentor code is MIT; this data file keeps the license above.",
+ "outline_mm": {
+  "w": 45,
+  "h": 31.63
+ },
+ "frame": "x_mm to the right along the top view from the left edge of outline_mm, y_mm DOWN from its top edge, z up from the top face; all in millimetres. Origin = top-left corner of the outline box as drawn.",
+ "notes": "Wire order from the 3-pin header: GND (brown), V+ (red), PWM/signal (orange).",
+ "pins": [
+  {
+   "name": "GND",
+   "x_mm": 0,
+   "y_mm": 13.203,
+   "kind": "header",
+   "function": "GND"
+  },
+  {
+   "name": "V+",
+   "x_mm": 0,
+   "y_mm": 15.743,
+   "kind": "header",
+   "function": "power"
+  },
+  {
+   "name": "PWM",
+   "x_mm": 0,
+   "y_mm": 18.283,
+   "kind": "header",
+   "function": "PWM"
+  }
+ ],
+ "headers": [
+  {
+   "name": "H1",
+   "side": "left",
+   "orientation": "column",
+   "pitch_mm": 2.54,
+   "snapped_to_grid": true,
+   "pins": [
+    "GND",
+    "V+",
+    "PWM"
+   ]
+  }
+ ]
+}

@@ -1,0 +1,890 @@
+{
+ "id": "arduino-mega-2560",
+ "name": "Arduino Mega 2560",
+ "aliases": [
+  "Arduino Mega",
+  "Mega 2560",
+  "Mega2560",
+  "Mega",
+  "ATmega2560"
+ ],
+ "source": "wokwi/wokwi-elements@5178c0c:src/arduino-mega-element.ts",
+ "license": "MIT",
+ "attribution": "Pin geometry from wokwi/wokwi-elements (MIT License, Copyright (c) 2019 Uri Shaked and contributors). Mentor code is MIT; this data file keeps the license above.",
+ "outline_mm": {
+  "w": 101.6,
+  "h": 53.34
+ },
+ "frame": "x_mm to the right along the top view from the left edge of outline_mm, y_mm DOWN from its top edge, z up from the top face; all in millimetres. Origin = top-left corner of the outline box as drawn.",
+ "pins": [
+  {
+   "name": "SCL",
+   "x_mm": 19.892,
+   "y_mm": 2.381,
+   "kind": "header",
+   "function": "I2C SCL"
+  },
+  {
+   "name": "SDA",
+   "x_mm": 22.432,
+   "y_mm": 2.381,
+   "kind": "header",
+   "function": "I2C SDA"
+  },
+  {
+   "name": "AREF",
+   "x_mm": 24.972,
+   "y_mm": 2.381,
+   "kind": "header"
+  },
+  {
+   "name": "GND.1",
+   "x_mm": 27.512,
+   "y_mm": 2.381,
+   "kind": "header",
+   "function": "GND"
+  },
+  {
+   "name": "13",
+   "x_mm": 30.052,
+   "y_mm": 2.381,
+   "kind": "header",
+   "function": "PWM"
+  },
+  {
+   "name": "12",
+   "x_mm": 32.592,
+   "y_mm": 2.381,
+   "kind": "header",
+   "function": "PWM"
+  },
+  {
+   "name": "11",
+   "x_mm": 35.132,
+   "y_mm": 2.381,
+   "kind": "header",
+   "function": "PWM"
+  },
+  {
+   "name": "10",
+   "x_mm": 37.672,
+   "y_mm": 2.381,
+   "kind": "header",
+   "function": "PWM"
+  },
+  {
+   "name": "9",
+   "x_mm": 40.212,
+   "y_mm": 2.381,
+   "kind": "header",
+   "function": "PWM"
+  },
+  {
+   "name": "8",
+   "x_mm": 42.752,
+   "y_mm": 2.381,
+   "kind": "header",
+   "function": "PWM"
+  },
+  {
+   "name": "7",
+   "x_mm": 46.311,
+   "y_mm": 2.381,
+   "kind": "header",
+   "function": "PWM"
+  },
+  {
+   "name": "6",
+   "x_mm": 48.851,
+   "y_mm": 2.381,
+   "kind": "header",
+   "function": "PWM"
+  },
+  {
+   "name": "5",
+   "x_mm": 51.391,
+   "y_mm": 2.381,
+   "kind": "header",
+   "function": "PWM"
+  },
+  {
+   "name": "4",
+   "x_mm": 53.931,
+   "y_mm": 2.381,
+   "kind": "header",
+   "function": "PWM"
+  },
+  {
+   "name": "3",
+   "x_mm": 56.471,
+   "y_mm": 2.381,
+   "kind": "header",
+   "function": "PWM"
+  },
+  {
+   "name": "2",
+   "x_mm": 59.011,
+   "y_mm": 2.381,
+   "kind": "header",
+   "function": "PWM"
+  },
+  {
+   "name": "1",
+   "x_mm": 61.551,
+   "y_mm": 2.381,
+   "kind": "header",
+   "function": "UART TX"
+  },
+  {
+   "name": "0",
+   "x_mm": 64.091,
+   "y_mm": 2.381,
+   "kind": "header",
+   "function": "UART RX"
+  },
+  {
+   "name": "14",
+   "x_mm": 67.527,
+   "y_mm": 2.381,
+   "kind": "header",
+   "function": "UART TX"
+  },
+  {
+   "name": "15",
+   "x_mm": 70.067,
+   "y_mm": 2.381,
+   "kind": "header",
+   "function": "UART RX"
+  },
+  {
+   "name": "16",
+   "x_mm": 72.607,
+   "y_mm": 2.381,
+   "kind": "header",
+   "function": "UART TX"
+  },
+  {
+   "name": "17",
+   "x_mm": 75.147,
+   "y_mm": 2.381,
+   "kind": "header",
+   "function": "UART RX"
+  },
+  {
+   "name": "18",
+   "x_mm": 77.687,
+   "y_mm": 2.381,
+   "kind": "header",
+   "function": "UART TX"
+  },
+  {
+   "name": "19",
+   "x_mm": 80.227,
+   "y_mm": 2.381,
+   "kind": "header",
+   "function": "UART RX"
+  },
+  {
+   "name": "20",
+   "x_mm": 82.767,
+   "y_mm": 2.381,
+   "kind": "header",
+   "function": "I2C SDA"
+  },
+  {
+   "name": "21",
+   "x_mm": 85.307,
+   "y_mm": 2.381,
+   "kind": "header",
+   "function": "I2C SCL"
+  },
+  {
+   "name": "5V.1",
+   "x_mm": 91.568,
+   "y_mm": 2.117,
+   "kind": "header",
+   "function": "power 5 V"
+  },
+  {
+   "name": "5V.2",
+   "x_mm": 94.108,
+   "y_mm": 2.117,
+   "kind": "header",
+   "function": "power 5 V"
+  },
+  {
+   "name": "22",
+   "x_mm": 91.568,
+   "y_mm": 4.63,
+   "kind": "header"
+  },
+  {
+   "name": "23",
+   "x_mm": 94.108,
+   "y_mm": 4.63,
+   "kind": "header"
+  },
+  {
+   "name": "24",
+   "x_mm": 91.568,
+   "y_mm": 7.21,
+   "kind": "header"
+  },
+  {
+   "name": "25",
+   "x_mm": 94.108,
+   "y_mm": 7.21,
+   "kind": "header"
+  },
+  {
+   "name": "26",
+   "x_mm": 91.568,
+   "y_mm": 9.723,
+   "kind": "header"
+  },
+  {
+   "name": "27",
+   "x_mm": 94.108,
+   "y_mm": 9.723,
+   "kind": "header"
+  },
+  {
+   "name": "28",
+   "x_mm": 91.568,
+   "y_mm": 12.237,
+   "kind": "header"
+  },
+  {
+   "name": "29",
+   "x_mm": 94.108,
+   "y_mm": 12.237,
+   "kind": "header"
+  },
+  {
+   "name": "30",
+   "x_mm": 91.568,
+   "y_mm": 14.817,
+   "kind": "header"
+  },
+  {
+   "name": "31",
+   "x_mm": 94.108,
+   "y_mm": 14.817,
+   "kind": "header"
+  },
+  {
+   "name": "32",
+   "x_mm": 91.568,
+   "y_mm": 17.33,
+   "kind": "header"
+  },
+  {
+   "name": "33",
+   "x_mm": 94.108,
+   "y_mm": 17.33,
+   "kind": "header"
+  },
+  {
+   "name": "34",
+   "x_mm": 91.568,
+   "y_mm": 19.844,
+   "kind": "header"
+  },
+  {
+   "name": "35",
+   "x_mm": 94.108,
+   "y_mm": 19.844,
+   "kind": "header"
+  },
+  {
+   "name": "36",
+   "x_mm": 91.568,
+   "y_mm": 22.357,
+   "kind": "header"
+  },
+  {
+   "name": "37",
+   "x_mm": 94.108,
+   "y_mm": 22.357,
+   "kind": "header"
+  },
+  {
+   "name": "38",
+   "x_mm": 91.568,
+   "y_mm": 24.937,
+   "kind": "header"
+  },
+  {
+   "name": "39",
+   "x_mm": 94.108,
+   "y_mm": 24.937,
+   "kind": "header"
+  },
+  {
+   "name": "40",
+   "x_mm": 91.568,
+   "y_mm": 27.451,
+   "kind": "header"
+  },
+  {
+   "name": "41",
+   "x_mm": 94.108,
+   "y_mm": 27.451,
+   "kind": "header"
+  },
+  {
+   "name": "42",
+   "x_mm": 91.568,
+   "y_mm": 30.03,
+   "kind": "header"
+  },
+  {
+   "name": "43",
+   "x_mm": 94.108,
+   "y_mm": 30.03,
+   "kind": "header"
+  },
+  {
+   "name": "44",
+   "x_mm": 91.568,
+   "y_mm": 32.544,
+   "kind": "header",
+   "function": "PWM"
+  },
+  {
+   "name": "45",
+   "x_mm": 94.108,
+   "y_mm": 32.544,
+   "kind": "header",
+   "function": "PWM"
+  },
+  {
+   "name": "46",
+   "x_mm": 91.568,
+   "y_mm": 35.123,
+   "kind": "header",
+   "function": "PWM"
+  },
+  {
+   "name": "47",
+   "x_mm": 94.108,
+   "y_mm": 35.123,
+   "kind": "header"
+  },
+  {
+   "name": "48",
+   "x_mm": 91.568,
+   "y_mm": 37.637,
+   "kind": "header"
+  },
+  {
+   "name": "49",
+   "x_mm": 94.108,
+   "y_mm": 37.637,
+   "kind": "header"
+  },
+  {
+   "name": "50",
+   "x_mm": 91.568,
+   "y_mm": 40.217,
+   "kind": "header",
+   "function": "SPI MISO"
+  },
+  {
+   "name": "51",
+   "x_mm": 94.108,
+   "y_mm": 40.217,
+   "kind": "header",
+   "function": "SPI MOSI"
+  },
+  {
+   "name": "52",
+   "x_mm": 91.568,
+   "y_mm": 42.73,
+   "kind": "header",
+   "function": "SPI SCK"
+  },
+  {
+   "name": "53",
+   "x_mm": 94.108,
+   "y_mm": 42.73,
+   "kind": "header"
+  },
+  {
+   "name": "GND.4",
+   "x_mm": 91.568,
+   "y_mm": 45.31,
+   "kind": "header",
+   "function": "GND"
+  },
+  {
+   "name": "GND.5",
+   "x_mm": 94.108,
+   "y_mm": 45.31,
+   "kind": "header",
+   "function": "GND"
+  },
+  {
+   "name": "IOREF",
+   "x_mm": 31.942,
+   "y_mm": 48.816,
+   "kind": "header"
+  },
+  {
+   "name": "RESET",
+   "x_mm": 34.482,
+   "y_mm": 48.816,
+   "kind": "header"
+  },
+  {
+   "name": "3.3V",
+   "x_mm": 37.022,
+   "y_mm": 48.816,
+   "kind": "header",
+   "function": "power 3.3 V"
+  },
+  {
+   "name": "5V",
+   "x_mm": 39.562,
+   "y_mm": 48.816,
+   "kind": "header",
+   "function": "power 5 V"
+  },
+  {
+   "name": "GND.2",
+   "x_mm": 42.102,
+   "y_mm": 48.816,
+   "kind": "header",
+   "function": "GND"
+  },
+  {
+   "name": "GND.3",
+   "x_mm": 44.642,
+   "y_mm": 48.816,
+   "kind": "header",
+   "function": "GND"
+  },
+  {
+   "name": "VIN",
+   "x_mm": 47.182,
+   "y_mm": 48.816,
+   "kind": "header",
+   "function": "power"
+  },
+  {
+   "name": "A0",
+   "x_mm": 51.131,
+   "y_mm": 48.816,
+   "kind": "header",
+   "function": "ADC 0"
+  },
+  {
+   "name": "A1",
+   "x_mm": 53.671,
+   "y_mm": 48.816,
+   "kind": "header",
+   "function": "ADC 1"
+  },
+  {
+   "name": "A2",
+   "x_mm": 56.211,
+   "y_mm": 48.816,
+   "kind": "header",
+   "function": "ADC 2"
+  },
+  {
+   "name": "A3",
+   "x_mm": 58.751,
+   "y_mm": 48.816,
+   "kind": "header",
+   "function": "ADC 3"
+  },
+  {
+   "name": "A4",
+   "x_mm": 61.291,
+   "y_mm": 48.816,
+   "kind": "header",
+   "function": "ADC 4"
+  },
+  {
+   "name": "A5",
+   "x_mm": 63.831,
+   "y_mm": 48.816,
+   "kind": "header",
+   "function": "ADC 5"
+  },
+  {
+   "name": "A6",
+   "x_mm": 66.371,
+   "y_mm": 48.816,
+   "kind": "header",
+   "function": "ADC 6"
+  },
+  {
+   "name": "A7",
+   "x_mm": 68.911,
+   "y_mm": 48.816,
+   "kind": "header",
+   "function": "ADC 7"
+  },
+  {
+   "name": "A8",
+   "x_mm": 72.835,
+   "y_mm": 48.816,
+   "kind": "header",
+   "function": "ADC 8"
+  },
+  {
+   "name": "A9",
+   "x_mm": 75.375,
+   "y_mm": 48.816,
+   "kind": "header",
+   "function": "ADC 9"
+  },
+  {
+   "name": "A10",
+   "x_mm": 77.915,
+   "y_mm": 48.816,
+   "kind": "header",
+   "function": "ADC 10"
+  },
+  {
+   "name": "A11",
+   "x_mm": 80.455,
+   "y_mm": 48.816,
+   "kind": "header",
+   "function": "ADC 11"
+  },
+  {
+   "name": "A12",
+   "x_mm": 82.995,
+   "y_mm": 48.816,
+   "kind": "header",
+   "function": "ADC 12"
+  },
+  {
+   "name": "A13",
+   "x_mm": 85.535,
+   "y_mm": 48.816,
+   "kind": "header",
+   "function": "ADC 13"
+  },
+  {
+   "name": "A14",
+   "x_mm": 88.075,
+   "y_mm": 48.816,
+   "kind": "header",
+   "function": "ADC 14"
+  },
+  {
+   "name": "A15",
+   "x_mm": 90.615,
+   "y_mm": 48.816,
+   "kind": "header",
+   "function": "ADC 15"
+  }
+ ],
+ "headers": [
+  {
+   "name": "H1",
+   "side": "top",
+   "orientation": "row",
+   "pitch_mm": 2.54,
+   "snapped_to_grid": true,
+   "pins": [
+    "5V.1",
+    "5V.2"
+   ]
+  },
+  {
+   "name": "H2",
+   "side": "top",
+   "orientation": "row",
+   "pitch_mm": 2.54,
+   "snapped_to_grid": true,
+   "pins": [
+    "SCL",
+    "SDA",
+    "AREF",
+    "GND.1",
+    "13",
+    "12",
+    "11",
+    "10",
+    "9",
+    "8"
+   ]
+  },
+  {
+   "name": "H3",
+   "side": "top",
+   "orientation": "row",
+   "pitch_mm": 2.54,
+   "snapped_to_grid": true,
+   "pins": [
+    "7",
+    "6",
+    "5",
+    "4",
+    "3",
+    "2",
+    "1",
+    "0"
+   ]
+  },
+  {
+   "name": "H4",
+   "side": "top",
+   "orientation": "row",
+   "pitch_mm": 2.54,
+   "snapped_to_grid": true,
+   "pins": [
+    "14",
+    "15",
+    "16",
+    "17",
+    "18",
+    "19",
+    "20",
+    "21"
+   ]
+  },
+  {
+   "name": "H5",
+   "side": "top",
+   "orientation": "row",
+   "pitch_mm": 2.54,
+   "snapped_to_grid": true,
+   "pins": [
+    "22",
+    "23"
+   ]
+  },
+  {
+   "name": "H6",
+   "side": "top",
+   "orientation": "row",
+   "pitch_mm": 2.54,
+   "snapped_to_grid": true,
+   "pins": [
+    "24",
+    "25"
+   ]
+  },
+  {
+   "name": "H7",
+   "side": "right",
+   "orientation": "row",
+   "pitch_mm": 2.54,
+   "snapped_to_grid": true,
+   "pins": [
+    "26",
+    "27"
+   ]
+  },
+  {
+   "name": "H8",
+   "side": "right",
+   "orientation": "row",
+   "pitch_mm": 2.54,
+   "snapped_to_grid": true,
+   "pins": [
+    "28",
+    "29"
+   ]
+  },
+  {
+   "name": "H9",
+   "side": "right",
+   "orientation": "row",
+   "pitch_mm": 2.54,
+   "snapped_to_grid": true,
+   "pins": [
+    "30",
+    "31"
+   ]
+  },
+  {
+   "name": "H10",
+   "side": "right",
+   "orientation": "row",
+   "pitch_mm": 2.54,
+   "snapped_to_grid": true,
+   "pins": [
+    "32",
+    "33"
+   ]
+  },
+  {
+   "name": "H11",
+   "side": "right",
+   "orientation": "row",
+   "pitch_mm": 2.54,
+   "snapped_to_grid": true,
+   "pins": [
+    "34",
+    "35"
+   ]
+  },
+  {
+   "name": "H12",
+   "side": "right",
+   "orientation": "row",
+   "pitch_mm": 2.54,
+   "snapped_to_grid": true,
+   "pins": [
+    "36",
+    "37"
+   ]
+  },
+  {
+   "name": "H13",
+   "side": "right",
+   "orientation": "row",
+   "pitch_mm": 2.54,
+   "snapped_to_grid": true,
+   "pins": [
+    "38",
+    "39"
+   ]
+  },
+  {
+   "name": "H14",
+   "side": "right",
+   "orientation": "row",
+   "pitch_mm": 2.54,
+   "snapped_to_grid": true,
+   "pins": [
+    "40",
+    "41"
+   ]
+  },
+  {
+   "name": "H15",
+   "side": "right",
+   "orientation": "row",
+   "pitch_mm": 2.54,
+   "snapped_to_grid": true,
+   "pins": [
+    "42",
+    "43"
+   ]
+  },
+  {
+   "name": "H16",
+   "side": "right",
+   "orientation": "row",
+   "pitch_mm": 2.54,
+   "snapped_to_grid": true,
+   "pins": [
+    "44",
+    "45"
+   ]
+  },
+  {
+   "name": "H17",
+   "side": "right",
+   "orientation": "row",
+   "pitch_mm": 2.54,
+   "snapped_to_grid": true,
+   "pins": [
+    "46",
+    "47"
+   ]
+  },
+  {
+   "name": "H18",
+   "side": "right",
+   "orientation": "row",
+   "pitch_mm": 2.54,
+   "snapped_to_grid": true,
+   "pins": [
+    "48",
+    "49"
+   ]
+  },
+  {
+   "name": "H19",
+   "side": "right",
+   "orientation": "row",
+   "pitch_mm": 2.54,
+   "snapped_to_grid": true,
+   "pins": [
+    "50",
+    "51"
+   ]
+  },
+  {
+   "name": "H20",
+   "side": "right",
+   "orientation": "row",
+   "pitch_mm": 2.54,
+   "snapped_to_grid": true,
+   "pins": [
+    "52",
+    "53"
+   ]
+  },
+  {
+   "name": "H21",
+   "side": "bottom",
+   "orientation": "row",
+   "pitch_mm": 2.54,
+   "snapped_to_grid": true,
+   "pins": [
+    "GND.4",
+    "GND.5"
+   ]
+  },
+  {
+   "name": "H22",
+   "side": "bottom",
+   "orientation": "row",
+   "pitch_mm": 2.54,
+   "snapped_to_grid": true,
+   "pins": [
+    "IOREF",
+    "RESET",
+    "3.3V",
+    "5V",
+    "GND.2",
+    "GND.3",
+    "VIN"
+   ]
+  },
+  {
+   "name": "H23",
+   "side": "bottom",
+   "orientation": "row",
+   "pitch_mm": 2.54,
+   "snapped_to_grid": true,
+   "pins": [
+    "A0",
+    "A1",
+    "A2",
+    "A3",
+    "A4",
+    "A5",
+    "A6",
+    "A7"
+   ]
+  },
+  {
+   "name": "H24",
+   "side": "bottom",
+   "orientation": "row",
+   "pitch_mm": 2.54,
+   "snapped_to_grid": true,
+   "pins": [
+    "A8",
+    "A9",
+    "A10",
+    "A11",
+    "A12",
+    "A13",
+    "A14",
+    "A15"
+   ]
+  }
+ ]
+}

@@ -1,0 +1,48 @@
+{
+ "id": "pushbutton-12mm",
+ "name": "Pushbutton (12 mm tactile)",
+ "aliases": [
+  "Pushbutton",
+  "Push button",
+  "Button",
+  "Tactile switch",
+  "Tact switch",
+  "Momentary switch"
+ ],
+ "source": "wokwi/wokwi-elements@5178c0c:src/pushbutton-element.ts",
+ "license": "MIT",
+ "attribution": "Pin geometry from wokwi/wokwi-elements (MIT License, Copyright (c) 2019 Uri Shaked and contributors). Mentor code is MIT; this data file keeps the license above.",
+ "outline_mm": {
+  "w": 17.802,
+  "h": 12
+ },
+ "frame": "x_mm to the right along the top view from the left edge of outline_mm, y_mm DOWN from its top edge, z up from the top face; all in millimetres. Origin = top-left corner of the outline box as drawn.",
+ "notes": "Pins 1.l/1.r are internally connected, as are 2.l/2.r.",
+ "pins": [
+  {
+   "name": "1.l",
+   "x_mm": 0,
+   "y_mm": 3.44,
+   "kind": "pin"
+  },
+  {
+   "name": "2.l",
+   "x_mm": 0,
+   "y_mm": 8.467,
+   "kind": "pin"
+  },
+  {
+   "name": "1.r",
+   "x_mm": 17.727,
+   "y_mm": 3.44,
+   "kind": "pin"
+  },
+  {
+   "name": "2.r",
+   "x_mm": 17.727,
+   "y_mm": 8.467,
+   "kind": "pin"
+  }
+ ],
+ "headers": []
+}

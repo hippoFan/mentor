@@ -1,0 +1,303 @@
+{
+ "id": "arduino-uno",
+ "name": "Arduino UNO R3",
+ "aliases": [
+  "Arduino UNO",
+  "UNO",
+  "UNO R3",
+  "Arduino UNO R4",
+  "UNO R4 WiFi",
+  "Arduino",
+  "ATmega328P UNO"
+ ],
+ "source": "wokwi/wokwi-elements@5178c0c:src/arduino-uno-element.ts",
+ "license": "MIT",
+ "attribution": "Pin geometry from wokwi/wokwi-elements (MIT License, Copyright (c) 2019 Uri Shaked and contributors). Mentor code is MIT; this data file keeps the license above.",
+ "outline_mm": {
+  "w": 68.58,
+  "h": 53.34
+ },
+ "frame": "x_mm to the right along the top view from the left edge of outline_mm, y_mm DOWN from its top edge, z up from the top face; all in millimetres. Origin = top-left corner of the outline box as drawn.",
+ "notes": "Same header layout as UNO R4 (WiFi/Minima).",
+ "pins": [
+  {
+   "name": "SCL",
+   "x_mm": 18.926,
+   "y_mm": 2.381,
+   "kind": "header",
+   "function": "I2C SCL, ADC 5"
+  },
+  {
+   "name": "SDA",
+   "x_mm": 21.466,
+   "y_mm": 2.381,
+   "kind": "header",
+   "function": "I2C SDA, ADC 4"
+  },
+  {
+   "name": "AREF",
+   "x_mm": 24.006,
+   "y_mm": 2.381,
+   "kind": "header"
+  },
+  {
+   "name": "GND.1",
+   "x_mm": 26.546,
+   "y_mm": 2.381,
+   "kind": "header",
+   "function": "GND"
+  },
+  {
+   "name": "13",
+   "x_mm": 29.086,
+   "y_mm": 2.381,
+   "kind": "header",
+   "function": "SPI SCK"
+  },
+  {
+   "name": "12",
+   "x_mm": 31.626,
+   "y_mm": 2.381,
+   "kind": "header",
+   "function": "SPI MISO"
+  },
+  {
+   "name": "11",
+   "x_mm": 34.166,
+   "y_mm": 2.381,
+   "kind": "header",
+   "function": "SPI MOSI, PWM"
+  },
+  {
+   "name": "10",
+   "x_mm": 36.706,
+   "y_mm": 2.381,
+   "kind": "header",
+   "function": "SPI SS, PWM"
+  },
+  {
+   "name": "9",
+   "x_mm": 39.246,
+   "y_mm": 2.381,
+   "kind": "header",
+   "function": "PWM"
+  },
+  {
+   "name": "8",
+   "x_mm": 41.786,
+   "y_mm": 2.381,
+   "kind": "header"
+  },
+  {
+   "name": "7",
+   "x_mm": 45.914,
+   "y_mm": 2.381,
+   "kind": "header"
+  },
+  {
+   "name": "6",
+   "x_mm": 48.454,
+   "y_mm": 2.381,
+   "kind": "header",
+   "function": "PWM"
+  },
+  {
+   "name": "5",
+   "x_mm": 50.994,
+   "y_mm": 2.381,
+   "kind": "header",
+   "function": "PWM"
+  },
+  {
+   "name": "4",
+   "x_mm": 53.534,
+   "y_mm": 2.381,
+   "kind": "header"
+  },
+  {
+   "name": "3",
+   "x_mm": 56.074,
+   "y_mm": 2.381,
+   "kind": "header",
+   "function": "PWM"
+  },
+  {
+   "name": "2",
+   "x_mm": 58.614,
+   "y_mm": 2.381,
+   "kind": "header"
+  },
+  {
+   "name": "1",
+   "x_mm": 61.154,
+   "y_mm": 2.381,
+   "kind": "header",
+   "function": "UART TX"
+  },
+  {
+   "name": "0",
+   "x_mm": 63.694,
+   "y_mm": 2.381,
+   "kind": "header",
+   "function": "UART RX"
+  },
+  {
+   "name": "IOREF",
+   "x_mm": 30.657,
+   "y_mm": 50.668,
+   "kind": "header"
+  },
+  {
+   "name": "RESET",
+   "x_mm": 33.197,
+   "y_mm": 50.668,
+   "kind": "header"
+  },
+  {
+   "name": "3.3V",
+   "x_mm": 35.737,
+   "y_mm": 50.668,
+   "kind": "header",
+   "function": "power 3.3 V"
+  },
+  {
+   "name": "5V",
+   "x_mm": 38.277,
+   "y_mm": 50.668,
+   "kind": "header",
+   "function": "power 5 V"
+  },
+  {
+   "name": "GND.2",
+   "x_mm": 40.817,
+   "y_mm": 50.668,
+   "kind": "header",
+   "function": "GND"
+  },
+  {
+   "name": "GND.3",
+   "x_mm": 43.357,
+   "y_mm": 50.668,
+   "kind": "header",
+   "function": "GND"
+  },
+  {
+   "name": "VIN",
+   "x_mm": 45.897,
+   "y_mm": 50.668,
+   "kind": "header",
+   "function": "power"
+  },
+  {
+   "name": "A0",
+   "x_mm": 50.967,
+   "y_mm": 50.668,
+   "kind": "header",
+   "function": "ADC 0"
+  },
+  {
+   "name": "A1",
+   "x_mm": 53.507,
+   "y_mm": 50.668,
+   "kind": "header",
+   "function": "ADC 1"
+  },
+  {
+   "name": "A2",
+   "x_mm": 56.047,
+   "y_mm": 50.668,
+   "kind": "header",
+   "function": "ADC 2"
+  },
+  {
+   "name": "A3",
+   "x_mm": 58.587,
+   "y_mm": 50.668,
+   "kind": "header",
+   "function": "ADC 3"
+  },
+  {
+   "name": "A4",
+   "x_mm": 61.127,
+   "y_mm": 50.668,
+   "kind": "header",
+   "function": "I2C SDA, ADC 4"
+  },
+  {
+   "name": "A5",
+   "x_mm": 63.667,
+   "y_mm": 50.668,
+   "kind": "header",
+   "function": "I2C SCL, ADC 5"
+  }
+ ],
+ "headers": [
+  {
+   "name": "H1",
+   "side": "top",
+   "orientation": "row",
+   "pitch_mm": 2.54,
+   "snapped_to_grid": true,
+   "pins": [
+    "SCL",
+    "SDA",
+    "AREF",
+    "GND.1",
+    "13",
+    "12",
+    "11",
+    "10",
+    "9",
+    "8"
+   ]
+  },
+  {
+   "name": "H2",
+   "side": "top",
+   "orientation": "row",
+   "pitch_mm": 2.54,
+   "snapped_to_grid": true,
+   "pins": [
+    "7",
+    "6",
+    "5",
+    "4",
+    "3",
+    "2",
+    "1",
+    "0"
+   ]
+  },
+  {
+   "name": "H3",
+   "side": "bottom",
+   "orientation": "row",
+   "pitch_mm": 2.54,
+   "snapped_to_grid": true,
+   "pins": [
+    "IOREF",
+    "RESET",
+    "3.3V",
+    "5V",
+    "GND.2",
+    "GND.3",
+    "VIN"
+   ]
+  },
+  {
+   "name": "H4",
+   "side": "bottom",
+   "orientation": "row",
+   "pitch_mm": 2.54,
+   "snapped_to_grid": true,
+   "pins": [
+    "A0",
+    "A1",
+    "A2",
+    "A3",
+    "A4",
+    "A5"
+   ]
+  }
+ ]
+}

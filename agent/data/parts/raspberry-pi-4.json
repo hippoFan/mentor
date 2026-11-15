@@ -1,0 +1,463 @@
+{
+ "id": "raspberry-pi-4",
+ "name": "Raspberry Pi 4 / 5 (40-pin GPIO)",
+ "aliases": [
+  "Raspberry Pi 4",
+  "Pi 4",
+  "Pi4",
+  "Raspberry Pi 4B",
+  "Raspberry Pi 4 Model B",
+  "Raspberry Pi 5",
+  "Pi 5",
+  "Pi5",
+  "RPi 4",
+  "RPi 5",
+  "Raspberry Pi 3",
+  "Pi 3",
+  "Raspberry Pi 3B+",
+  "Raspberry Pi",
+  "Pi",
+  "Raspberry Pi GPIO"
+ ],
+ "source": "fritzing/fritzing-parts@27535f2:core/raspberry-pi-4B_1.fzp + fritzing/fritzing-parts@27535f2:svg/core/breadboard/raspberry-pi-4B_1_breadboard.svg",
+ "license": "CC-BY-SA-3.0",
+ "attribution": "Connector names/positions derived from Fritzing parts (https://github.com/fritzing/fritzing-parts), licensed CC-BY-SA 3.0. Share-alike applies to this file. Original part author(s): Anudit Nagar (modified for 4B by vanepp Apr 2020) (updated by arnab.blue). Mentor code is MIT; this data file keeps the license above.",
+ "outline_mm": {
+  "w": 85,
+  "h": 56
+ },
+ "frame": "x_mm to the right along the top view from the left edge of outline_mm, y_mm DOWN from its top edge, z up from the top face; all in millimetres. Origin = top-left corner of the outline box as drawn.",
+ "notes": "Pi 3, 4 and 5 share the 85 x 56 mm outline and the 2x20 GPIO header position. Pin order from the Fritzing Raspberry Pi 4B part; header anchored to the official mechanical drawing (header centred between the 3.5/61.5 mm mounting holes, outer row 3.5 mm from the top edge). Orientation: GPIO header along the top edge, pin 1 at the left of the inner row, USB/Ethernet at the right.",
+ "pins": [
+  {
+   "name": "3V3.1",
+   "x_mm": 8.37,
+   "y_mm": 6.04,
+   "kind": "header",
+   "number": 1,
+   "function": "power - 3.3V"
+  },
+  {
+   "name": "5V.1",
+   "x_mm": 8.37,
+   "y_mm": 3.5,
+   "kind": "header",
+   "number": 2,
+   "function": "power - 5V"
+  },
+  {
+   "name": "GPIO2",
+   "x_mm": 10.91,
+   "y_mm": 6.04,
+   "kind": "header",
+   "number": 3,
+   "function": "SDA1 I2C"
+  },
+  {
+   "name": "5V.2",
+   "x_mm": 10.91,
+   "y_mm": 3.5,
+   "kind": "header",
+   "number": 4,
+   "function": "power - 5V"
+  },
+  {
+   "name": "GPIO3",
+   "x_mm": 13.45,
+   "y_mm": 6.04,
+   "kind": "header",
+   "number": 5,
+   "function": "SCL1 I2C"
+  },
+  {
+   "name": "GND.1",
+   "x_mm": 13.45,
+   "y_mm": 3.5,
+   "kind": "header",
+   "number": 6,
+   "function": "Ground"
+  },
+  {
+   "name": "GPIO4",
+   "x_mm": 15.99,
+   "y_mm": 6.04,
+   "kind": "header",
+   "number": 7,
+   "function": "GPIO4"
+  },
+  {
+   "name": "GPIO14",
+   "x_mm": 15.99,
+   "y_mm": 3.5,
+   "kind": "header",
+   "number": 8,
+   "function": "UART0_TXD - GPIO14"
+  },
+  {
+   "name": "GND.2",
+   "x_mm": 18.53,
+   "y_mm": 6.04,
+   "kind": "header",
+   "number": 9,
+   "function": "Ground"
+  },
+  {
+   "name": "GPIO15",
+   "x_mm": 18.53,
+   "y_mm": 3.5,
+   "kind": "header",
+   "number": 10,
+   "function": "UART0_RXD - GPIO15"
+  },
+  {
+   "name": "GPIO17",
+   "x_mm": 21.07,
+   "y_mm": 6.04,
+   "kind": "header",
+   "number": 11,
+   "function": "GPIO17"
+  },
+  {
+   "name": "GPIO18",
+   "x_mm": 21.07,
+   "y_mm": 3.5,
+   "kind": "header",
+   "number": 12,
+   "function": "PCM_CLK - GPIO18"
+  },
+  {
+   "name": "GPIO27",
+   "x_mm": 23.61,
+   "y_mm": 6.04,
+   "kind": "header",
+   "number": 13,
+   "function": "GPIO27"
+  },
+  {
+   "name": "GND.3",
+   "x_mm": 23.61,
+   "y_mm": 3.5,
+   "kind": "header",
+   "number": 14,
+   "function": "Ground"
+  },
+  {
+   "name": "GPIO22",
+   "x_mm": 26.15,
+   "y_mm": 6.04,
+   "kind": "header",
+   "number": 15,
+   "function": "GPIO22"
+  },
+  {
+   "name": "GPIO23",
+   "x_mm": 26.15,
+   "y_mm": 3.5,
+   "kind": "header",
+   "number": 16,
+   "function": "GPIO23"
+  },
+  {
+   "name": "3V3.2",
+   "x_mm": 28.69,
+   "y_mm": 6.04,
+   "kind": "header",
+   "number": 17,
+   "function": "power - 3.3V"
+  },
+  {
+   "name": "GPIO24",
+   "x_mm": 28.69,
+   "y_mm": 3.5,
+   "kind": "header",
+   "number": 18,
+   "function": "GPIO24"
+  },
+  {
+   "name": "GPIO10",
+   "x_mm": 31.23,
+   "y_mm": 6.04,
+   "kind": "header",
+   "number": 19,
+   "function": "SPI0_MOSI - GPIO10"
+  },
+  {
+   "name": "GND.4",
+   "x_mm": 31.23,
+   "y_mm": 3.5,
+   "kind": "header",
+   "number": 20,
+   "function": "Ground"
+  },
+  {
+   "name": "GPIO9",
+   "x_mm": 33.77,
+   "y_mm": 6.04,
+   "kind": "header",
+   "number": 21,
+   "function": "SPI0_MISO - GPIO9"
+  },
+  {
+   "name": "GPIO25",
+   "x_mm": 33.77,
+   "y_mm": 3.5,
+   "kind": "header",
+   "number": 22,
+   "function": "GPIO25"
+  },
+  {
+   "name": "GPIO11",
+   "x_mm": 36.31,
+   "y_mm": 6.04,
+   "kind": "header",
+   "number": 23,
+   "function": "SPI0_SCLK - GPIO11"
+  },
+  {
+   "name": "GPIO8",
+   "x_mm": 36.31,
+   "y_mm": 3.5,
+   "kind": "header",
+   "number": 24,
+   "function": "SPI0_CE0_N - GPIO8"
+  },
+  {
+   "name": "GND.5",
+   "x_mm": 38.85,
+   "y_mm": 6.04,
+   "kind": "header",
+   "number": 25,
+   "function": "Ground"
+  },
+  {
+   "name": "GPIO7",
+   "x_mm": 38.85,
+   "y_mm": 3.5,
+   "kind": "header",
+   "number": 26,
+   "function": "SPI0_CE1_N - GPIO7"
+  },
+  {
+   "name": "ID_SD",
+   "x_mm": 41.39,
+   "y_mm": 6.04,
+   "kind": "header",
+   "number": 27,
+   "function": "I2C ID EEPROM"
+  },
+  {
+   "name": "ID_SC",
+   "x_mm": 41.39,
+   "y_mm": 3.5,
+   "kind": "header",
+   "number": 28,
+   "function": "I2C ID EEPROM"
+  },
+  {
+   "name": "GPIO5",
+   "x_mm": 43.93,
+   "y_mm": 6.04,
+   "kind": "header",
+   "number": 29,
+   "function": "GPIO"
+  },
+  {
+   "name": "GND.6",
+   "x_mm": 43.93,
+   "y_mm": 3.5,
+   "kind": "header",
+   "number": 30,
+   "function": "Ground"
+  },
+  {
+   "name": "GPIO6",
+   "x_mm": 46.47,
+   "y_mm": 6.04,
+   "kind": "header",
+   "number": 31,
+   "function": "GPIO6"
+  },
+  {
+   "name": "GPIO12",
+   "x_mm": 46.47,
+   "y_mm": 3.5,
+   "kind": "header",
+   "number": 32,
+   "function": "GPIO12"
+  },
+  {
+   "name": "GPIO13",
+   "x_mm": 49.01,
+   "y_mm": 6.04,
+   "kind": "header",
+   "number": 33,
+   "function": "GPIO13"
+  },
+  {
+   "name": "GND.7",
+   "x_mm": 49.01,
+   "y_mm": 3.5,
+   "kind": "header",
+   "number": 34,
+   "function": "Ground"
+  },
+  {
+   "name": "GPIO19",
+   "x_mm": 51.55,
+   "y_mm": 6.04,
+   "kind": "header",
+   "number": 35,
+   "function": "GPIO19"
+  },
+  {
+   "name": "GPIO16",
+   "x_mm": 51.55,
+   "y_mm": 3.5,
+   "kind": "header",
+   "number": 36,
+   "function": "GPIO16"
+  },
+  {
+   "name": "GPIO26",
+   "x_mm": 54.09,
+   "y_mm": 6.04,
+   "kind": "header",
+   "number": 37,
+   "function": "GPIO26"
+  },
+  {
+   "name": "GPIO20",
+   "x_mm": 54.09,
+   "y_mm": 3.5,
+   "kind": "header",
+   "number": 38,
+   "function": "GPIO20"
+  },
+  {
+   "name": "GND.8",
+   "x_mm": 56.63,
+   "y_mm": 6.04,
+   "kind": "header",
+   "number": 39,
+   "function": "Ground"
+  },
+  {
+   "name": "GPIO21",
+   "x_mm": 56.63,
+   "y_mm": 3.5,
+   "kind": "header",
+   "number": 40,
+   "function": "GPIO21"
+  }
+ ],
+ "headers": [
+  {
+   "name": "J8",
+   "side": "top",
+   "orientation": "row",
+   "pitch_mm": 2.54,
+   "snapped_to_grid": true,
+   "description": "2x20 GPIO header in physical pin order 1..40 (odd pins inner row, even pins outer row)",
+   "pins": [
+    "3V3.1",
+    "5V.1",
+    "GPIO2",
+    "5V.2",
+    "GPIO3",
+    "GND.1",
+    "GPIO4",
+    "GPIO14",
+    "GND.2",
+    "GPIO15",
+    "GPIO17",
+    "GPIO18",
+    "GPIO27",
+    "GND.3",
+    "GPIO22",
+    "GPIO23",
+    "3V3.2",
+    "GPIO24",
+    "GPIO10",
+    "GND.4",
+    "GPIO9",
+    "GPIO25",
+    "GPIO11",
+    "GPIO8",
+    "GND.5",
+    "GPIO7",
+    "ID_SD",
+    "ID_SC",
+    "GPIO5",
+    "GND.6",
+    "GPIO6",
+    "GPIO12",
+    "GPIO13",
+    "GND.7",
+    "GPIO19",
+    "GPIO16",
+    "GPIO26",
+    "GPIO20",
+    "GND.8",
+    "GPIO21"
+   ]
+  },
+  {
+   "name": "H1",
+   "side": "top",
+   "orientation": "row",
+   "pitch_mm": 2.54,
+   "snapped_to_grid": false,
+   "pins": [
+    "5V.1",
+    "5V.2",
+    "GND.1",
+    "GPIO14",
+    "GPIO15",
+    "GPIO18",
+    "GND.3",
+    "GPIO23",
+    "GPIO24",
+    "GND.4",
+    "GPIO25",
+    "GPIO8",
+    "GPIO7",
+    "ID_SC",
+    "GND.6",
+    "GPIO12",
+    "GND.7",
+    "GPIO16",
+    "GPIO20",
+    "GPIO21"
+   ]
+  },
+  {
+   "name": "H2",
+   "side": "top",
+   "orientation": "row",
+   "pitch_mm": 2.54,
+   "snapped_to_grid": false,
+   "pins": [
+    "3V3.1",
+    "GPIO2",
+    "GPIO3",
+    "GPIO4",
+    "GND.2",
+    "GPIO17",
+    "GPIO27",
+    "GPIO22",
+    "3V3.2",
+    "GPIO10",
+    "GPIO9",
+    "GPIO11",
+    "GND.5",
+    "ID_SD",
+    "GPIO5",
+    "GPIO6",
+    "GPIO13",
+    "GPIO19",
+    "GPIO26",
+    "GND.8"
+   ]
+  }
+ ]
+}
