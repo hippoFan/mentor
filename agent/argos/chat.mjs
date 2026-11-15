@@ -110,12 +110,14 @@ export function createChat({ send, startRefine }) {
         const r = await complete({ provider, system: SYSTEM, prompt: `${ctx}\n\nUser: ${text}`, schema: CHAT_SCHEMA, timeout: Number(process.env.ARGOS_CHAT_TIMEOUT_MS) || 30_000 });
         const answer = cap(r.data.reply, 500) || 'Okay.';
         history.push(`Argos: ${answer}`);
-        const refineAsk = cap(r.data.refine, 300), createAsk = refineAsk ? '' : cap(r.data.create, 300);
+        // A change asked for with no design selected becomes a new design (no scan needed), never a refusal.
+        const wantRefine = cap(r.data.refine, 300);
+        const refineAsk = designId ? wantRefine : '', createAsk = refineAsk ? '' : (cap(r.data.create, 300) || wantRefine);
         let job = null;
         if (refineAsk && designId) job = await startRefine({ instruction: refineAsk, designId, provider, mode: 'single' }).catch(() => null);
         if (createAsk) job = await startRefine({ create: true, name: cap(r.data.name, 40) || 'New design', instruction: createAsk, provider, mode: 'single' }).catch(() => null);
         const asked = refineAsk || createAsk;
-        return reply(`${refineAsk && !designId ? `${answer} Pick a design in the Forge first and I'll make that change.` : answer}${fellThrough(r)}`,
+        return reply(`${answer}${fellThrough(r)}`,
           { route: 'chat', model: r.model, ...(job?.jobId ? { refineJob: job.jobId, [createAsk ? 'create' : 'refine']: asked } : {}) });
       } catch (e) {
         return reply(e?.code === 'NO_KEY' ? e.message : 'I couldn\'t reach my model just now. Try again in a moment.', { route: 'chat', error: true });

@@ -198,7 +198,13 @@ async function submit(words) {
   text.value = ''; say('me', t);
   try {
     if (mode === 'refine') {
-      if (!design.value) { say('dog', 'Pick a design first.', 'err'); return; }
+      if (!design.value) {   // nothing to refine yet: make it as a new design instead of refusing
+        dogThink(true);
+        let r;
+        try { r = await api('chat', { method: 'POST', body: JSON.stringify({ text: `Make this as a new design: ${t}`, provider: provider.value }) }); } finally { dogThink(false); }
+        say('dog', r.text, r.error ? 'err' : ''); if (!r.error) dogHop();
+        return;
+      }
       await api('refine', { method: 'POST', body: JSON.stringify({ designId: design.value, instruction: t, mode: multi.checked ? 'multicode' : 'single', provider: provider.value }) });
     } else {
       dogThink(true);
