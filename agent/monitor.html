@@ -14,6 +14,8 @@
     --paper: #FFFFFF;
     --mentor: #FFC845;   /* only Mentor's own things: its rings, its words, its mark */
     --live: #FF3B30;     /* only the live dot */
+    --sea: #3B2A57;      /* Homer's wine-dark sea: only the voyage route */
+    --sea-ahead: #A49DB8;
     --font: Inter, "Inter Variable", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
   }
   * { box-sizing: border-box; }
@@ -28,8 +30,11 @@
 
   /* ---------- top bar ---------- */
   header { display: flex; align-items: center; gap: 12px; padding: 18px 32px 0; min-width: 0; }
-  .mark { width: 22px; height: 22px; border-radius: 50%; border: 4px solid var(--mentor); flex: none; }
+  /* Athena's bright eye: Mentor's yellow ring with a small iris */
+  .mark { width: 22px; height: 22px; border-radius: 50%; border: 4px solid var(--mentor); flex: none; display: grid; place-items: center; }
+  .mark::after { content: ""; width: 5px; height: 5px; border-radius: 50%; background: var(--ink); }
   .wordmark { font-weight: 700; font-size: 20px; letter-spacing: -0.02em; }
+  .tagline { color: var(--grey); font-size: 15px; font-weight: 500; margin-left: 2px; }
   .status { margin-left: auto; display: flex; align-items: center; gap: 8px; font-weight: 500; font-variant-numeric: tabular-nums; white-space: nowrap; }
   .status .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--quiet); }
   body.live .status .dot { background: var(--live); }
@@ -78,13 +83,35 @@
   .hint { font-size: 19px; color: var(--ink); margin: 18px 0 0; max-width: 44ch; text-wrap: pretty; }
   .hint:empty { display: none; }
   body.tester h1 { font-size: clamp(30px, 2.8vw, 44px); }
-  .steps { list-style: none; margin: 22px 0 0; padding: 0; display: flex; flex-direction: column; gap: 4px; counter-reset: s; }
-  .steps:empty { display: none; }
-  .steps li { counter-increment: s; display: grid; grid-template-columns: 22px 1fr; gap: 6px; color: var(--grey); font-size: 15px; }
-  .steps li::before { content: counter(s); font-variant-numeric: tabular-nums; font-weight: 600; }
-  .steps li.now { color: var(--ink); font-weight: 600; }
-  .steps li.done { color: var(--grey); text-decoration: line-through; text-decoration-color: var(--quiet); }
-
+  /* the voyage: steps as islands on a wine-dark route, ending at Ithaca */
+  .voyage { margin-top: 26px; }
+  .voyage[hidden] { display: none; }
+  .voyage h2 { font-size: 13px; font-weight: 600; color: var(--grey); margin: 0 0 10px; }
+  .route { position: relative; }
+  .route svg { position: absolute; left: 0; top: 0; width: 40px; height: 100%; overflow: visible; }
+  .route ol { list-style: none; margin: 0; padding: 0 0 0 48px; display: flex; flex-direction: column; gap: 16px; }
+  .route li { font-size: 16px; line-height: 22px; color: var(--grey); max-width: 52ch; }
+  .route li.done { color: var(--ink); }
+  .route li.now { color: var(--ink); font-weight: 600; }
+  .route li.earlier, .route li.origin { font-size: 14px; color: var(--grey); }
+  .route li.ithaca { font-weight: 600; color: var(--sea); }
+  .route li.ithaca small { font-weight: 400; color: var(--grey); margin-left: 8px; font-size: 14px; }
+  .route li.ithaca.home { color: var(--sea); }
+  .route .water { fill: none; stroke: #E4DFEE; stroke-width: 14; stroke-linecap: round; }
+  .route .wake { fill: none; stroke: var(--sea); stroke-width: 1.6; stroke-linecap: round; }
+  .route .ahead { fill: none; stroke: var(--sea); stroke-width: 1.6; stroke-dasharray: 1 5; stroke-linecap: round; }
+  .route .isle { fill: var(--ground); stroke: var(--sea-ahead); stroke-width: 1.4; }
+  .route .isle.done { fill: var(--ink); stroke: var(--ink); }
+  .route .isle.now { fill: var(--sea); stroke: var(--sea); }
+  .route .eye { fill: none; stroke: var(--mentor); stroke-width: 2.6; }
+  .route .isle.ithaca { stroke: var(--sea); stroke-width: 1.6; }
+  .route .isle.ithaca.home { fill: var(--sea); }
+  @media (prefers-reduced-motion: no-preference) {
+    .route .landfall { stroke-dasharray: 1; stroke-dashoffset: 1; animation: sail 1.4s cubic-bezier(.5, 0, .2, 1) forwards; }
+    .route .isle.ithaca.arriving { fill: var(--ground); animation: land .5s 1.3s ease-out forwards; }
+    @keyframes sail { to { stroke-dashoffset: 0; } }
+    @keyframes land { to { fill: var(--sea); } }
+  }
   .talk { min-height: 0; display: grid; grid-template-rows: auto minmax(0, 1fr); margin-top: 26px; border-top: 1px solid var(--line); }
   .talk h2, .panel h2 { font-size: 13px; font-weight: 600; color: var(--grey); margin: 14px 0 8px; letter-spacing: 0; }
   .log { overflow-y: auto; min-height: 0; display: flex; flex-direction: column; gap: 14px; padding: 4px 4px 8px 0; scrollbar-width: thin; }
@@ -160,6 +187,7 @@
 <header>
   <div class="mark" aria-hidden="true"></div>
   <div class="wordmark">Mentor</div>
+  <div class="tagline">your guide for the voyage</div>
   <div class="status" role="status"><span class="dot" aria-hidden="true"></span><span id="status">Waiting for a call</span><span class="brain" id="brain"></span></div>
   <button class="toggle" id="toggle" type="button" aria-pressed="false" aria-controls="panel">Tester <kbd>T</kbd></button>
 </header>
@@ -175,7 +203,10 @@
   <section class="story" aria-label="The call">
     <h1 id="headline" aria-live="polite"></h1>
     <p class="hint" id="hint"></p>
-    <ol class="steps" id="steps" aria-label="Steps so far"></ol>
+    <section class="voyage" id="voyage" aria-labelledby="voyageTitle" hidden>
+      <h2 id="voyageTitle">The voyage so far</h2>
+      <div class="route"><svg id="sea" aria-hidden="true"></svg><ol id="steps"></ol></div>
+    </section>
     <div class="talk">
       <h2>Conversation</h2>
       <div class="log" id="log" role="log" aria-live="polite"></div>
@@ -233,8 +264,8 @@
     const h = $('headline'), prev = h.dataset.key;
     let main, then, hint = '';
     if (!S.call || S.call === 'idle') { main = 'Every Telemachus'; then = 'deserves a Mentor.'; hint = 'FaceTime Mentor and point your camera at what you are building.'; }
-    else if (S.call === 'ended') { main = S.done ? 'Done. You made it home.' : 'The call has ended.'; then = 'The recap is saved. Call again to start over.'; }
-    else if (S.done) { main = 'Done. You made it home.'; then = S.steps.length ? `${S.steps.length} step${S.steps.length === 1 ? '' : 's'}, all done.` : 'Every step done.'; }
+    else if (S.call === 'ended') { main = S.done ? 'Home.' : 'The call has ended.'; then = S.done ? 'You made it to Ithaca. The recap is saved.' : 'The recap is saved. Call again to start over.'; }
+    else if (S.done) { main = 'Home.'; then = 'You made it to Ithaca.'; }
     else {
       main = S.step ? S.step.replace(/[.!?]?$/, '.') : 'Mentor is on the call.';
       then = { listening: 'Mentor is listening.', thinking: 'Mentor is looking.', speaking: 'Mentor is talking.' }[S.mood];
@@ -249,14 +280,52 @@
     if (ms) S.moodTimer = setTimeout(() => { S.mood = 'listening'; headline(); }, ms);
   }
 
-  function renderSteps() {
-    const ol = $('steps'); ol.replaceChildren();
-    if (S.call !== 'live' && S.call !== 'ended') return;
-    S.steps.forEach((t, i) => {
-      const last = i === S.steps.length - 1;
-      const li = el('li', last && !S.done ? 'now' : 'done', t);
-      if (last && !S.done) li.setAttribute('aria-current', 'step');
+  const SHOWN = 4;   // islands shown before older ones fold into one line
+  function renderSteps(arriving = false) {
+    const ol = $('steps'), svg = $('sea');
+    ol.replaceChildren(); svg.replaceChildren();
+    const on = S.call === 'live' || S.call === 'ended';
+    $('voyage').hidden = !on;
+    if (!on) return;
+    const hiddenCount = Math.max(0, S.steps.length - SHOWN);
+    const items = [];
+    if (!hiddenCount) items.push({ cls: 'origin', text: 'Set out', isle: 'done' });
+    if (hiddenCount) items.push({ cls: 'earlier', text: `${hiddenCount} earlier island${hiddenCount === 1 ? '' : 's'}`, isle: 'done' });
+    S.steps.slice(-SHOWN).forEach((t, i, arr) => {
+      const now = i === arr.length - 1 && !S.done;
+      items.push({ cls: now ? 'now' : 'done', text: t, isle: now ? 'now' : 'done' });
+    });
+    items.push({ cls: 'ithaca' + (S.done ? ' home' : ''), text: 'Ithaca', note: S.done ? 'reached' : 'the project, done', isle: 'ithaca' });
+    for (const it of items) {
+      const li = el('li', it.cls, it.text);
+      if (it.note) li.append(el('small', '', it.note));
+      if (it.cls === 'now') li.setAttribute('aria-current', 'step');
       ol.append(li);
+    }
+    // islands sit on each item's first line; the route wanders between them like a hand-drawn course
+    const lis = [...ol.children];
+    const pts = lis.map((li, i) => ({ x: [16, 25, 19, 27, 15][i % 5], y: li.offsetTop + 11 }));
+    // one smooth course through every island (Catmull-Rom), so the route reads as sailed, not zigzagged
+    const P = i => pts[Math.max(0, Math.min(pts.length - 1, i))];
+    const segI = i => { const a = P(i - 1), b = P(i), c = P(i + 1), d = P(i + 2);
+      return `C${b.x + (c.x - a.x) / 6} ${b.y + (c.y - a.y) / 6} ${c.x - (d.x - b.x) / 6} ${c.y - (d.y - b.y) / 6} ${c.x} ${c.y}`; };
+    const course = (from, to) => `M${P(from).x} ${P(from).y}` + Array.from({ length: to - from }, (_, k) => segI(from + k)).join('');
+    const nowIdx = S.done ? items.length - 1 : items.findIndex(it => it.isle === 'now');
+    const cut = nowIdx < 0 ? 0 : nowIdx;
+    if (pts.length > 1) {
+      // sailed: first island to the current one (or to Ithaca when home)
+      const sailedTo = arriving ? cut - 1 : cut;
+      svg.append(sv('path', { class: 'water', d: course(0, pts.length - 1) }));   // the sea itself, a faint channel
+      if (sailedTo > 0) svg.append(sv('path', { class: 'wake', d: course(0, sailedTo) }));
+      if (arriving) svg.append(sv('path', { class: 'wake landfall', pathLength: 1, d: course(cut - 1, cut) }));
+      if (!S.done) svg.append(sv('path', { class: 'ahead', d: course(cut, pts.length - 1) }));   // still ahead
+    }
+    items.forEach((it, i) => {
+      const p = pts[i];
+      const r = it.isle === 'ithaca' ? 6.5 : it.cls === 'earlier' || it.cls === 'origin' ? 3.5 : 5;
+      const cls = 'isle ' + it.isle + (it.isle === 'ithaca' && S.done ? ' home' + (arriving ? ' arriving' : '') : '');
+      svg.append(sv('circle', { class: cls, cx: p.x, cy: p.y, r }));
+      if (it.isle === 'now') svg.append(sv('circle', { class: 'eye', cx: p.x, cy: p.y, r: 10 }));
     });
   }
   function addStep(text) {
@@ -426,11 +495,15 @@
       }
       case 'heard': addLine(e); mood('thinking', 12000); break;
       case 'say': addLine(e); mood('speaking', Math.min(15000, 900 + e.text.length * 60)); break;
-      case 'step': S.step = e.text; if (e.done) S.done = true; else addStep(e.text); renderSteps(); headline(); break;
+      case 'step': {
+        const home = !!e.done || /^done\. you made it home/i.test(e.text || ''), arriving = home && !S.done;
+        S.step = e.text; if (home) S.done = true; else addStep(e.text);
+        renderSteps(arriving); headline(); break;
+      }
       case 'turn':
         S.turns.push({ ...e, _at: Date.now() }); if (S.turns.length > 40) S.turns.shift();
-        if (e.done) S.done = true;
-        renderTurns(); drawMarks(); eyeNote(); status();
+        renderTurns();   // S.done is set by the step event that follows, so the route can sail in
+ drawMarks(); eyeNote(); status();
         break;
     }
   }
@@ -439,11 +512,11 @@
   function setTester(on) {
     document.body.classList.toggle('tester', on);
     $('toggle').setAttribute('aria-pressed', String(on));
-    requestAnimationFrame(() => { $('log').scrollTop = $('log').scrollHeight; drawMarks(); });
+    requestAnimationFrame(() => { $('log').scrollTop = $('log').scrollHeight; drawMarks(); renderSteps(); });
     try { localStorage.setItem('mentor.tester', on ? '1' : ''); } catch {}
   }
   $('toggle').addEventListener('click', () => setTester(!document.body.classList.contains('tester')));
-  addEventListener('resize', () => { $('log').scrollTop = $('log').scrollHeight; drawMarks(); });
+  addEventListener('resize', () => { $('log').scrollTop = $('log').scrollHeight; drawMarks(); renderSteps(); });
   addEventListener('keydown', e => {
     if (e.metaKey || e.ctrlKey || e.altKey) return;
     if (e.key === 't' || e.key === 'T') setTester(!document.body.classList.contains('tester'));
