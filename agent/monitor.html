@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Mentor live</title>
+<title>Ody live</title>
 <style>
   :root {
     --ground: #F5F5F7;   /* same sweep as the film */
@@ -12,7 +12,7 @@
     --quiet: #C7C7CC;
     --line: #E3E3E8;
     --paper: #FFFFFF;
-    --mentor: #FFC845;   /* only Mentor's own things: its rings, its words, its mark */
+    --mentor: #FFC845;   /* only Ody's own things: its rings, its words, its mark */
     --live: #FF3B30;     /* only the live dot */
     --sea: #3B2A57;      /* Homer's wine-dark sea: only the voyage route */
     --sea-ahead: #A49DB8;
@@ -30,7 +30,7 @@
 
   /* ---------- top bar ---------- */
   header { display: flex; align-items: center; gap: 12px; padding: 18px 32px 0; min-width: 0; }
-  /* Athena's bright eye: Mentor's yellow ring with a small iris */
+  /* Athena's bright eye: Ody's yellow ring with a small iris */
   .mark { width: 22px; height: 22px; border-radius: 50%; border: 4px solid var(--mentor); flex: none; display: grid; place-items: center; }
   .mark::after { content: ""; width: 5px; height: 5px; border-radius: 50%; background: var(--ink); }
   .wordmark { font-weight: 700; font-size: 20px; letter-spacing: -0.02em; }
@@ -186,7 +186,7 @@
 <body>
 <header>
   <div class="mark" aria-hidden="true"></div>
-  <div class="wordmark">Mentor</div>
+  <div class="wordmark">Ody</div>
   <div class="tagline">your guide for the voyage</div>
   <div class="status" role="status"><span class="dot" aria-hidden="true"></span><span id="status">Waiting for a call</span><span class="brain" id="brain"></span></div>
   <a class="toggle" href="/twin" style="text-decoration:none">3D twin</a>
@@ -195,7 +195,7 @@
 <main>
   <section class="phone" aria-label="What the caller sees">
     <div class="screen">
-      <img id="view" alt="The caller's camera with Mentor's marks" hidden>
+      <img id="view" alt="The caller's camera with Ody's marks" hidden>
       <div class="idle" aria-hidden="true"><span></span></div>
       <div class="stale" id="stale" hidden>Picture paused</div>
     </div>
@@ -232,11 +232,11 @@
     </dl>
     <svg class="spark" id="spark" role="img" aria-label="Response time per turn"></svg>
     <p class="eye-note">One bar per answer, newest dark. The dashed line is 4 s.</p>
-    <h2>What Mentor sees</h2>
+    <h2>What Ody sees</h2>
     <div class="eye" id="eye">
-      <img id="input" alt="The cropped camera picture Mentor is given, with its latest marks" hidden>
+      <img id="input" alt="The cropped camera picture Ody is given, with its latest marks" hidden>
       <svg id="marks" aria-hidden="true"></svg>
-      <div class="none" id="eyeNone">No picture from Mentor yet</div>
+      <div class="none" id="eyeNone">No picture from Ody yet</div>
     </div>
     <p class="eye-note" id="eyeNote">Marks from the latest answer appear here at their exact points.</p>
     <ul class="points" id="points"></ul>
@@ -260,16 +260,16 @@
     input: null, transcript: 0,
   };
 
-  /* ---------- the headline: the step in ink, what Mentor is doing in grey ---------- */
+  /* ---------- the headline: the step in ink, what Ody is doing in grey ---------- */
   function headline() {
     const h = $('headline'), prev = h.dataset.key;
     let main, then, hint = '';
-    if (!S.call || S.call === 'idle') { main = 'Every Telemachus'; then = 'deserves a Mentor.'; hint = 'FaceTime Mentor and point your camera at what you are building.'; }
+    if (!S.call || S.call === 'idle') { main = 'Every Telemachus'; then = 'deserves a Mentor.'; hint = 'FaceTime Ody and point your camera at what you are building.'; }
     else if (S.call === 'ended') { main = S.done ? 'Home.' : 'The call has ended.'; then = S.done ? 'You made it to Ithaca. The recap is saved.' : 'The recap is saved. Call again to start over.'; }
     else if (S.done) { main = 'Home.'; then = 'You made it to Ithaca.'; }
     else {
-      main = S.step ? S.step.replace(/[.!?]?$/, '.') : 'Mentor is on the call.';
-      then = { listening: 'Mentor is listening.', thinking: 'Mentor is looking.', speaking: 'Mentor is talking.' }[S.mood];
+      main = S.step ? S.step.replace(/[.!?]?$/, '.') : 'Ody is on the call.';
+      then = { listening: 'Ody is listening.', thinking: 'Ody is looking.', speaking: 'Ody is talking.' }[S.mood];
     }
     h.replaceChildren(el('span', '', main + ' '), el('span', 'then', then));
     $('hint').textContent = hint;
@@ -335,7 +335,7 @@
   }
 
   /* ---------- conversation ---------- */
-  function emptyLog() { $('log').replaceChildren(el('p', 'empty', 'What the caller and Mentor say shows up here.')); S.transcript = 0; }
+  function emptyLog() { $('log').replaceChildren(el('p', 'empty', 'What the caller and Ody say shows up here.')); S.transcript = 0; }
   function addLine(e) {
     const log = $('log');
     if (!S.transcript++) log.replaceChildren();
@@ -343,7 +343,7 @@
     const row = el('div', 'line ' + (mentor ? 'mentor' : 'you'));
     const text = el('div', 'text', e.text);
     if (mentor && e.ms) text.append(el('span', 'meta', `Answered in ${secs(e.ms)} s`));
-    row.append(el('div', 'who', mentor ? 'Mentor' : 'Caller'), text);
+    row.append(el('div', 'who', mentor ? 'Ody' : 'Caller'), text);
     log.append(row);
     while (log.children.length > 60) log.firstChild.remove();
     log.scrollTop = log.scrollHeight;
@@ -369,11 +369,11 @@
     const now = Date.now();
     S.frames = S.frames.filter(t => now - t < 5000); S.inputs = S.inputs.filter(t => now - t < 5000);
     $('rates').textContent = S.frames.length || S.inputs.length
-      ? `Caller ${(S.frames.length / 5).toFixed(1)}/s, Mentor ${(S.inputs.length / 5).toFixed(1)}/s` : 'None yet';
+      ? `Caller ${(S.frames.length / 5).toFixed(1)}/s, Ody ${(S.inputs.length / 5).toFixed(1)}/s` : 'None yet';
     $('stale').hidden = !(live && S.lastFrame && now - S.lastFrame > 3000);
   }
 
-  /* ---------- tester: marks on Mentor's own picture ---------- */
+  /* ---------- tester: marks on Ody's own picture ---------- */
   function drawMarks() {
     const svg = $('marks'), pts = $('points');
     svg.replaceChildren(); pts.replaceChildren();

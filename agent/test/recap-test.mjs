@@ -51,7 +51,7 @@ for (const [name, { done, story }] of Object.entries(stories)) {
   ok(!/<link|<script|src="(https?:)?\/\/|url\(/i.test(html) && (html.match(/https?:\/\//g) || []).length === 1, `${name}: no external resources (one Wokwi link)`);
   ok(html.includes('Home: ') === done, `${name}: home leg ${done ? 'shown' : 'absent'}`);
   ok(existsSync(`${dir}sketch.ino`) && existsSync(`${dir}diagram.json`), `${name}: sketch.ino + diagram.json written`);
-  ok(text.length <= 4000 && text.includes('Your voyage:') && text.includes('Fair winds. Mentor') && text.includes('/_test-voyage-'), `${name}: iMessage text (${text.length} chars)`);
+  ok(text.length <= 4000 && text.includes('Your voyage:') && text.includes('Fair winds. Ody') && text.includes('/_test-voyage-'), `${name}: iMessage text (${text.length} chars)`);
   ok(text.includes('Home: ') === done, `${name}: iMessage home line`);
   if (name === 'sea') console.log('---- iMessage (sea) ----\n' + text + '\n------------------------');
 }

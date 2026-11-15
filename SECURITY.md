@@ -1,17 +1,17 @@
 # Security and privacy
 
-Mentor is a hackathon project (HackUTA 2026), not a production service.
+Ody is a hackathon project (HackUTA 2026), not a production service.
 
-## What Mentor handles
-- Live camera video and voice from the person who FaceTimes the Mentor line.
-- Speech transcripts and what Mentor said.
+## What Ody handles
+- Live camera video and voice from the person who FaceTimes the Ody line.
+- Speech transcripts and what Ody said.
 - Images of your project, which also show whatever else is in view (including other people).
 
 ## Who receives it
-- **ElevenLabs:** audio, for speech-to-text and Mentor's voice.
+- **ElevenLabs:** audio, for speech-to-text and Ody's voice.
 - **Your configured brain:** camera frames and transcripts go to Google (Gemini) or Anthropic (Claude API).
 - **Chert and LiveKit:** carry the call's video and audio.
-- Mentor says it is an AI in its greeting. It never calls a circuit "safe", tells you to unplug power before rewiring,
+- Ody says it is an AI in its greeting. It never calls a circuit "safe", tells you to unplug power before rewiring,
   and tells you to stop and ask a qualified person for mains voltage, damaged batteries or anything hot.
 
 ## Where it is stored
@@ -35,7 +35,7 @@ Mentor is a hackathon project (HackUTA 2026), not a production service.
   - Replies are capped and cleaned: URLs and control characters are stripped.
   - The screen uses `textContent`.
   - The recap HTML is escaped.
-- **Injection:** Mentor is told that text on camera or speech from bystanders is information, never instructions. Even
+- **Injection:** Ody is told that text on camera or speech from bystanders is information, never instructions. Even
   so, a determined person in view can influence what it says.
 - **Recap code:** review any code from a recap before you flash it to real hardware.
 

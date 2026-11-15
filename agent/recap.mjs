@@ -77,7 +77,7 @@ export function wokwiDiagram(code) {
     connections.push([`r${i + 1}:1`, `led${i + 1}:A`, 'green', []]);
     connections.push([`led${i + 1}:C`, 'uno:GND.1', 'black', []]);
   });
-  return { version: 1, author: 'Mentor', editor: 'wokwi', parts, connections, dependencies: {} };
+  return { version: 1, author: 'Ody', editor: 'wokwi', parts, connections, dependencies: {} };
 }
 
 /** Writes sketch.ino + diagram.json for the call (or removes stale ones). @returns {boolean} whether it wrote them */
@@ -114,9 +114,9 @@ export async function writeRecapPage(runDir, story, steps, opts = {}) {
   <div class="body">
     <h2><span class="vh">Leg ${i + 1}: </span>${esc(l.title)}</h2>
     ${l.note ? `<p>${esc(l.note)}</p>` : ''}
-    ${l.tries > 1 ? `<p class="tries">Mentor checked this ${l.tries} times on camera.</p>` : ''}
+    ${l.tries > 1 ? `<p class="tries">Ody checked this ${l.tries} times on camera.</p>` : ''}
   </div>
-  ${/^step-\d+\.png$/.test(l.image) ? `<img src="${esc(l.image)}" alt="What Mentor pointed at: ${esc(l.title)}" width="540" height="960"${i ? ' loading="lazy"' : ''}>` : ''}
+  ${/^step-\d+\.png$/.test(l.image) ? `<img src="${esc(l.image)}" alt="What Ody pointed at: ${esc(l.title)}" width="540" height="960"${i ? ' loading="lazy"' : ''}>` : ''}
 </li>`).join('');
 
   const end = done ? `
@@ -132,7 +132,7 @@ export async function writeRecapPage(runDir, story, steps, opts = {}) {
   <span class="mark" aria-hidden="true"></span>
   <div class="body">
     <h2><span class="dim">Next: </span>${esc(story.next)}</h2>
-    <p>The next leg. Call Mentor again when you're ready to sail on.</p>
+    <p>The next leg. Call Ody again when you're ready to sail on.</p>
   </div>
 </li>` : '';
 
@@ -158,7 +158,7 @@ export async function writeRecapPage(runDir, story, steps, opts = {}) {
   const html = `<!doctype html><html lang="en"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="color-scheme" content="light dark"><meta name="robots" content="noindex">
-<title>${esc(title)} · Mentor</title>
+<title>${esc(title)} · Ody</title>
 <style>
 :root{--bg:#F5F5F7;--fg:#1D1D1F;--muted:#86868B;--line:#D2D2D7;--card:#FFFFFF;--mentor:#FFC845;--on-mentor:#1D1D1F;--code:#FFFFFF;--btn:#1D1D1F;--on-btn:#FFFFFF}
 @media (prefers-color-scheme: dark){:root{--bg:#000000;--fg:#F5F5F7;--muted:#86868B;--line:#38383A;--card:#1C1C1E;--code:#1C1C1E;--btn:#F5F5F7;--on-btn:#1D1D1F}}
@@ -217,13 +217,13 @@ footer p{margin:0 0 8px;max-width:38em}
   .home h2{font-size:32px}
 }
 </style></head><body><main>
-<p class="brand"><i aria-hidden="true"></i>Mentor <span>voyage log</span></p>
+<p class="brand"><i aria-hidden="true"></i>Ody <span>voyage log</span></p>
 <h1>${esc(title)}. <span>${done ? 'You made it home.' : 'The voyage so far.'}</span></h1>
-${story?.summary ? `<p class="lead">${esc(clean(story.summary, 700))}</p>` : '<p class="lead">Every leg of your call with Mentor, with what it pointed at.</p>'}
+${story?.summary ? `<p class="lead">${esc(clean(story.summary, 700))}</p>` : '<p class="lead">Every leg of your call with Ody, with what it pointed at.</p>'}
 ${legs.length || end ? `<ol class="trail" aria-label="Your voyage">${legHtml}${end}</ol>` : ''}
 ${codeHtml}
 <footer>
-  <p>In Homer's Odyssey, Athena takes the form of an old friend, Mentor, and guides Telemachus home one step at a time. Fair winds.</p>
+  <p>In Homer's Odyssey, Athena takes the form of an old friend, Ody, and guides Telemachus home one step at a time. Fair winds.</p>
   <p>This page is private to you and expires 24 hours after your call.</p>
 </footer>
 </main></body></html>`;
@@ -236,7 +236,7 @@ export function recapText(story, steps, pageUrl, opts = {}) {
   const legs = buildLegs(steps);
   const done = !!(opts.done || story?.done || legs.some(l => l.done));
   const title = clean(story?.title, 90) || 'your build session';
-  const lines = [`Mentor voyage log: ${title}`];
+  const lines = [`Ody voyage log: ${title}`];
   if (story?.summary) lines.push('', clean(story.summary, 700));
   if (legs.length) lines.push('', 'Your voyage:', ...legs.slice(0, 8).map((l, i) => `${i + 1}. ${l.title}`));
   if (legs.length > 8) lines.push(`(+${legs.length - 8} more on the page)`);
@@ -244,7 +244,7 @@ export function recapText(story, steps, pageUrl, opts = {}) {
   if (story?.next) lines.push('', `Next: ${clean(story.next, 300)}`);
   if (pageUrl) lines.push('', `Your voyage log, with pictures: ${pageUrl}`);
   if (story?.code) lines.push('', `Try it in a simulator: ${WOKWI} (paste the code, press play)`);
-  lines.push('', 'Fair winds. Mentor');
+  lines.push('', 'Fair winds. Ody');
   let text = lines.join('\n');
   if (story?.code) {
     const room = 3900 - text.length - 10;

@@ -1,8 +1,8 @@
 <div align="center">
 
-<img src="docs/ar-wire.gif" alt="Mentor drawing an AR wire into pin 13 on a live camera view of an Arduino, staying locked to the board as the camera moves" width="640">
+<img src="docs/ar-wire.gif" alt="Ody drawing an AR wire into pin 13 on a live camera view of an Arduino, staying locked to the board as the camera moves" width="640">
 
-# Mentor
+# Ody
 
 **FaceTime an AI that can see your project and point at it.**
 
@@ -29,7 +29,7 @@ talks you through the build one step at a time, and texts you a voyage log when 
 When you're stuck on something physical, like a first Arduino, a loose wire or a kit with no manual, instructions
 and videos can't see *your* parts, and a chatbot can't point. The person who could help is rarely sitting next to you.
 
-Mentor is that person, on a FaceTime call:
+Ody is that person, on a FaceTime call:
 
 1. **You FaceTime it.** It's a plain FaceTime Video call from an iPhone. There's no app to install.
 2. **It asks to see your parts** and works out exactly what you have (an UNO R3 is not an UNO R4).
@@ -39,18 +39,18 @@ Mentor is that person, on a FaceTime call:
 
 <table>
 <tr>
-<td width="50%"><img src="docs/real-overlay.jpg" alt="Mentor's real overlay on an Arduino Uno: rings and labels on the USB port and the L LED"><br><sub><b>Real model output.</b> Gemini found the USB port and the L LED; Mentor's overlay drew them.</sub></td>
-<td width="50%"><img src="docs/laptop-screen.jpg" alt="Mentor's live laptop screen: the caller's view, the current step and the conversation"><br><sub><b>The laptop screen</b> at <code>localhost:8790</code> mirrors the call for judges (shown with mock data).</sub></td>
+<td width="50%"><img src="docs/real-overlay.jpg" alt="Ody's real overlay on an Arduino Uno: rings and labels on the USB port and the L LED"><br><sub><b>Real model output.</b> Gemini found the USB port and the L LED; Ody's overlay drew them.</sub></td>
+<td width="50%"><img src="docs/laptop-screen.jpg" alt="Ody's live laptop screen: the caller's view, the current step and the conversation"><br><sub><b>The laptop screen</b> at <code>localhost:8790</code> mirrors the call for judges (shown with mock data).</sub></td>
 </tr>
 </table>
 
 ## The Odyssey, mapped
 
-| In Homer | In Mentor |
+| In Homer | In Ody |
 |---|---|
 | Telemachus, young and stuck, not knowing where to start | You, holding a board you've never used |
 | Athena arrives *disguised* as Mentor, an old friend | An AI that arrives as an ordinary FaceTime contact: no app, no new interface |
-| She doesn't sail the ship for him; she shows him what to do next | Mentor never does the build. It points at the next thing on *your* camera and waits for you |
+| She doesn't sail the ship for him; she shows him what to do next | Ody never does the build. It points at the next thing on *your* camera and waits for you |
 | The voyage, one island at a time | The build, one leg at a time, each one checked on camera |
 | *Nostos*, the homecoming | "Done. You made it home." The LED blinks, and the voyage log arrives |
 
@@ -61,20 +61,20 @@ Mentor is that person, on a FaceTime call:
 | | |
 |---|---|
 | **AR marks that stick** | Rings and labels follow each part as your phone moves: a pyramidal Lucas-Kanade tracker in plain JS, with no dependencies. Synthetic handheld test: 1.6 px mean error at about 1 ms per frame. |
-| **AR wires on the exact hole** | "Where does this wire go?" On an Arduino UNO (R3 / R4 WiFi), Mentor registers the board from its 4 corners, snaps them to the real header holes, and draws a holographic 3D jumper from the exact pin hole, arcing up out of the board and staying registered as the phone moves (`board.mjs`). |
+| **AR wires on the exact hole** | "Where does this wire go?" On an Arduino UNO (R3 / R4 WiFi), Ody registers the board from its 4 corners, snaps them to the real header holes, and draws a holographic 3D jumper from the exact pin hole, arcing up out of the board and staying registered as the phone moves (`board.mjs`). |
 | **Stop signs** | It circles a short, a missing resistor or reversed polarity in red and says "Stop," before you power on. |
 | **Knows your exact board** | It identifies the part first (UNO R3 USB-B vs UNO R4 USB-C) and points at *that* board's layout. |
 | **"Show me again"** | Instantly re-shows the last marks and repeats the last line, with no model call. |
-| **Your language** | `MENTOR_LANG=auto`: speak Spanish or Hindi and Mentor answers in it. |
+| **Your language** | `MENTOR_LANG=auto`: speak Spanish or Hindi and Ody answers in it. |
 | **Portrait, full-screen** | It finds your real picture inside FaceTime's frame, drops the self-view, and sends portrait video back that fills your phone. |
 | **Voyage log** | After the call: the steps as legs of a journey, each with its annotated picture, ending in "Home". It also writes `sketch.ino` and `diagram.json` for the Wokwi simulator. |
-| **Laptop screen + tester panel** | Judges see the call live. Press **T** to see what Mentor sees, where it pointed, latency per answer, the model and the frame rate. |
+| **Laptop screen + tester panel** | Judges see the call live. Press **T** to see what Ody sees, where it pointed, latency per answer, the model and the frame rate. |
 | **Robust brain** | Gemini, Claude, or (owner testing only) Claude Code. On a rate limit it falls through Gemini models. Acknowledgements like "okay" skip the model. |
 
 <table>
 <tr>
 <td width="50%"><img src="docs/film-2.6.jpg" alt="Film opening: In the Odyssey, a goddess disguised herself as an old friend"></td>
-<td width="50%"><img src="docs/tester-panel.jpg" alt="Tester panel: connection, brain, latency bars and what Mentor sees with its marks"><br><sub>The tester panel (press <b>T</b>), shown with mock data.</sub></td>
+<td width="50%"><img src="docs/tester-panel.jpg" alt="Tester panel: connection, brain, latency bars and what Ody sees with its marks"><br><sub>The tester panel (press <b>T</b>), shown with mock data.</sub></td>
 </tr>
 </table>
 
@@ -97,7 +97,7 @@ flowchart LR
 - **[Chert](https://www.trychert.com)** gives the agent a real Apple line. It answers FaceTime, bridges the call into a
   [LiveKit](https://livekit.io) room, and sends iMessages.
 - **The agent** (Node, `@livekit/agents`) reads the caller's camera and keeps only the newest frame. It crops away
-  FaceTime's bars and self-view, and publishes its own portrait video track: your picture with Mentor's tracked marks on top.
+  FaceTime's bars and self-view, and publishes its own portrait video track: your picture with Ody's tracked marks on top.
 - **ElevenLabs** listens (Scribe v2 realtime) and speaks (Flash v2.5).
 - **The brain** gets what you said plus the frame from the moment you finished speaking, and returns structured JSON:
   - what to say
@@ -136,8 +136,8 @@ FaceTime **Video** the number `chert dev` shows, and open **http://localhost:879
 ```sh
 npm run try-brain -- photo.jpg "where is the USB port?"   # one brain answer drawn on a photo
 MENTOR_TEST_TURN="what is this board?" npm start            # terminal 1
-npm run e2e -- photo.jpg ./e2e-out                          # terminal 2: a fake caller streams the photo, saves Mentor's
-                                                            # frames and measures Mentor's audio loudness
+npm run e2e -- photo.jpg ./e2e-out                          # terminal 2: a fake caller streams the photo, saves Ody's
+                                                            # frames and measures Ody's audio loudness
 node test/track-test.mjs                                    # AR tracker accuracy + speed
 node test/recap-test.mjs                                    # voyage log, escaping, recap server hardening
 node test/mock-monitor.mjs                                  # the laptop screen with a replayed call, on :8799
@@ -155,11 +155,14 @@ node test/mock-monitor.mjs                                  # the laptop screen 
 | `GEMINI_API_KEY` / `ANTHROPIC_API_KEY` | one of them | The brain |
 | `MENTOR_BRAIN` | no | `gemini`, `claude`, or `claude-code` (**owner testing only**, also needs `MENTOR_OWNER_TESTING=1`; see [SECURITY.md](SECURITY.md)) |
 | `MENTOR_GEMINI_MODELS` | no | Models to fall through on rate limits (default `gemini-3.5-flash,gemini-3.5-flash-lite,gemini-2.5-flash`) |
-| `MENTOR_TASK` | no | What Mentor guides, e.g. `Make the Arduino's onboard LED blink` |
+| `MENTOR_TASK` | no | What Ody guides, e.g. `Make the Arduino's onboard LED blink` |
 | `MENTOR_LANG` | no | `en` (default) or `auto` (answer in the caller's language) |
 | `MENTOR_OUT` / `MENTOR_FPS` | no | `portrait` (default, 540×960) or `landscape`; frames per second back into the call (default 24) |
-| `MENTOR_MAX_TURNS` | no | Brain calls per call before Mentor wraps up (default 60) |
-| `ELEVEN_VOICE_ID`, `MENTOR_GREETING` | no | Mentor's voice and first line |
+| `MENTOR_OVERLAY` | no | `demand` (default): the caller's video stays a plain camera; marks appear only when they ask where/what/show/connect (or for a safety warning) and fade after 10 s. `always`: the old always-on overlay (step caption, voice bars, every mark) |
+| `MENTOR_SHOW_SPEAKING` | no | `1` shows Ody's voice bars on the caller's video |
+| `MENTOR_SCAN_EFFORT` | no | Effort for "scan this" 3D scans (default `medium`) |
+| `MENTOR_MAX_TURNS` | no | Brain calls per call before Ody wraps up (default 60) |
+| `ELEVEN_VOICE_ID`, `MENTOR_GREETING` | no | Ody's voice and first line |
 | `CHERT_API_KEY`, `CHERT_PROJECT_ID`, `MENTOR_RECAP_TO`, `MENTOR_PUBLIC_URL`, `MENTOR_SEND_RECAP=1` | for the iMessage recap | Off unless `MENTOR_SEND_RECAP=1` |
 </details>
 
@@ -188,13 +191,13 @@ docs/                  README media and the film
 <details>
 <summary><b>Design notes</b></summary>
 
-- **Point at what it can see, ask for the rest.** Mentor never guesses a pin it can't see. It asks you to move closer.
+- **Point at what it can see, ask for the rest.** Ody never guesses a pin it can't see. It asks you to move closer.
 - **One model call per turn, not per frame.** The tracker carries the marks between answers.
 - **Greets on time.** FaceTime hangs up on an agent that's silent for 10 s, so the greeting is a fixed line spoken the
   moment Chert reports the bridge is ready.
 - **Model output is data.** Replies are capped and cleaned, nothing is executed, and text seen on camera is never treated as an instruction.
 - **The voyage log survives the hang-up.** It's built in its own process.
-- **Measured, not guessed:** per-frame cost is about 6 ms (crop, track, render), Mentor's voice measures about −20 dBFS,
+- **Measured, not guessed:** per-frame cost is about 6 ms (crop, track, render), Ody's voice measures about −20 dBFS,
   and video stats are logged every 5 s.
 </details>
 
@@ -223,7 +226,7 @@ Built for the theme *Homer's Odyssey*, for **Best Use of FaceTime (Chert)** and 
 
 ## License
 
-MIT for Mentor's own code ([LICENSE](LICENSE)), with these exceptions:
+MIT for Ody's own code ([LICENSE](LICENSE)), with these exceptions:
 - `agent/chert-rooms.mjs` and `agent/greet.mjs` come from Chert's starter, and Chert's terms apply.
 - Inter is under the SIL Open Font License.
 - `agent/data/uno-pins.json` pin names/positions derive from [wokwi-elements](https://github.com/wokwi/wokwi-elements) (MIT, Copyright (c) 2019 Uri Shaked).
