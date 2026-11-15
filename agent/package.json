@@ -23,7 +23,8 @@
     "@livekit/agents": "1.8.0",
     "@livekit/agents-plugin-elevenlabs": "1.8.0",
     "@livekit/rtc-node": "0.13.35",
-    "@napi-rs/canvas": "1.1.1"
+    "@napi-rs/canvas": "1.1.1",
+    "ws": "^8.23.0"
   },
   "description": "Mentor: FaceTime an AI that sees your project and points at it",
   "license": "MIT"

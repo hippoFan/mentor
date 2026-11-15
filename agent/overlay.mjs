@@ -173,6 +173,11 @@ export async function frameJpeg(frame, max = 1024) {
   return { jpeg: await c.encode('jpeg', 85), width: w, height: h };
 }
 
+/** JPEG of the current output picture, for the laptop monitor. */
+export function outJpeg(quality = 70) {
+  return out.encode('jpeg', quality);
+}
+
 /** PNG of the current output picture (what the caller sees), for the recap. */
 export function snapshotPng() {
   return out.encode('png');

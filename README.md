@@ -95,6 +95,11 @@ chert dev --agent <your AGENT_NAME>
 
 FaceTime **Video** the number `chert dev` shows. Mentor greets you as soon as the call connects.
 
+### The laptop screen
+
+While a call is live, open **http://localhost:8790**: the same picture the caller sees (with Mentor's marks), the current
+step, and the conversation as it happens, including how long Mentor thought. It's local only and reconnects by itself between calls.
+
 ### Optional: the recap
 
 ```sh
@@ -149,6 +154,7 @@ mentor/
 │   ├── brain.mjs          Claude Fable 5.2, one structured request per spoken turn (+ brain picker)
 │   ├── brain-gemini.mjs   same contract on Gemini
 │   ├── overlay.mjs        draws what the caller sees (≈3 ms per frame)
+│   ├── live.mjs           local WebSocket for the laptop screen (monitor.html)
 │   ├── recap.mjs          recap page + iMessage text (Chert API)
 │   ├── send-recap.mjs     runs after each call in its own process
 │   ├── serve-recaps.mjs   read-only server for recap pages

@@ -1,0 +1,159 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Mentor live</title>
+<style>
+  :root {
+    --sweep: #F5F5F7;   /* ground, same as the film */
+    --ink: #1D1D1F;
+    --muted: #6E6E73;
+    --paper: #FFFFFF;
+    --mentor: #FFC845;  /* only Mentor's own things: its marks, its lines, its mark */
+    --live: #FF3B30;    /* only the live dot */
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; height: 100%; }
+  body {
+    background: var(--sweep); color: var(--ink);
+    font: 400 17px/1.45 Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+    display: grid; grid-template-rows: auto 1fr; min-height: 100vh;
+  }
+  header {
+    display: flex; align-items: center; gap: 14px;
+    padding: 20px 32px 0;
+  }
+  .mark { width: 26px; height: 26px; border-radius: 50%; border: 5px solid var(--mentor); outline: 2px solid var(--ink); outline-offset: -1px; flex: none; }
+  .wordmark { font-weight: 900; font-size: 24px; letter-spacing: -0.02em; }
+  .status { margin-left: auto; display: flex; align-items: center; gap: 10px; color: var(--muted); font-weight: 500; font-variant-numeric: tabular-nums; }
+  .dot { width: 10px; height: 10px; border-radius: 50%; background: #C7C7CC; }
+  body.on .dot { background: var(--live); }
+  main {
+    display: grid; grid-template-columns: minmax(0, 1.85fr) minmax(320px, 1fr);
+    gap: 32px; padding: 24px 32px 32px; min-height: 0;
+  }
+  .stage {
+    position: relative; align-self: start;
+    aspect-ratio: 16 / 9; width: 100%;
+    background: #E8E8ED; border-radius: 28px; overflow: hidden;
+    box-shadow: 0 30px 70px rgba(0,0,0,.14);
+  }
+  .stage img { width: 100%; height: 100%; object-fit: cover; display: block; }
+  .stage img[hidden] { display: none; }
+  .stage .empty {
+    position: absolute; inset: 0; display: grid; place-content: center; text-align: center; padding: 24px;
+    color: var(--muted);
+  }
+  .stage .empty strong { display: block; color: var(--ink); font-size: 28px; font-weight: 700; letter-spacing: -0.01em; margin-bottom: 6px; }
+  body.has-frame .stage .empty { display: none; }
+  aside { display: grid; grid-template-rows: auto 1fr; gap: 20px; min-height: 0; }
+  .step {
+    font-weight: 900; font-size: clamp(28px, 3.2vw, 46px); line-height: 1.04; letter-spacing: -0.025em;
+    min-height: 2.1em; margin: 4px 0 0;
+  }
+  .step.idle { color: #C7C7CC; }
+  .step.done::before { content: ""; display: inline-block; width: .55em; height: .55em; border-radius: 50%; background: var(--mentor); outline: 2px solid var(--ink); margin-right: .3em; vertical-align: .08em; }
+  .log {
+    background: var(--paper); border-radius: 22px; padding: 18px 20px; overflow-y: auto; min-height: 0;
+    display: flex; flex-direction: column; gap: 14px;
+  }
+  .log:empty::after { content: "What you and Mentor say shows up here."; color: var(--muted); }
+  .line { max-width: 60ch; }
+  .line .who { font-weight: 700; font-size: 14px; color: var(--muted); margin-bottom: 2px; }
+  .line.mentor { border-left: 4px solid var(--mentor); padding-left: 12px; }
+  .line.mentor .who { color: var(--ink); }
+  .line .meta { color: var(--muted); font-size: 13px; margin-top: 3px; font-variant-numeric: tabular-nums; }
+  @media (max-width: 900px) {
+    main { grid-template-columns: 1fr; }
+    header { padding: 16px 16px 0; } main { padding: 16px; }
+  }
+  @media (prefers-reduced-motion: no-preference) {
+    .line { animation: in .25s ease-out both; }
+    @keyframes in { from { opacity: 0; filter: blur(4px); } to { opacity: 1; filter: none; } }
+  }
+</style>
+</head>
+<body>
+<header>
+  <div class="mark" aria-hidden="true"></div>
+  <div class="wordmark">Mentor</div>
+  <div class="status" aria-live="polite"><span class="dot" aria-hidden="true"></span><span id="status">Waiting for a call</span></div>
+</header>
+<main>
+  <section class="stage" aria-label="What the caller sees">
+    <img id="view" alt="Live view of the caller's camera with Mentor's marks" hidden>
+    <div class="empty"><div><strong>No call yet</strong>FaceTime Mentor and point your camera at your project.</div></div>
+  </section>
+  <aside>
+    <h1 class="step idle" id="step">Waiting for a call</h1>
+    <div class="log" id="log" role="log" aria-live="polite"></div>
+  </aside>
+</main>
+<script>
+  const $ = id => document.getElementById(id);
+  let started = 0, timer = 0, ws;
+
+  function setStatus(text, on) {
+    $('status').textContent = text;
+    document.body.classList.toggle('on', !!on);
+  }
+  function clock() {
+    const s = Math.floor((Date.now() - started) / 1000);
+    setStatus(`Live ${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`, true);
+  }
+  function setStep(text, done) {
+    const el = $('step');
+    el.textContent = text || 'Listening';
+    el.classList.toggle('idle', !text);
+    el.classList.toggle('done', !!done);
+  }
+  function addLine(e) {
+    const div = document.createElement('div');
+    div.className = 'line ' + (e.type === 'say' ? 'mentor' : 'you');
+    const who = document.createElement('div'); who.className = 'who'; who.textContent = e.type === 'say' ? 'Mentor' : 'You';
+    const text = document.createElement('div'); text.textContent = e.text;
+    div.append(who, text);
+    if (e.type === 'say' && e.ms) { const m = document.createElement('div'); m.className = 'meta'; m.textContent = `Thought for ${(e.ms / 1000).toFixed(1)} s`; div.append(m); }
+    $('log').append(div);
+    $('log').scrollTop = $('log').scrollHeight;
+  }
+  function reset() {
+    clearInterval(timer); timer = 0;
+    document.body.classList.remove('has-frame'); $('view').hidden = true;
+    setStep(''); $('step').textContent = 'Waiting for a call'; $('step').classList.add('idle');
+    setStatus('Waiting for a call', false);
+  }
+  function onCall(e) {
+    if (e.state === 'live') {
+      started = e.since || Date.now(); $('log').replaceChildren(); clearInterval(timer); timer = setInterval(clock, 1000); clock();
+      setStep('');
+    } else if (e.state === 'ended') {
+      clearInterval(timer); timer = 0; setStatus('Call ended. Recap saved.', false);
+    }
+  }
+  function handle(e) {
+    switch (e.type) {
+      case 'hello':
+        if (e.call) onCall(e.call);
+        if (e.step) setStep(e.step);
+        (e.transcript || []).forEach(addLine);
+        break;
+      case 'call': onCall(e); break;
+      case 'frame':
+        $('view').src = 'data:image/jpeg;base64,' + e.jpeg; $('view').hidden = false;
+        document.body.classList.add('has-frame');
+        break;
+      case 'heard': case 'say': addLine(e); break;
+      case 'step': setStep(e.text, e.done); break;
+    }
+  }
+  function connect() {
+    ws = new WebSocket(`ws://${location.host}`);
+    ws.onmessage = m => { try { handle(JSON.parse(m.data)); } catch {} };
+    ws.onclose = () => { if (timer) setStatus('Reconnecting', false); setTimeout(connect, 1000); };
+  }
+  reset(); connect();
+</script>
+</body>
+</html>

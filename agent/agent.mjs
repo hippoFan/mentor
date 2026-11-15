@@ -14,7 +14,8 @@ import {
 import { createBrain } from './brain.mjs';
 import { runAgent } from './chert-rooms.mjs';
 import { greetOnBridgeReady } from './greet.mjs';
-import { FPS, HEIGHT, WIDTH, frameJpeg, render, rotate, snapshotPng } from './overlay.mjs';
+import { FPS, HEIGHT, WIDTH, frameJpeg, outJpeg, render, rotate, snapshotPng } from './overlay.mjs';
+import { startLive } from './live.mjs';
 
 // Accept the common alternative names for the same keys.
 // (process.env stores strings: assigning undefined would make the text "undefined", so only copy a real value.)
@@ -51,6 +52,8 @@ const agent = defineAgent({
     const runDir = `${RUNS_DIR}${new Date().toISOString().slice(0, 16).replace(/[:T]/g, '-')}-${randomBytes(6).toString('hex')}/`;
     await mkdir(runDir, { recursive: true });
     console.log(`[mentor] call ${callId}, caller ${caller.identity}`);
+    const live = await startLive();   // laptop screen at http://localhost:8790
+    live.send({ type: 'call', state: 'live', since: Date.now() });
 
     // ---- caller video in: keep only the newest raw frame; convert + rotate lazily (<=15 fps, not per incoming frame) ----
     let raw = null;          // { frame: VideoFrame, rotation: number } from the current caller track
@@ -106,6 +109,12 @@ const agent = defineAgent({
     frame();
     await ctx.room.localParticipant.publishTrack(track, { source: TrackSource.SOURCE_CAMERA });
     const timer = setInterval(frame, 1000 / FPS);
+    let pushing = false;   // the monitor gets the same picture as the caller, twice a second
+    const monitorTimer = setInterval(() => {
+      if (pushing) return;
+      pushing = true;
+      outJpeg().then(b => live.send({ type: 'frame', jpeg: b.toString('base64') })).catch(() => {}).finally(() => { pushing = false; });
+    }, 500);
 
     // ---- voice: ElevenLabs Scribe (hearing) + ElevenLabs TTS (speaking); no session LLM ----
     const brain = await createBrain({ task: TASK });
@@ -123,14 +132,16 @@ const agent = defineAgent({
     session?.on(voice.AgentSessionEventTypes.AgentStateChanged, ev => { speaking = ev.newState === 'speaking'; });
 
     let ended = false;
-    const say = text => {   // never throws: the call may have ended while the brain was thinking
+    const say = (text, ms) => {   // never throws: the call may have ended while the brain was thinking
       if (ended || !text) return;
+      live.send({ type: 'say', text, ms });
       if (!session) { console.log(`[say:muted] ${text}`); return; }
       try { session.say(text); } catch (error) { console.error('[mentor] say failed', error?.message || error); }
     };
     const onTurn = async heard => {
       const seq = ++turnSeq;
       console.log(`[heard] ${heard}`);
+      live.send({ type: 'heard', text: heard });
       try {
         const filler = setTimeout(() => { if (seq === turnSeq) say(FILLERS[seq % FILLERS.length]); }, FILLER_MS);
         const now = getLatest();
@@ -140,8 +151,9 @@ const agent = defineAgent({
         marks = reply.marks; marksAt = Date.now();
         if (reply.step) caption = reply.step;
         if (reply.done) caption = `Done! ${reply.step || ''}`.trim();
+        if (reply.step || reply.done) live.send({ type: 'step', text: caption, done: !!reply.done });
         console.log(`[say] ${reply.say}  marks=${JSON.stringify(reply.marks)}`);
-        say(reply.say);
+        say(reply.say, reply.ms);
         if (reply.note || reply.marks.length) {
           await new Promise(r => setTimeout(r, 150));   // let one frame with the new marks render
           const file = `${runDir}step-${String(++stepNo).padStart(2, '0')}.png`;
@@ -158,6 +170,8 @@ const agent = defineAgent({
     ctx.addShutdownCallback(async () => {
       ended = true;
       clearInterval(timer);
+      clearInterval(monitorTimer);
+      live.send({ type: 'call', state: 'ended' });
       ctx.room.off(RoomEvent.TrackSubscribed, maybeVideo);
       ctx.room.off(RoomEvent.TrackUnsubscribed, lostVideo);
       ctx.room.off(RoomEvent.TrackMuted, mutedVideo);
@@ -175,7 +189,7 @@ const agent = defineAgent({
         }
       } catch (error) { console.error('[mentor] recap start failed', error?.message || error); }
       console.log(`[mentor] call ended; ${recap.length} recap steps in ${runDir}`);
-      for (const close of [() => session?.close(), () => track.close(), () => source.close()]) {
+      for (const close of [() => session?.close(), () => track.close(), () => source.close(), () => live.close()]) {
         try { await close(); } catch { /* already closed */ }
       }
     });
@@ -201,7 +215,7 @@ const agent = defineAgent({
     });
 
     // The Mac hangs up if it hears nothing within 10 s of bridge_ready: greet then, with a fixed line (no model wait).
-    const stopGreeting = greetOnBridgeReady(ctx.room, () => { caption = 'Show me your project'; say(GREETING); });
+    const stopGreeting = greetOnBridgeReady(ctx.room, () => { caption = 'Show me your project'; live.send({ type: 'step', text: caption }); say(GREETING); });
     ctx.addShutdownCallback(async () => stopGreeting());
   },
 });
