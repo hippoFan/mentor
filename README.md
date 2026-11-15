@@ -1,21 +1,48 @@
 <div align="center">
 
+<img src="docs/ar-wire.gif" alt="Mentor drawing an AR wire into pin 13 on a live camera view of an Arduino, staying locked to the board as the camera moves" width="640">
+
 # Mentor
 
 **FaceTime an AI that can see your project and point at it.**
 
-You call it from the normal FaceTime app. It looks through your camera, draws arrows on *your own live video*,<br>
-talks you through the build one step at a time, and texts you a recap when you hang up.
+You call it from the normal FaceTime app. It looks through your camera, draws on *your own live video*,<br>
+talks you through the build one step at a time, and texts you a voyage log when you hang up.
 
-[How it works](#how-it-works) · [Run it](#run-it) · [Design notes](#design-notes) · [Built at HackUTA 2026](#built-at-hackuta-2026)
+[![HackUTA 2026](https://img.shields.io/badge/HackUTA-2026-1D1D1F?style=flat-square)](#built-at-hackuta-2026)
+[![FaceTime via Chert](https://img.shields.io/badge/FaceTime-via%20Chert-1D1D1F?style=flat-square)](https://www.trychert.com)
+[![LiveKit Agents](https://img.shields.io/badge/LiveKit-Agents-1D1D1F?style=flat-square)](https://github.com/livekit/agents-js)
+[![ElevenLabs](https://img.shields.io/badge/ElevenLabs-voice-1D1D1F?style=flat-square)](https://elevenlabs.io)
+[![Gemini](https://img.shields.io/badge/Gemini-brain-1D1D1F?style=flat-square)](https://ai.google.dev)
+[![License: MIT](https://img.shields.io/badge/license-MIT-FFC845?style=flat-square)](LICENSE)
+
+[Watch the film](docs/mentor-film.mp4) · [How it works](#how-it-works) · [Features](#features) · [Run it](#run-it) · [Security](SECURITY.md)
 
 </div>
 
 ---
 
-> In Homer's *Odyssey*, the goddess Athena takes the form of an old friend, **Mentor**, and guides young Telemachus
-> step by step. That story is where the word *mentor* comes from. This project tries to give that kind of guide
-> to anyone holding a phone and a pile of parts.
+> *In the Odyssey, a goddess disguised herself as an old friend to guide a lost young man home. His name was Mentor.*
+
+## The idea
+
+When you're stuck on something physical, like a first Arduino, a loose wire or a kit with no manual, instructions
+and videos can't see *your* parts, and a chatbot can't point. The person who could help is rarely sitting next to you.
+
+Mentor is that person, on a FaceTime call:
+
+1. **You FaceTime it.** It's a plain FaceTime Video call from an iPhone. There's no app to install.
+2. **It asks to see your parts** and works out exactly what you have (an UNO R3 is not an UNO R4).
+3. **It points on your own video.** Rings, labels and wires land on the real port, LED or pin, and stay on them as you move.
+4. **It talks you through it**, one short step at a time, and checks each step on camera before moving on.
+5. **It texts you a voyage log** when you hang up: every step with its annotated picture, your final code, and a runnable simulator project.
+
+<table>
+<tr>
+<td width="50%"><img src="docs/real-overlay.jpg" alt="Mentor's real overlay on an Arduino Uno: rings and labels on the USB port and the L LED"><br><sub><b>Real model output.</b> Gemini found the USB port and the L LED; Mentor's overlay drew them.</sub></td>
+<td width="50%"><img src="docs/laptop-screen.jpg" alt="Mentor's live laptop screen: the caller's view, the current step and the conversation"><br><sub><b>The laptop screen</b> at <code>localhost:8790</code> mirrors the call for judges (shown with mock data).</sub></td>
+</tr>
+</table>
 
 ## The Odyssey, mapped
 
@@ -24,216 +51,177 @@ talks you through the build one step at a time, and texts you a recap when you h
 | Telemachus, young and stuck, not knowing where to start | You, holding a board you've never used |
 | Athena arrives *disguised* as Mentor, an old friend | An AI that arrives as an ordinary FaceTime contact: no app, no new interface |
 | She doesn't sail the ship for him; she shows him what to do next | Mentor never does the build. It points at the next thing on *your* camera and waits for you |
-| The voyage, one island at a time | The build, one step at a time, each one checked on camera |
-| *Nostos*, the homecoming | "Done. You made it home." The LED blinks, and the recap arrives |
+| The voyage, one island at a time | The build, one leg at a time, each one checked on camera |
+| *Nostos*, the homecoming | "Done. You made it home." The LED blinks, and the voyage log arrives |
 
 **Every Telemachus deserves a Mentor.**
 
-## The problem
+## Features
 
-When you're stuck on something physical, like wiring a board, fixing a device or assembling a kit, text instructions
-and videos can't see *your* parts. A chatbot can't point. The person who could help is rarely sitting next to you.
+| | |
+|---|---|
+| **AR marks that stick** | Rings and labels follow each part as your phone moves: a pyramidal Lucas-Kanade tracker in plain JS, with no dependencies. Synthetic handheld test: 1.6 px mean error at about 1 ms per frame. |
+| **AR wires** | "Where does this wire go?" Mentor draws the jumper in place, as a bowed cable with light flowing into the right hole. |
+| **Stop signs** | It circles a short, a missing resistor or reversed polarity in red and says "Stop," before you power on. |
+| **Knows your exact board** | It identifies the part first (UNO R3 USB-B vs UNO R4 USB-C) and points at *that* board's layout. |
+| **"Show me again"** | Instantly re-shows the last marks and repeats the last line, with no model call. |
+| **Your language** | `MENTOR_LANG=auto`: speak Spanish or Hindi and Mentor answers in it. |
+| **Portrait, full-screen** | It finds your real picture inside FaceTime's frame, drops the self-view, and sends portrait video back that fills your phone. |
+| **Voyage log** | After the call: the steps as legs of a journey, each with its annotated picture, ending in "Home". It also writes `sketch.ino` and `diagram.json` for the Wokwi simulator. |
+| **Laptop screen + tester panel** | Judges see the call live. Press **T** to see what Mentor sees, where it pointed, latency per answer, the model and the frame rate. |
+| **Robust brain** | Gemini, Claude, or (owner testing only) Claude Code. On a rate limit it falls through Gemini models. Acknowledgements like "okay" skip the model. |
 
-## What Mentor does
-
-1. **You FaceTime it.** It's a plain FaceTime Video call from an iPhone, with no app to install.
-2. **It asks to see your parts**, and asks you to move closer if it can't make something out. It doesn't guess.
-3. **It points.** Yellow arrows, rings and labels land on the exact port, LED or header in *your* camera feed,
-   sent back into the call as live video, along with a caption showing the current step.
-4. **It talks you through it**, one short step at a time, and checks each step on camera before moving on.
-5. **After the call it texts you a recap** over iMessage: what you did, the annotated step screenshots,
-   your final code, and a link to try that code in a simulator.
-
-The demo task is *"I just got an Arduino, make it blink"*, but nothing in the engine is Arduino-specific.
-The task is one line of configuration.
+<table>
+<tr>
+<td width="50%"><img src="docs/film-2.6.jpg" alt="Film opening: In the Odyssey, a goddess disguised herself as an old friend"></td>
+<td width="50%"><img src="docs/tester-panel.jpg" alt="Tester panel: connection, brain, latency bars and what Mentor sees with its marks"><br><sub>The tester panel (press <b>T</b>), shown with mock data.</sub></td>
+</tr>
+</table>
 
 ## How it works
 
 ```mermaid
 flowchart LR
     P["iPhone<br/>FaceTime Video"] <-->|Chert| R(("LiveKit<br/>room"))
-    R -->|caller video| V["latest frame"]
+    R -->|caller video| C["crop to your picture<br/>+ AR tracker"]
     R -->|caller voice| S["ElevenLabs Scribe<br/>speech → text"]
-    V --> B{{"Gemini<br/>what to say · where to point"}}
+    C --> B{{"Brain: Gemini / Claude<br/>what to say · where to point"}}
     S --> B
-    B -->|marks + step| O["overlay<br/>arrows, rings, labels"]
-    V --> O
-    O -->|annotated video| R
+    B -->|marks · wires · step| O["overlay<br/>tracked rings, labels, wires"]
+    C --> O
+    O -->|portrait video, 24 fps| R
     B -->|reply| T["ElevenLabs TTS"] -->|voice| R
-    B -.->|after the call| X["recap page + iMessage"]
+    B -.->|after the call| X["voyage log<br/>+ Wokwi project"]
 ```
 
-- **[Chert](https://www.trychert.com)** gives the agent a real Apple line. It answers FaceTime and bridges the call
-  into a [LiveKit](https://livekit.io) room, and it sends iMessages.
-- **The agent** (Node, `@livekit/agents`) joins that room. It keeps only the newest frame of the caller's camera and
-  publishes its own video track at 15 fps: the caller's frame with Mentor's marks drawn on top.
-- **ElevenLabs** does the listening (Scribe v2 realtime) and the speaking (Flash v2.5).
-- **Gemini** (gemini-3.5-flash) is the brain; Claude Fable 5.2 is a drop-in alternative (`MENTOR_BRAIN=claude`). Each time
-  you finish speaking, it gets what you said plus the current frame and returns structured JSON: a sentence to say, up to
-  three points to mark, the current step, and a recap note. It is called once per spoken turn, never per frame
-  (about 2.6 s and 1.5k tokens a turn in testing).
+- **[Chert](https://www.trychert.com)** gives the agent a real Apple line. It answers FaceTime, bridges the call into a
+  [LiveKit](https://livekit.io) room, and sends iMessages.
+- **The agent** (Node, `@livekit/agents`) reads the caller's camera and keeps only the newest frame. It crops away
+  FaceTime's bars and self-view, and publishes its own portrait video track: your picture with Mentor's tracked marks on top.
+- **ElevenLabs** listens (Scribe v2 realtime) and speaks (Flash v2.5).
+- **The brain** gets what you said plus the frame from the moment you finished speaking, and returns structured JSON:
+  - what to say
+  - where to point (circles, arrows, wires, warnings)
+  - the current step
+  - a note for the log
+
+  It's called once per spoken turn, never per frame. Between answers, the tracker keeps the marks on their parts.
 
 ## Run it
 
-### You need
-
-- Node.js 22.23+, 24 or 26
-- An iPhone with FaceTime
-- A **Chert** line (free trial): `npx @trychert/facetime@0.1.0-beta.21 onboard`
-- A **LiveKit Cloud** project (free tier) for the room
-- A brain key: **Gemini** (free via Google AI Studio) *or* **Anthropic** (Claude Fable 5.2)
-- An **ElevenLabs** API key
-
-### Set up
+**You need:**
+- Node 22.23+ / 24 / 26
+- an iPhone with FaceTime
+- a [Chert](https://www.trychert.com) line (free trial)
+- a LiveKit Cloud project (free)
+- an ElevenLabs key
+- a Gemini key (free in Google AI Studio) or an Anthropic API key
 
 ```sh
-git clone <this repo> mentor && cd mentor
-cp env.example .env          # then fill it in (never commit .env)
+git clone https://github.com/hippoFan/mentor && cd mentor
+cp env.example .env              # fill it in; never commit .env
 cd agent && npm install
-npm run status               # is the Chert line ready? (needs CHERT_API_KEY + CHERT_PROJECT_ID)
-```
+npm run check-keys               # verifies every key without printing it or spending model requests
 
-### Start a call
-
-```sh
-# terminal 1, in agent/
-npm start
-
-# terminal 2, in agent/  (chert = npx --yes @trychert/facetime@0.1.0-beta.21)
-chert setup --env-file ../.env --project <your-project-id>   # once
-chert doctor
+npm start                        # terminal 1: the agent
+chert setup --env-file ../.env --project <project-id>    # terminal 2, once (chert = npx @trychert/facetime@0.1.0-beta.21)
 chert dev --agent <your AGENT_NAME>
 ```
 
-FaceTime **Video** the number `chert dev` shows. Mentor greets you as soon as the call connects.
+FaceTime **Video** the number `chert dev` shows, and open **http://localhost:8790** on the laptop.
 
-### The laptop screen
-
-While a call is live, open **http://localhost:8790**: the same picture the caller sees (with Mentor's marks), the current
-step, and the conversation as it happens, including how long Mentor thought. It's local only and reconnects by itself between calls.
-
-### Optional: the recap
+<details>
+<summary><b>Test without a phone</b></summary>
 
 ```sh
-npm run recaps                                   # serves recap pages on localhost:8787
-cloudflared tunnel --url http://localhost:8787   # put the https URL in MENTOR_PUBLIC_URL
+npm run try-brain -- photo.jpg "where is the USB port?"   # one brain answer drawn on a photo
+MENTOR_TEST_TURN="what is this board?" npm start            # terminal 1
+npm run e2e -- photo.jpg ./e2e-out                          # terminal 2: a fake caller streams the photo, saves Mentor's
+                                                            # frames and measures Mentor's audio loudness
+node test/track-test.mjs                                    # AR tracker accuracy + speed
+node test/recap-test.mjs                                    # voyage log, escaping, recap server hardening
+node test/mock-monitor.mjs                                  # the laptop screen with a replayed call, on :8799
 ```
+</details>
 
-With `MENTOR_SEND_RECAP=1`, Mentor texts the recap to `MENTOR_RECAP_TO` when the call ends. Without it, the recap is
-only saved locally in `runs/<call>/`. On the trial line, the phone must have texted the line within the last 24 hours.
-
-### Test without a phone
-
-```sh
-# the brain on a still photo; writes photo.jpg.mentor.png with the marks drawn on
-npm run try-brain -- photo.jpg "how do I make it blink?"
-
-# the whole video path on your LiveKit project: a fake caller streams the photo as its camera,
-# Mentor answers one scripted question, and the frames Mentor sends back are saved as out-*.png
-MENTOR_TEST_TURN="how do I make it blink?" npm start     # terminal 1
-npm run e2e -- photo.jpg ./e2e-out                      # terminal 2
-```
-
-Without an ElevenLabs key the agent runs video-only (it logs what it would have said).
-
-## Configuration
-
-All settings are environment variables in `mentor/.env` (see [`env.example`](env.example)).
+<details>
+<summary><b>Configuration</b> (all in <code>.env</code>, see <a href="env.example"><code>env.example</code></a>)</summary>
 
 | Variable | Required | What it is |
 |---|---|---|
 | `LIVEKIT_URL`, `LIVEKIT_API_KEY`, `LIVEKIT_API_SECRET` | yes | One LiveKit project, the same one `chert setup` uses |
-| `AGENT_NAME` | yes | Unique dispatch name, the same one passed to `chert dev --agent` |
-| `ANTHROPIC_API_KEY` | one brain key | Claude API key (Claude Fable 5.2 brain) |
-| `GEMINI_API_KEY` | one brain key | Gemini API key (Gemini brain, points on its native 0-1000 grid) |
-| `MENTOR_BRAIN` | no | `gemini`, `claude` (API key) or `claude-code` (**owner testing only**: the local Claude Code CLI signed in with your own Claude subscription; never for other people's calls); otherwise Claude if its key is set, else Gemini |
-| `ELEVENLABS_API_KEY` | yes | ElevenLabs key with Text to Speech + Speech to Text (`ELEVEN_API_KEY` also works) |
-| `ELEVEN_VOICE_ID` | no | Voice for Mentor; ElevenLabs default if unset |
-| `MENTOR_TASK` | no | The task Mentor guides, e.g. `Make the Arduino Uno's onboard LED blink` |
-| `MENTOR_EFFORT` | no | Claude effort, `low` (default, fastest) or `medium` |
-| `MENTOR_GEMINI_MODELS` | no | Gemini models to try in order (default `gemini-3.5-flash,gemini-3.5-flash-lite,gemini-2.5-flash`); on a rate limit or overload Mentor moves to the next |
-| `MENTOR_GEMINI_THINKING` | no | `LOW` (default) or `MINIMAL` (faster) |
-| `MENTOR_OUT` | no | `portrait` (default, 540×960, fills the caller's phone) or `landscape` (640×360 × `MENTOR_OUT_SCALE`) |
-| `MENTOR_GREETING` | no | The first line Mentor says |
-| `CHERT_API_KEY`, `CHERT_PROJECT_ID` | for recap/status | Project API key (`ftk_…`) from the Chert Developer page |
-| `MENTOR_RECAP_TO` | for recap | Phone number to text the recap to (must be verified on the project) |
-| `MENTOR_PUBLIC_URL` | for recap | Public URL of the recap server (tunnel) |
-| `MENTOR_SEND_RECAP` | for recap | `1` to actually send the iMessage |
+| `AGENT_NAME` | yes | Unique dispatch name, also passed to `chert dev --agent` |
+| `ELEVENLABS_API_KEY` | yes | ElevenLabs key with Text to Speech + Speech to Text |
+| `GEMINI_API_KEY` / `ANTHROPIC_API_KEY` | one of them | The brain |
+| `MENTOR_BRAIN` | no | `gemini`, `claude`, or `claude-code` (**owner testing only**, also needs `MENTOR_OWNER_TESTING=1`; see [SECURITY.md](SECURITY.md)) |
+| `MENTOR_GEMINI_MODELS` | no | Models to fall through on rate limits (default `gemini-3.5-flash,gemini-3.5-flash-lite,gemini-2.5-flash`) |
+| `MENTOR_TASK` | no | What Mentor guides, e.g. `Make the Arduino's onboard LED blink` |
+| `MENTOR_LANG` | no | `en` (default) or `auto` (answer in the caller's language) |
+| `MENTOR_OUT` / `MENTOR_FPS` | no | `portrait` (default, 540×960) or `landscape`; frames per second back into the call (default 24) |
+| `MENTOR_MAX_TURNS` | no | Brain calls per call before Mentor wraps up (default 60) |
+| `ELEVEN_VOICE_ID`, `MENTOR_GREETING` | no | Mentor's voice and first line |
+| `CHERT_API_KEY`, `CHERT_PROJECT_ID`, `MENTOR_RECAP_TO`, `MENTOR_PUBLIC_URL`, `MENTOR_SEND_RECAP=1` | for the iMessage recap | Off unless `MENTOR_SEND_RECAP=1` |
+</details>
 
-## Project layout
+<details>
+<summary><b>Project layout</b></summary>
 
 ```
-mentor/
-├── agent/
-│   ├── agent.mjs          the call: camera in, annotated video out, voice, step screenshots
-│   ├── brain.mjs          Claude Fable 5.2, one structured request per spoken turn (+ brain picker)
-│   ├── brain-gemini.mjs   same contract on Gemini
-│   ├── overlay.mjs        draws what the caller sees (≈3 ms per frame)
-│   ├── live.mjs           local WebSocket for the laptop screen (monitor.html)
-│   ├── recap.mjs          recap page + iMessage text (Chert API)
-│   ├── send-recap.mjs     runs after each call in its own process
-│   ├── serve-recaps.mjs   read-only server for recap pages
-│   ├── status.mjs         checks the Chert line's readiness flags
-│   ├── try-brain.mjs      test the brain on a still photo
-│   ├── check-keys.mjs     checks every key in .env without printing it
-│   ├── test/e2e-video.mjs fake caller for an end-to-end video test on LiveKit
-│   ├── chert-rooms.mjs    from Chert's video-agent starter (unchanged)
-│   └── greet.mjs          from Chert's video-agent starter (unchanged)
-├── env.example
-└── runs/                  per-call screenshots and recaps (git-ignored)
+agent/
+  agent.mjs            the call: camera in, tracked marks out, voice, snapshots, stats
+  brain.mjs            prompt, schema, output sanitiser, brain picker (+ Claude API brain)
+  brain-gemini.mjs     Gemini brain with model fallback
+  brain-claude-code.mjs  owner-testing brain on the local Claude Code CLI (locked down)
+  overlay.mjs          what the caller sees: crop, rings, labels, AR wires, warnings
+  tracker.mjs          pyramidal Lucas-Kanade point tracker (no deps)
+  live.mjs, monitor.html   the laptop screen (local only, Origin/Host checked)
+  recap.mjs, send-recap.mjs, serve-recaps.mjs   voyage log, Wokwi files, iMessage
+  check-keys.mjs, status.mjs   key + line checks
+  chert-rooms.mjs, greet.mjs   from Chert's video-agent starter
+  test/                e2e fake caller, tracker, recap, dashboard mock
+docs/                  README media and the film
 ```
+</details>
 
-## Design notes
+<details>
+<summary><b>Design notes</b></summary>
 
-- **Point at what it can see, ask for the rest.** Mentor is told never to guess a pin it can't see. It asks you to
-  move closer, and marks a region (the header block, the LED corner) rather than a single pin it isn't sure of.
-- **One model call per turn, not per frame.** The camera runs at 15 fps but Claude only sees the frame from the
-  moment you finish speaking. Older turns, images included, are prompt-cached, so a five-minute call stays cheap.
-- **Append-only conversation.** Every request and reply goes back to Claude unchanged, including its thinking
-  blocks, so the history stays valid and the cache keeps hitting.
-- **Looks like it belongs on a phone.** Thin yellow rings with a soft shadow, solid labels that never overlap (each tries
-  left, right, above and below its mark and takes the first free spot), and the step as a floating pill. Inter, bundled.
-- **AR wires.** When a wire or cable has to go somewhere, Mentor draws it in place on your video: a bowed cable from
-  where it starts to the hole it goes into, with light flowing toward the target.
-- **Works on your camera, not FaceTime's frame.** The incoming picture arrives with black bars; Mentor finds the real
-  image, crops to it (a bigger, clearer view for the brain) and sends portrait video back so it fills your screen.
-- **Marks fade.** Arrows clear after 25 seconds of silence, so stale arrows never point at a spot the camera has
-  moved away from. If your camera turns off, Mentor drops the old frame instead of judging an old view.
-- **Greets on time.** FaceTime hangs up on an agent that stays silent for 10 seconds after connecting, so the greeting
-  is a fixed line spoken the moment Chert reports the bridge is ready. It doesn't wait on a model call.
-- **Recap survives the hang-up.** The recap is built in its own process, so it finishes even after the call's job
-  is torn down. The recap server only serves pages and images from random, unguessable folder names.
-- **Safety.** Mentor tells you to unplug power before rewiring, and it never declares a circuit "safe".
+- **Point at what it can see, ask for the rest.** Mentor never guesses a pin it can't see. It asks you to move closer.
+- **One model call per turn, not per frame.** The tracker carries the marks between answers.
+- **Greets on time.** FaceTime hangs up on an agent that's silent for 10 s, so the greeting is a fixed line spoken the
+  moment Chert reports the bridge is ready.
+- **Model output is data.** Replies are capped and cleaned, nothing is executed, and text seen on camera is never treated as an instruction.
+- **The voyage log survives the hang-up.** It's built in its own process.
+- **Measured, not guessed:** per-frame cost is about 6 ms (crop, track, render), Mentor's voice measures about −20 dBFS,
+  and video stats are logged every 5 s.
+</details>
 
 ## Security and privacy
 
-See [SECURITY.md](SECURITY.md). In short:
-- Camera frames and audio go to ElevenLabs and your chosen brain.
+See **[SECURITY.md](SECURITY.md)**. In short:
+- Audio and frames go to ElevenLabs and your chosen brain.
 - Everything else stays on the host laptop in `runs/`.
-- The laptop screen is local-only, and recap links expire after 24 h.
-- Model output is treated as untrusted data.
+- The laptop screen accepts only its own page, and recap links expire after 24 h.
+- Model output is untrusted.
 - The `claude-code` brain is for the owner's own testing only.
 
 ## Limits
 
-- Gemini's free tier allows about **20 requests a day per model**. Mentor falls through `MENTOR_GEMINI_MODELS` when one
-  runs out, but a full demo day needs a paid key. `npm run check-keys` checks keys without spending any requests.
-
-- The free Chert trial allows calls of up to 5 minutes, and the line handles one call at a time.
-- The caller's camera only reaches the agent if caller capture is enabled on the Chert line.
+- Chert's free trial allows calls of up to 5 minutes, and a line handles one call at a time.
+- FaceTime routes the video through Chert's Mac and LiveKit, which adds roughly half a second each way.
+- Gemini's free tier allows about 20 requests a day per model. Use a paid key for a full demo day.
 - Pin-level pointing on tiny headers depends on how close and how sharp the camera is.
 
 ## Built at HackUTA 2026
 
-Built in 12 hours for the HackUTA 2026 theme *Homer's Odyssey*, for the **Best Use of FaceTime (Chert)** and
-**Best Use of ElevenLabs** tracks.
+Built for the theme *Homer's Odyssey*, for **Best Use of FaceTime (Chert)** and **Best Use of ElevenLabs**.
 
-**Built with:** Chert · LiveKit Agents · ElevenLabs (Scribe v2 realtime, Flash v2.5) · Gemini · Claude Fable 5.2 (optional) ·
-@napi-rs/canvas · Node.js
+**Built with:** Chert · LiveKit Agents · ElevenLabs (Scribe v2 realtime, Flash v2.5) · Gemini · Claude ·
+@napi-rs/canvas · Node.js · [HyperFrames](https://github.com/heygen-com/hyperframes) (the film)
 
 ## License
 
-MIT for Mentor's own code (see [LICENSE](LICENSE)), with these exceptions:
-- `agent/chert-rooms.mjs` and `agent/greet.mjs` come from Chert's `chert new --video` starter and keep Chert's terms.
-- `agent/fonts/InterVariable.ttf` is Inter, under the SIL Open Font License (`agent/fonts/OFL-Inter.txt`).
-- The film and tests use a public-domain (CC0) photo of an Arduino Uno from Wikimedia Commons.
+MIT for Mentor's own code ([LICENSE](LICENSE)), with these exceptions:
+- `agent/chert-rooms.mjs` and `agent/greet.mjs` come from Chert's starter, and Chert's terms apply.
+- Inter is under the SIL Open Font License.
+- The film and README images use a public-domain (CC0) Arduino photo from Wikimedia Commons.
