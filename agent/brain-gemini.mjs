@@ -66,7 +66,11 @@ export class GeminiBrain {
       } catch (error) {
         last = error;
         const status = Number(error?.status || error?.code);
-        const slow = status === 504 || (!status && /timed? ?out|abort|deadline/i.test(`${error?.name} ${error?.message}`));   // 400 'deadline too short' is a config error, not slowness
+        // Our own deadline aborts with a DOMException (name AbortError, code 20): not an HTTP status. A 400 "deadline too
+        // short" is a config error, not slowness.
+        const http = status >= 400 && status < 600;
+        const slow = status === 504 || error?.name === 'AbortError' || error?.name === 'TimeoutError'
+          || (!http && /timed? ?out|abort|deadline/i.test(`${error?.name} ${error?.message}`));
         if (![429, 503, 404, 500].includes(status) && !slow) throw error;
         skipped.add(model);
         console.warn(`[brain:gemini] ${model} ${slow ? 'too slow' : `unavailable (${status})`}; trying the next model`);
