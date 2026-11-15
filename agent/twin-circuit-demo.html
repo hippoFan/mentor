@@ -1,0 +1,183 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Ody Circuit</title>
+<link rel="icon" href="data:,">
+<!-- Standalone demo of twin/circuit3d.js (served by test/mock-circuit.mjs). The app (twin.html) mounts the same module. -->
+<script type="importmap">{"imports":{"three":"/vendor/three/build/three.module.js","three/addons/":"/vendor/three/examples/jsm/"}}</script>
+<style>
+  @font-face { font-family: "Inter Ody"; src: url("/fonts/InterVariable.ttf") format("truetype"); font-weight: 100 900; font-display: swap; }
+  :root { --sea: #120E1C; --ink: #EEEAF5; --muted: #ABA3C0; --athena: #FFC845; --holo: #3BD8FF; --line: #2E2742; --deck: rgba(27,22,41,.82);
+    --ui: "Inter Ody", Inter, ui-sans-serif, system-ui, sans-serif; color-scheme: dark; }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; height: 100%; background: #04070b; color: var(--ink); font: 400 15px/1.45 var(--ui); overflow: hidden; -webkit-font-smoothing: antialiased; }
+  body.real { background: #1d1d1f; }
+  #stage { position: fixed; inset: 0; }
+  #view { width: 100%; height: 100%; display: block; }
+  #labels { position: absolute; inset: 0; pointer-events: none; }
+  .hud { position: absolute; left: 24px; top: 20px; display: flex; flex-direction: column; gap: 12px; max-width: min(460px, calc(100vw - 48px)); pointer-events: none; }
+  .brand { display: flex; align-items: center; gap: 10px; font-weight: 600; font-size: 15px; }
+  .brand i { width: 18px; height: 18px; border-radius: 50%; border: 3.5px solid var(--athena); display: inline-block; }
+  .brand span { color: var(--muted); font-weight: 500; }
+  .say { background: var(--deck); border: 1px solid var(--line); border-radius: 14px; padding: 12px 14px; font-size: 15.5px; line-height: 1.4; backdrop-filter: blur(8px); }
+  .say:empty, .next:empty { display: none; }
+  .say::before { content: "Ody"; display: block; color: var(--athena); font-weight: 600; font-size: 12px; letter-spacing: .04em; text-transform: uppercase; margin-bottom: 3px; }
+  .heard { color: var(--muted); font-size: 14px; }
+  .heard:empty { display: none; }
+  .heard::before { content: "You: "; color: var(--ink); font-weight: 600; }
+  .next { background: var(--deck); border: 1px solid var(--line); border-left: 3px solid var(--holo); border-radius: 12px; padding: 10px 12px; font-size: 14px; color: var(--muted); }
+  .next b { color: var(--ink); font-weight: 600; display: block; font-size: 12px; letter-spacing: .04em; text-transform: uppercase; margin-bottom: 2px; }
+  .legend { position: absolute; right: 24px; bottom: 22px; background: var(--deck); border: 1px solid var(--line); border-radius: 14px; padding: 12px 14px; min-width: 210px;
+    list-style: none; margin: 0; display: grid; gap: 6px; font-size: 13.5px; backdrop-filter: blur(8px); }
+  .legend:empty { display: none; }
+  .legend li { display: flex; align-items: center; gap: 9px; }
+  .legend i { width: 22px; height: 5px; border-radius: 3px; flex: none; box-shadow: 0 0 8px currentColor; }
+  .legend .h { color: var(--muted); font-size: 12px; letter-spacing: .04em; text-transform: uppercase; font-weight: 600; }
+  .tag { position: relative; width: 0; height: 0; }
+  .tag i { position: absolute; left: -3px; top: -3px; width: 6px; height: 6px; border-radius: 50%; background: currentColor; box-shadow: 0 0 8px currentColor; }
+  .tag b { position: absolute; left: 0; bottom: 0; width: 26px; height: 1px; background: currentColor; opacity: .7; transform-origin: 0 0; transform: rotate(-50deg); }
+  .tag span { position: absolute; left: 16px; bottom: 20px; white-space: nowrap; font: 600 12.5px/1 var(--ui); padding: 4px 7px; border-radius: 6px; background: rgba(4,10,16,.62); }
+  .tag.part { color: #8FEFFF; }
+  body.real .tag.part { color: #F5F5F7; }
+  @media (max-width: 640px) { .hud { left: 16px; top: 14px; } .legend { right: 16px; bottom: 14px; } }
+</style>
+</head>
+<body>
+<div id="stage"><canvas id="view" aria-label="3D view of the circuit"></canvas><div id="labels"></div></div>
+<div class="hud">
+  <div class="brand"><i aria-hidden="true"></i>Ody <span>circuit builder</span></div>
+  <div class="heard" id="heard"></div>
+  <div class="say" id="say" aria-live="polite"></div>
+  <div class="next" id="next"></div>
+</div>
+<ul class="legend" id="legend" aria-label="Wire colours"></ul>
+<script type="module">
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
+import { CSS2DRenderer, CSS2DObject } from 'three/addons/renderers/CSS2DRenderer.js';
+import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
+import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
+import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
+import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
+import { loadPins } from '/twin/pins.js';
+import { buildUno, buildBreadboard } from '/twin/board.js';
+import { clock, holoMaterial, edgeMaterial, makeProjectorFloor } from '/twin/holo.js';
+import { createCircuitView, legendHex } from '/twin/circuit3d.js';
+
+const $ = id => document.getElementById(id);
+const canvas = $('view');
+const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, preserveDrawingBuffer: true });
+renderer.setPixelRatio(Math.min(devicePixelRatio || 1, 2));
+renderer.shadowMap.enabled = true; renderer.shadowMap.type = THREE.PCFShadowMap;
+renderer.outputColorSpace = THREE.SRGBColorSpace; renderer.toneMapping = THREE.NeutralToneMapping;
+const scene = new THREE.Scene();
+const camera = new THREE.PerspectiveCamera(30, 1, 1, 4000);
+const controls = new OrbitControls(camera, canvas);
+Object.assign(controls, { enableDamping: true, dampingFactor: 0.08, minDistance: 60, maxDistance: 600, maxPolarAngle: 1.45 });
+const labels = new CSS2DRenderer({ element: $('labels') });
+scene.environment = new THREE.PMREMGenerator(renderer).fromScene(new RoomEnvironment(), 0.04).texture;
+scene.environmentIntensity = 0.5;
+const key = new THREE.DirectionalLight(0xffffff, 1.35); key.position.set(-80, 220, 140); key.castShadow = true;
+key.shadow.mapSize.set(2048, 2048); Object.assign(key.shadow.camera, { left: -160, right: 160, top: 130, bottom: -130, near: 10, far: 600 }); key.shadow.bias = -0.0005;
+scene.add(key, new THREE.HemisphereLight(0xdfe8ff, 0x202024, 0.65));
+const realFloor = new THREE.Group();
+{
+  const c = document.createElement('canvas'); c.width = c.height = 512; const g = c.getContext('2d');
+  const gr = g.createRadialGradient(256, 256, 0, 256, 256, 256); gr.addColorStop(0, '#3a3a40'); gr.addColorStop(1, '#1d1d1f'); g.fillStyle = gr; g.fillRect(0, 0, 512, 512);
+  const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace;
+  const pool = new THREE.Mesh(new THREE.PlaneGeometry(900, 900), new THREE.MeshBasicMaterial({ map: t })); pool.rotation.x = -Math.PI / 2; pool.position.y = -0.05;
+  const sh = new THREE.Mesh(new THREE.PlaneGeometry(900, 900), new THREE.ShadowMaterial({ opacity: 0.45 })); sh.rotation.x = -Math.PI / 2; sh.receiveShadow = true;
+  realFloor.add(pool, sh);
+}
+const holoFloor = makeProjectorFloor();
+scene.add(realFloor, holoFloor);
+const rt = new THREE.WebGLRenderTarget(1, 1, { type: THREE.HalfFloatType, samples: 4 });
+const composer = new EffectComposer(renderer, rt);
+composer.addPass(new RenderPass(scene, camera));
+const bloom = new UnrealBloomPass(new THREE.Vector2(1, 1), 0.8, 0.5, 0.2);
+composer.addPass(bloom); composer.addPass(new OutputPass());
+
+// board + breadboard, decorated like twin/app.js (both looks per mesh)
+const UNO_POS = new THREE.Vector3(-46, 0, 0), BB_POS = new THREE.Vector3(47, 0, 0);
+function decorate(root) {
+  root.traverse(o => {
+    if (!o.isMesh || !o.userData.holo || o.userData.real) return;
+    o.userData.real = o.material;
+    o.userData.holoMat = Array.isArray(o.material) ? o.material.map(m => holoMaterial(o.userData.holo, m.map ? o.userData.holoMap : null)) : holoMaterial(o.userData.holo, o.userData.holoMap);
+    if (!o.isInstancedMesh) { const e = new THREE.LineSegments(new THREE.EdgesGeometry(o.geometry, 28), edgeMaterial); e.userData.edges = true; e.raycast = () => {}; o.add(e); }
+  });
+}
+function applyLook(root, holo) {
+  root.traverse(o => { if (o.userData.real) { o.material = holo ? o.userData.holoMat : o.userData.real; o.castShadow = !holo; } if (o.userData.edges) o.visible = holo; });
+}
+const table = await loadPins();
+const params = new URLSearchParams(location.search);
+let uno = buildUno(table, params.get('model') === 'uno-r4-wifi' ? 'uno-r4-wifi' : 'uno-r3');
+uno.group.position.copy(UNO_POS); decorate(uno.group); scene.add(uno.group);
+const bb = buildBreadboard(); bb.group.position.copy(BB_POS); decorate(bb.group); scene.add(bb.group);
+
+const tag = (text, cls) => {
+  const el = document.createElement('div'); el.className = `tag ${cls}`;
+  const i = document.createElement('i'), b = document.createElement('b'), s = document.createElement('span'); s.textContent = text;
+  el.append(i, b, s); return new CSS2DObject(el);
+};
+const view = createCircuitView({ boardPin: k => uno.pinPos(k)?.add(UNO_POS) || null, bbOrigin: BB_POS, label: tag });
+scene.add(view.group);
+
+let holo = params.get('look') !== 'real';
+function setLook(on) {
+  holo = on; document.body.classList.toggle('real', !on);
+  scene.background = new THREE.Color(on ? 0x04070b : 0x1d1d1f);
+  realFloor.visible = !on; holoFloor.visible = on; key.castShadow = !on;
+  renderer.toneMappingExposure = on ? 1.0 : 0.82;
+  bloom.strength = on ? 0.8 : 0.35; bloom.threshold = on ? 0.18 : 1.6; bloom.radius = on ? 0.5 : 0.3;
+  applyLook(uno.group, on); applyLook(bb.group, on); view.setLook(on);
+  renderLegend();
+}
+let lastEv = null;
+function renderLegend() {
+  const ul = $('legend'); ul.replaceChildren();
+  if (!lastEv?.legend?.length) return;
+  const h = document.createElement('li'); h.className = 'h'; h.textContent = 'Wires'; ul.append(h);
+  for (const l of lastEv.legend) {
+    const li = document.createElement('li'), i = document.createElement('i'), s = document.createElement('span');
+    const c = legendHex(l.color, holo); i.style.background = c; i.style.color = c; if (!holo && l.color === 'black') i.style.outline = '1px solid #8a8a90'; s.textContent = l.text; li.append(i, s); ul.append(li);
+  }
+}
+/** Shows one circuit event (circuit.mjs circuitEvent) plus what was heard. */
+function apply(ev, heard = '') {
+  lastEv = ev; view.setState(ev);
+  $('heard').textContent = heard; $('say').textContent = ev.say || '';
+  $('next').replaceChildren();
+  if (ev.next) { const b = document.createElement('b'); b.textContent = `Next · step ${ev.next.index} of ${ev.next.total}`; $('next').append(b, document.createTextNode(ev.next.say)); }
+  renderLegend();
+}
+// fixed framing: the board's digital header on the left, the breadboard and its parts on the right
+const target = new THREE.Vector3(Number(params.get('tx') ?? 18), 8, Number(params.get('tz') ?? 4));
+function home() {
+  const s = new THREE.Spherical(Number(params.get('r') ?? 280), Number(params.get('phi') ?? 0.86), Number(params.get('theta') ?? 0.1));
+  camera.position.copy(target).add(new THREE.Vector3().setFromSpherical(s)); controls.target.copy(target); controls.update();
+}
+function resize() {
+  const w = innerWidth, h = innerHeight;
+  renderer.setSize(w, h, false); composer.setSize(w, h); labels.setSize(w, h);
+  camera.aspect = w / h; camera.updateProjectionMatrix();
+}
+addEventListener('resize', resize); resize(); home(); setLook(holo);
+let last = performance.now();
+function frame(now) {
+  requestAnimationFrame(frame);
+  const dt = Math.min(0.05, (now - last) / 1000); last = now;
+  clock.value += dt;
+  controls.update();
+  scene.traverseVisible(o => { if (o.userData.update) o.userData.update(); });
+  composer.render(dt); labels.render(scene, camera);
+}
+requestAnimationFrame(frame);
+window.circuitDemo = { ready: true, apply, setLook, home, stats: () => view.stats(), clock };
+</script>
+</body>
+</html>

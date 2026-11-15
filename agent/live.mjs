@@ -62,7 +62,7 @@ export async function startLive() {
 
 /** The laptop page + its WebSocket on 127.0.0.1:PORT. Used by hub.mjs (always on) or by a call when no hub runs. */
 export async function createLiveServer() {
-  const state = { call: null, step: '', transcript: [], brain: '', turns: [], part: null, scans: [] };   // replayed to a page that connects mid-call
+  const state = { call: null, step: '', transcript: [], brain: '', turns: [], part: null, scans: [], circuit: null };   // replayed to a page that connects mid-call
   // Only this machine's own page may connect (stops cross-site WebSocket hijacking and DNS rebinding).
   const okHost = h => h === `localhost:${PORT}` || h === `127.0.0.1:${PORT}`;
   const okOrigin = o => o === `http://localhost:${PORT}` || o === `http://127.0.0.1:${PORT}`;
@@ -106,11 +106,12 @@ export async function createLiveServer() {
     send(event) {
       if (event.type === 'call') {
         state.call = event;
-        if (event.state === 'live') { state.transcript = []; state.turns = []; state.step = ''; state.scans = []; }   // a new call starts clean
+        if (event.state === 'live') { state.transcript = []; state.turns = []; state.step = ''; state.scans = []; state.circuit = null; }   // a new call starts clean
       }
       if (event.type === 'step') state.step = event.text;
       if (event.type === 'brain') state.brain = event.brain;
       if (event.type === 'part') state.part = event;
+      if (event.type === 'circuit') state.circuit = event;   // the latest project, replayed to a page that connects mid-call
       if (event.type === 'scan') { state.scans.push(event); state.scans = state.scans.slice(-6); }   // ~150 KB each with the photo
       if (event.type === 'interior') { const sc = state.scans.find(x => x.id === event.id); if (sc) sc.interior = event.interior; }   // replayed with its scan
       if (event.type === 'turn') { state.turns.push(event); state.turns = state.turns.slice(-40); }

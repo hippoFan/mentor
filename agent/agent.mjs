@@ -21,6 +21,7 @@ import { startLive } from './live.mjs';
 import { createMarkTracker } from './tracker.mjs';
 import { cropJpeg, isScanIntent, scanLine } from './scan.mjs';
 import { researchInterior } from './research.mjs';
+import { CIRCUIT_BOARDS, circuitEvent, circuitIntent, createProject, handleUtterance, markDone, nextStep, setBoard } from './circuit.mjs';
 import { OVERLAY, overlayFrame, shouldDraw } from './overlay-policy.mjs';
 
 // Accept the common alternative names for the same keys.
@@ -207,6 +208,47 @@ const agent = defineAgent({
     // "Show me again": re-show the last marks and repeat the last line instantly, with no model call.
     const REPLAY = /^(.{0,20}\b)?(again|repeat( that)?|say (that|it) again|show me (that )?again|one more time|what\?|sorry\?|pardon)\W*$/i;
     let last = null, turns = 0, lastPart = null, scanning = false, scanNo = 0;
+    // Voice circuit builder ("add a distance sensor"): one project per call, wired to real pins (circuit.mjs).
+    let circuit = createProject({ board: 'arduino-uno' }), circuitBusy = false;
+    const CIRCUIT_ON = process.env.MENTOR_CIRCUIT !== '0';
+    const DONE_RE = /^\W*(ok(ay)?[\s,]*)?(done|did it|got it|plugged( it)? in|it'?s in|finished|next( one| step| wire)?|what'?s next)\W*$/i;
+    // On the phone: ring the board pin of the next jumper, tracked on the real board (only when the board is registered).
+    const showNext = () => {
+      const n = nextStep(circuit), now = getLatest();
+      if (!n?.boardPin || !now || !last?.board?.corners?.length) return;
+      marks = [{ kind: 'circle', label: n.mark?.label || n.boardPin, pin: n.boardPin, x: 0.5, y: 0.5 }]; marksAt = Date.now();
+      tracker.seed(now, marks, last.board);
+      if (!tracker.board) marks = [];   // couldn't register the board: no guessed ring in mid-air
+    };
+    const circuitTurn = async heard => {
+      if (circuitBusy) return true;
+      const kind = circuitIntent(heard);
+      const done = !kind && circuit.components?.length && DONE_RE.test(heard);
+      if (!kind && !done) return false;
+      circuitBusy = true;
+      try {
+        console.log(`[heard] ${heard} (circuit: ${kind || 'done'})`); live.send({ type: 'heard', text: heard });
+        if (lastPart && CIRCUIT_BOARDS.includes(lastPart) && lastPart !== circuit.board) circuit = setBoard(circuit, lastPart);   // the board Ody recognised
+        let sayText;
+        if (done) {
+          circuit = markDone(circuit); const n = nextStep(circuit);
+          sayText = n ? n.say : 'That was the last wire. Your circuit is complete.';
+          live.send(circuitEvent(circuit, { say: sayText }));
+        } else {
+          const now = getLatest(); const image = kind === 'change' && now ? await frameJpeg(now, 960) : null;
+          const r = await handleUtterance(brain, circuit, heard, image);
+          if (ended) return true;
+          circuit = r.state;
+          const n = nextStep(circuit);
+          sayText = [r.say, r.changed && n ? `First: ${n.say}` : ''].filter(Boolean).join(' ');
+          live.send(circuitEvent(circuit, { ...r, say: sayText }));
+        }
+        showNext();
+        say(sayText, 0);
+      } catch (e) { console.warn('[circuit] failed:', e?.message || e); say("I couldn't change the circuit. Say it again, simply: add a distance sensor.", 0); }
+      finally { circuitBusy = false; }
+      return true;
+    };
     // "Scan this": a dedicated brain call builds an approximate 3D model of whatever is on camera for the laptop's /twin.
     const scanTurn = async heard => {
       if (scanning) { say('Still scanning, hold it there.'); return; }
@@ -272,6 +314,7 @@ const agent = defineAgent({
         console.log(`[heard] ${heard} (twin: ${cmd[1]}, no brain call)`); live.send({ type: 'heard', text: heard });
         live.send({ type: 'twin', action: cmd[1] }); say(cmd[2], 0); return;
       }
+      if (CIRCUIT_ON && !isScanIntent(heard) && await circuitTurn(heard)) return;
       if (ACKS.test(heard.trim())) { console.log(`[heard] ${heard} (acknowledgement, no brain call)`); live.send({ type: 'heard', text: heard }); return; }
       if (last && REPLAY.test(heard.trim())) {
         console.log(`[heard] ${heard} (replay, no brain call)`); live.send({ type: 'heard', text: heard });
