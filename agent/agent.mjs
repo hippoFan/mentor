@@ -21,10 +21,13 @@ import { startLive } from './live.mjs';
 import { createMarkTracker } from './tracker.mjs';
 import { cropJpeg, isScanIntent, parseModelCorrection, scanLine } from './scan.mjs';
 import { researchInterior } from './research.mjs';
-import { CIRCUIT_BOARDS, circuitEvent, circuitIntent, createProject, describe as describeCircuit, findComponent, handleUtterance, markDone, nextStep, setBoard } from './circuit.mjs';
+import { CIRCUIT_BOARDS, boardPins, circuitEvent, circuitIntent, createProject, describe as describeCircuit, findComponent, handleUtterance, markDone, nextStep, partFromWords, setBoard } from './circuit.mjs';
 import { MARK_TTL_MS, OVERLAY, overlayFrame, shouldDraw } from './overlay-policy.mjs';
 import { matchPart, parseTwin, partList } from './twin-voice.mjs';
 import { createAnalyzer } from './combo.mjs';
+import { EDIT, mergeChange, parseModify, parseRevert, planModify } from './modify.mjs';
+import { CHECK, addItem, addedLine, findItem, neededLine, parseChecklistAdd, parseChecklistOp, planItem, removeItem, setStatus, unknownPart } from './checklist.mjs';
+import { projectMemoryText } from './memory.mjs';
 import { isShowHow, locateHole, stepMarks } from './connect.mjs';
 import { CONSENT_GREETING, CONSENT_ON, KEEP_DAYS, NO_RECORDING_SAY, createConsentGate, isNoRecord, pruneRuns } from './consent.mjs';
 
@@ -85,7 +88,7 @@ const agent = defineAgent({
     const consented = () => !!gate?.given;
     const recording = () => !!gate?.recording;
     const consentLog = [];   // {type:'consent', state, at} records, written at the top of conversation.json
-    const usage = { ttsChars: 0, brain: 0, scans: 0, research: 0, analyses: 0, holes: 0 };   // logged at call end
+    const usage = { ttsChars: 0, brain: 0, scans: 0, research: 0, analyses: 0, holes: 0, edits: 0, checklist: 0 };   // logged at call end
 
     // ---- caller video in: keep only the newest raw frame; convert + rotate lazily (<=15 fps, not per incoming frame) ----
     let raw = null;          // { frame: VideoFrame, rotation: number } from the current caller track
@@ -234,7 +237,7 @@ const agent = defineAgent({
     };
     const saveRecap = async () => {
       if (!await ensureRun()) return;
-      await writeFile(`${runDir}recap.json`, JSON.stringify({ callId, task: TASK, provider: brain.provider, recap }, null, 2));
+      await writeFile(`${runDir}recap.json`, JSON.stringify({ callId, task: TASK, provider: brain.provider, recap, ...(checklist.length ? { checklist } : {}) }, null, 2));
     };
     /** A step picture for the voyage log, or '' when snapshots are off ("stop recording"). */
     const stepPicture = async () => {
@@ -305,6 +308,9 @@ const agent = defineAgent({
           const r = await handleUtterance(brain, circuit, heard, image);
           if (r.plan?.source === 'brain') usage.brain++;
           if (ended) return true;
+          // A part the library can't model: onto the parts list with its wiring (checklist.mjs), not a flat refusal.
+          const unk = !r.changed && r.rejected?.some(x => /^I don't have an? .+ in my parts library/.test(x.reason)) ? unknownPart(heard) : null;
+          if (unk) { circuitBusy = false; await checklistAddTurn(heard, { query: heard, name: unk, qty: 1 }); return true; }
           circuit = r.state;
           const n = nextStep(circuit);
           sayText = [r.say, r.changed && n ? `First: ${n.say}` : ''].filter(Boolean).join(' ');
@@ -349,6 +355,7 @@ const agent = defineAgent({
         const cut = await cropJpeg(image.jpeg, spec.bbox, 1024);
         const n = ++scanNo;
         lastScan = { id: n, spec, cut, at: Date.now() };
+        dropEdits('scan');   // a new scan is a new model: the old scan's voice edits don't apply to it
         live.send({ type: 'scan', id: n, at: Date.now(), spec, photo: cut.jpeg.toString('base64'), crop: cut.rect, ms: spec.ms, model: spec.model || '' });
         // Researched interior: what's inside this object (public teardowns, for its exact model when the scan named
         // one), so the laptop's explode is realistic. Runs in the background (20-30 s, cached); the scan works without it.
@@ -389,33 +396,35 @@ const agent = defineAgent({
     // part it added itself. Sent with every brain turn; short (≤ ~600 chars); the brain trusts it over the camera for
     // what exists in the plan, and uses the camera only for what is physically plugged in.
     const projectMemory = () => {
-      const lines = [];
-      const boardName = lastPart && lastPart !== 'none' ? lastPart : '';
-      if (boardName) lines.push(`board recognised: ${boardName}`);
-      if (circuit.components?.length) {
-        const n = nextStep(circuit), done = circuit.done?.length || 0;
-        lines.push(`circuit the caller asked for (by voice): ${describeCircuit(circuit)}`);
-        lines.push(n ? `wiring progress: step ${n.index} of ${n.total}, next: ${n.say}` : `wiring: all ${done} steps done`);
-      }
-      if (removedStack.length) lines.push(`parts removed in the 3D twin: ${removedStack.map(p => p.name).join(', ')}`);
-      if (lastAnalysis) lines.push(`last combo verdict: ${lastAnalysis.title} (${lastAnalysis.works ? 'works' : "won't work"})`);
-      if (lastScan) lines.push(`last scan: ${lastScan.spec.model_guess || lastScan.spec.name}${lastScan.spec.model_source === 'user' ? ' (the caller confirmed the model)' : ''}`);
-      if (!lines.length) return '';
-      return `[Project memory from this call. Trust it for what the caller has planned and added. A part added by voice may not be plugged in yet: never say it is missing or that you don't have it; if you can't see it on camera, say it isn't plugged in yet and say where it goes. ${lines.join('; ').slice(0, 900)}]`;
+      const has = circuit.components?.length, n = has ? nextStep(circuit) : null;
+      return projectMemoryText({
+        board: lastPart && lastPart !== 'none' ? lastPart : '',
+        circuit: has ? describeCircuit(circuit) : '',
+        wiring: has ? (n ? `wiring progress: step ${n.index} of ${n.total}, next: ${n.say}` : `wiring: all ${circuit.done?.length || 0} steps done`) : '',
+        removed: removedStack.map(p => p.name),
+        analysis: lastAnalysis,
+        scan: lastScan ? `${lastScan.spec.model_guess || lastScan.spec.name}${lastScan.spec.model_source === 'user' ? ' (the caller confirmed the model)' : ''}` : '',
+        mods: activeMods(),
+        checklist,
+      });
     };
     const stageParts = () => (stageScope && stage[stageScope]?.parts) || [];
     const analyzer = createAnalyzer({ brain });
     const analyzeTurn = async msg => {
       if (!consented() || ended) return;
+      clearTimeout(combineTimer); combineTimer = null;
+      // The new design: the page's modified list, else this call's voice edits for that scope (modify.mjs).
+      const modified = msg.modified?.length ? msg.modified : activeMods(msg.scope).map(m => ({ id: m.target.id, name: m.target.name, change: m.change }));
+      msg = { ...msg, ...(modified.length ? { modified } : {}) };
       const cached = analyzer.cached(msg);
       if (!cached && !budget()) return;
       if (!cached) { usage.brain++; usage.analyses++; }
       const interior = msg.scope === 'scan' ? interiors.get(msg.board.toLowerCase()) || null : null;
       try {
-        console.log(`[analysis] ${msg.scope} ${msg.board}: removed ${msg.removed.map(p => p.name).join(', ') || 'nothing'}${cached ? ' (cached)' : ''}`);
+        console.log(`[analysis] ${msg.scope} ${msg.board}: removed ${msg.removed.map(p => p.name).join(', ') || 'nothing'}${modified.length ? `, modified ${modified.map(p => p.name).join(', ')}` : ''}${cached ? ' (cached)' : ''}`);
         const r = await analyzer.analyze(msg, { interior });
         if (ended) return;
-        live.send({ type: 'analysis', id: ++analysisNo, scope: msg.scope, board: msg.board, kept: msg.kept, removed: msg.removed,
+        live.send({ type: 'analysis', id: ++analysisNo, scope: msg.scope, board: msg.board, kept: msg.kept, removed: msg.removed, ...(modified.length ? { modified } : {}),
           title: r.title, works: r.works, summary: r.summary, pros: r.pros, cons: r.cons, needs: r.needs, verdict: r.verdict, cached: r.cached, ms: r.ms, model: r.model });
         lastAnalysis = r;
         console.log(`[analysis] ${r.works ? 'works' : 'does not work'}: ${r.title} (${r.ms} ms${r.cached ? ', cached' : ''})`);
@@ -449,6 +458,7 @@ const agent = defineAgent({
         if (!c.query) {
           live.send({ type: 'twin', action: c.action, ...(stageScope ? { scope: stageScope } : {}) });
           if (c.action === 'restore') { removedStack.length = 0; lines.push('Everything is back.'); }
+          else if (c.action === 'combine' && activeMods(stageScope).length) { lines.push("Combining the new design. I'll check whether it works."); scheduleDesignCheck(); }
           else if (c.action === 'combine') lines.push("Combining the rest. I'll check whether it still works.");
           else lines.push(c.say);
           continue;
@@ -466,12 +476,169 @@ const agent = defineAgent({
           continue;
         }
         live.send({ type: 'twin', action: c.action, target: hit.id, name: hit.name, ...(stageScope ? { scope: stageScope } : {}) });
-        if (c.action === 'remove') removedStack.push(hit);
+        if (c.action === 'remove') { removedStack.push(hit); lastRemoveAt = Date.now(); }
         if (c.action === 'restore') { const i = removedStack.findIndex(p => p.id === hit.id); if (i >= 0) removedStack.splice(i, 1); }
         focusPart = hit;
         lines.push(PART_SAY[c.action](hit.name));
       }
       say(lines.join(' '), 0);
+      return true;
+    };
+
+    // ---- voice edits of one part on the 3D stage (modify.mjs): "change the tip to a brush", "make the clip gold" ----
+    // Words + target are matched here (no brain call); ONE structured brain call makes the edit spec, cleaned strictly.
+    // The page gets {type:'modify', id, scope, target, change, say} with the part's CUMULATIVE change versus the original
+    // ({type:'modify', revert:true, ...} = back to the original). The edits feed project memory and the combo analysis.
+    const edits = [];          // applied edits in order: {seq, key, scope, target, delta, change, prev, say, at}
+    const active = new Map();  // `${scope}:${target.id}` -> {scope, target, change}: each part's cumulative edit
+    let editSeq = 0, editBusy = false, lastRemoveAt = 0, combineTimer = null;
+    const activeMods = scope => [...active.values()].filter(m => !scope || m.scope === scope);
+    const dropEdits = scope => {
+      for (const [k, m] of active) if (m.scope === scope) active.delete(k);
+      for (let i = edits.length - 1; i >= 0; i--) if (edits[i].scope === scope) edits.splice(i, 1);
+    };
+    const stageObject = scope => stage[scope]?.board || (scope === 'scan' ? lastScan?.spec.model_guess || lastScan?.spec.name : lastPart) || '';
+    /** The scan primitive behind a stage part (name first; the page's part-<i> index only for a plain, non-interior scan). */
+    const scanSpecFor = t => {
+      if (!lastScan) return null;   // the page shows a scan this call didn't make (a replay): no primitive to send
+      const parts = lastScan.spec?.parts || [], n = t.name.toLowerCase();
+      const byName = parts.find(p => p.name.toLowerCase() === n);
+      if (byName) return byName;
+      const i = /^part-(\d+)$/.exec(t.id);
+      return i && !interiors.has(lastScan.spec.name.toLowerCase()) ? parts[Number(i[1])] || null : null;
+    };
+    const sendEdit = (rec, change, sayText, revert = false) => live.send({ type: 'modify', id: rec.seq, scope: rec.scope, target: rec.target,
+      ...(revert ? { revert: true } : { change }), say: sayText, ...(!revert && rec.caveat ? { caveat: rec.caveat } : {}) });
+    /** @returns {Promise<boolean>} true if handled */
+    const modifyTurn = async heard => {
+      if (isScanIntent(heard)) return false;
+      const p = parseModify(heard);
+      if (!p || !stageScope) return false;
+      const parts = stageParts();
+      const hit = p.query === '__it' ? (focusPart || edits.at(-1)?.target) : matchPart(p.query, parts);
+      if (!hit) return false;   // not a part on the stage: an ordinary turn answers it
+      if (stageScope === 'circuit' && partFromWords(p.rest)) return false;   // "swap the sensor for a servo": a real circuit change
+      console.log(`[heard] ${heard} (modify ${hit.name}: ${p.rest})`); live.send({ type: 'heard', text: heard });
+      if (editBusy) { say('One change at a time. Say it again in a moment.', 0); return true; }
+      if (edits.length >= EDIT.maxMods) { say("That's a lot of changes. Undo one first.", 0); return true; }
+      if (!budget()) return true;
+      editBusy = true;
+      const scope = stageScope, target = { id: hit.id, name: hit.name }, key = `${scope}:${target.id}`, before = active.get(key)?.change || null;
+      try {
+        const filler = setTimeout(() => say('One sec, changing it.', 0), FILLER_MS);
+        usage.brain++; usage.edits++;
+        const e = await planModify(brain, { request: heard, scope, object: stageObject(scope), target, spec: scope === 'scan' ? scanSpecFor(target) : null,
+          current: before, others: parts.filter(x => x.id !== target.id).map(x => x.name) }).finally(() => clearTimeout(filler));
+        if (ended) return true;
+        if (!e.feasible) { console.log(`[modify] ${target.name}: not feasible (${e.caveat || e.say})`); say(e.say, 0); return true; }
+        const change = mergeChange(before, e.change);
+        const rec = { seq: ++editSeq, key, scope, target, delta: e.change, change, prev: before, say: e.say, caveat: e.caveat, at: Date.now() };
+        edits.push(rec); active.set(key, { scope, target, change });
+        focusPart = hit;
+        console.log(`[modify] ${target.name}: ${JSON.stringify(change)} (${e.ms} ms)`);
+        sendEdit(rec, change, e.say);
+        say(e.say, 0);
+        recap.push({ step: `Changed: ${target.name}`, note: change.note || '', say: e.say, image: '' });
+        void saveRecap();
+      } finally { editBusy = false; }
+      return true;
+    };
+    /** "Undo that" / "put the tip back": undo the latest edit, or every edit of a named part. @returns {boolean} */
+    const revertTurn = heard => {
+      if (!edits.length) return false;
+      let r = parseRevert(heard);
+      if (!r && /^\W*(?:put|change|turn) it back\W*$/i.test(heard)) r = { query: '__last' };
+      if (!r) return false;
+      if (r.query === '__last') {
+        const rec = edits.at(-1);
+        if (rec.at < lastRemoveAt) return false;   // the latest change was a removal: twin-voice puts it back
+        console.log(`[heard] ${heard} (undo the last edit: ${rec.target.name})`); live.send({ type: 'heard', text: heard });
+        edits.pop();
+        if (rec.prev) { active.set(rec.key, { scope: rec.scope, target: rec.target, change: rec.prev }); sendEdit(rec, rec.prev, `Undid that. The ${rec.target.name.toLowerCase()} is back to the earlier change.`); }
+        else { active.delete(rec.key); sendEdit(rec, null, `Put the ${rec.target.name.toLowerCase()} back the way it was.`, true); }
+        say(rec.prev ? `Undid the last change to the ${rec.target.name.toLowerCase()}.` : `Undid that. The ${rec.target.name.toLowerCase()} is back to the original.`, 0);
+        return true;
+      }
+      const mods = activeMods();
+      const hit = matchPart(r.query, mods.map(m => m.target));
+      if (!hit || removedStack.some(p => p.id === hit.id)) return false;   // a removed part: twin-voice restores it
+      const m = mods.find(x => x.target.id === hit.id && x.scope === stageScope) || mods.find(x => x.target.id === hit.id);
+      const key = `${m.scope}:${m.target.id}`, last = [...edits].reverse().find(x => x.key === key);
+      console.log(`[heard] ${heard} (revert ${m.target.name})`); live.send({ type: 'heard', text: heard });
+      for (let i = edits.length - 1; i >= 0; i--) if (edits[i].key === key) edits.splice(i, 1);
+      active.delete(key);
+      const line = `Put the original ${m.target.name.toLowerCase()} back.`;
+      sendEdit(last || { seq: ++editSeq, scope: m.scope, target: m.target }, null, line, true);
+      say(line, 0);
+      return true;
+    };
+    /** After a voice combine with edits: the page should send 'analyze'; if it doesn't within 4 s, check the design here. */
+    const scheduleDesignCheck = () => {
+      clearTimeout(combineTimer);
+      combineTimer = setTimeout(() => {
+        combineTimer = null;
+        const scope = stageScope, parts = stageParts();
+        if (!scope || !parts.length || ended) return;
+        const gone = new Set(removedStack.map(p => p.id));
+        console.log('[analysis] no analyze from the page after combine: checking the new design from the agent');
+        void analyzeTurn({ type: 'analyze', scope, board: stageObject(scope), kept: parts.filter(p => !gone.has(p.id)), removed: parts.filter(p => gone.has(p.id)) });
+      }, 4000);
+    };
+
+    // ---- the parts checklist (checklist.mjs): parts the library can't model go on a list with how they'd wire ----
+    let checklist = [], checkSeq = 0, checkBusy = false;
+    const sendChecklist = () => live.send({ type: 'checklist', items: checklist });
+    const article = n => (/^(?:[aeiou]|oled|led|lcd|rfid|ir\b|rtc|sd\b)/i.test(n) ? 'an' : 'a');
+    const lower = n => n.replace(/^[A-Z][a-z]/, c => c.toLowerCase());
+    /** "I have the buzzer", "remove the buzzer from the list", "what do I still need?": no brain call. @returns {boolean} */
+    const checklistOpTurn = heard => {
+      if (!checklist.length) return false;
+      let op = parseChecklistOp(heard);
+      if (!op) {   // a plain "remove the buzzer" for a listed part that isn't on the 3D stage or in the circuit
+        const t = parseTwin(heard);
+        const q = t?.length === 1 && t[0].action === 'remove' && t[0].query && !t[0].query.startsWith('__') ? t[0].query : '';
+        if (q && !matchPart(q, stageParts()) && !(circuit.components.length && findComponent(circuit, q)) && findItem(checklist, q)) op = { op: 'remove', query: q };
+      }
+      if (!op) return false;
+      if (op.op === 'list') { console.log(`[heard] ${heard} (parts list)`); live.send({ type: 'heard', text: heard }); say(neededLine(checklist), 0); return true; }
+      const it = findItem(checklist, op.query);
+      if (!it) return false;
+      console.log(`[heard] ${heard} (parts list: ${op.op} ${it.name})`); live.send({ type: 'heard', text: heard });
+      if (op.op === 'remove') { checklist = removeItem(checklist, it.id); say(`Took the ${lower(it.name)} off your parts list.`, 0); }
+      else if (op.op === 'have') { checklist = setStatus(checklist, it.id, 'have'); say(`Checked off the ${lower(it.name)}.`, 0); }
+      else { checklist = setStatus(checklist, it.id, 'needed'); say(`Okay, the ${lower(it.name)} is on your list as needed.`, 0); }
+      sendChecklist(); void saveRecap();
+      return true;
+    };
+    /** "add a buzzer": a part the library can't model -> the list, with wiring from ONE structured brain call. */
+    const checklistAddTurn = async (heard, given = null) => {
+      if (!given && isScanIntent(heard)) return false;
+      const a = given || parseChecklistAdd(heard, partFromWords);
+      if (!a) return false;
+      if (!given) { console.log(`[heard] ${heard} (parts list: add ${a.name})`); live.send({ type: 'heard', text: heard }); }
+      const have = checklist.find(x => x.name === a.name);
+      if (have) { say(`The ${lower(a.name)} is already on your parts list${have.status === 'have' ? ', checked off' : ''}.`, 0); return true; }
+      if (checklist.length >= CHECK.maxItems) { say('Your parts list is full. Remove something from it first.', 0); return true; }
+      if (checkBusy) { say('One part at a time. Say it again in a moment.', 0); return true; }
+      if (!budget()) return true;
+      checkBusy = true;
+      try {
+        const t = boardPins(circuit.board);
+        const pins = t ? `signal ${t.order.digital.join(', ')}; PWM ${t.order.pwm.join(', ')}; analog ${t.order.analog.join(', ')}; I2C SDA ${t.order.sda.join('/')}, SCL ${t.order.scl.join('/')}; power ${[t.v5, t.v33].filter(Boolean).join(', ')}, GND` : '';
+        const filler = setTimeout(() => say(`Okay, ${article(a.name)} ${lower(a.name)}. One sec.`, 0), FILLER_MS);
+        usage.brain++; usage.checklist++;
+        const { item } = await planItem(brain, { request: heard, name: a.name, board: t?.part?.name || circuit.board, pins,
+          project: circuit.components.length ? describeCircuit(circuit) : '' }, { id: `ck-${++checkSeq}`, name: a.name, qty: a.qty }).finally(() => clearTimeout(filler));
+        if (ended) return true;
+        const r = addItem(checklist, item);
+        if (!r.added) { say(`The ${lower(a.name)} is already on your parts list.`, 0); return true; }
+        checklist = r.items;
+        console.log(`[checklist] + ${item.name} (${item.suggested.part}): ${item.suggested.pins.join(' | ') || 'no wiring'}`);
+        sendChecklist();
+        say(addedLine(item), 0);
+        recap.push({ step: `Parts list: ${item.name}`, note: [item.suggested.part, ...item.suggested.pins].join('; '), say: addedLine(item), image: '' });
+        void saveRecap();
+      } finally { checkBusy = false; }
       return true;
     };
 
@@ -508,7 +675,11 @@ const agent = defineAgent({
         console.log(`[heard] ${heard} (show the current step)`); live.send({ type: 'heard', text: heard });
         await showNext({ speak: true }); return;
       }
+      if (revertTurn(heard)) return;              // "undo that" / "put the tip back" after a voice edit
+      if (checklistOpTurn(heard)) return;         // "I have the buzzer" / "what do I still need?"
       if (twinTurn(heard)) return;
+      if (await modifyTurn(heard)) return;        // "change the tip to a brush": one structured brain call
+      if (await checklistAddTurn(heard)) return;  // "add a buzzer": a part the library can't model -> the parts list
       if (CIRCUIT_ON && !isScanIntent(heard) && await circuitTurn(heard)) return;
       if (ACKS.test(heard.trim())) { console.log(`[heard] ${heard} (acknowledgement, no brain call)`); live.send({ type: 'heard', text: heard }); return; }
       if (last && REPLAY.test(heard.trim())) {
@@ -568,6 +739,7 @@ const agent = defineAgent({
     };
     ctx.addShutdownCallback(async () => {
       ended = true;
+      clearTimeout(combineTimer);
       clearInterval(timer);
       clearInterval(monitorTimer);
       clearInterval(shotTimer);
@@ -579,7 +751,7 @@ const agent = defineAgent({
       ctx.room.off(RoomEvent.TrackMuted, mutedVideo);
       // Recap first (its own process, so it finishes even if this job is torn down), then close media.
       // One usage line per call (npm run usage sums them): ElevenLabs TTS characters, brain calls by kind.
-      console.log(`[usage] call ${callId}: tts_chars=${usage.ttsChars} brain_calls=${usage.brain} scans=${usage.scans} research=${usage.research} analyses=${usage.analyses} hole_lookups=${usage.holes} provider=${brain.provider} consent=${gate?.state || 'none'}${gate?.noRecording ? ' no-recording' : ''}`);
+      console.log(`[usage] call ${callId}: tts_chars=${usage.ttsChars} brain_calls=${usage.brain} scans=${usage.scans} research=${usage.research} analyses=${usage.analyses} hole_lookups=${usage.holes} edits=${usage.edits} parts_list=${usage.checklist} provider=${brain.provider} consent=${gate?.state || 'none'}${gate?.noRecording ? ' no-recording' : ''}`);
       try {
         if (consented() && (brain.messages.length || recap.length)) {
           await brain.idle();

@@ -47,6 +47,9 @@ export function parseTwin(text) {
   if (m) { const t = splitTargets(m[1]); if (t.length) return [...t.map(query => ({ action: 'remove', query })), { action: 'combine' }]; }
   if (/^(?:combine|merge)(?: (?:the rest|everything|it|them|it all|all|all of it|what'?s left|the remaining(?: parts)?|the parts|the rest of it|together))?$/.test(s)
     || /^put (?:the rest|what'?s left|the remaining parts) together$/.test(s)) return [{ action: 'combine' }];
+  // after voice edits (modify.mjs): "show me the new design" = combine and judge the new design
+  if (/^(?:(?:show|give) me|let me see|show|combine|build|put together|check|judge|analy[sz]e|rate) (?:the |my |our )?(?:new|final|modified|changed|updated|edited) (?:design|version|model|build|thing|one)$/.test(s)
+    || /^what does (?:the |my )?(?:new|modified|changed) (?:design|version|model|one) look like$/.test(s)) return [{ action: 'combine', design: true }];
   // view commands (explode / assemble / rotate ...): the original fast path
   const view = TWIN_CMDS.find(([re]) => re.test(s));
   if (view) return [{ action: view[1], say: view[2] }];

@@ -6,6 +6,7 @@ import { createServer } from 'node:http';
 import { readFile } from 'node:fs/promises';
 import { createHash } from 'node:crypto';
 import { WebSocket, WebSocketServer } from 'ws';
+import { EDIT, hasChange, sanitizeChange } from './modify.mjs';
 
 const PORT = Number(process.env.MENTOR_MONITOR_PORT || 8790);
 const APP = new URL('./twin.html', import.meta.url);   // monitor.html is only a redirect for servers started before this
@@ -40,9 +41,10 @@ const PRIVACY = new URL('../PRIVACY.md', import.meta.url);
 // ---------- page -> agent channel ----------
 // The laptop page may send two kinds of message (everything else is dropped):
 //   {type:'parts', scope, board, parts:[{id, name}]}                 what is on the 3D stage (so voice can target parts)
-//   {type:'analyze', scope, board, kept:[{id, name}], removed:[{id, name}]}   the user removed parts and combined the rest
+//   {type:'analyze', scope, board, kept:[{id, name}], removed:[{id, name}], modified?:[{id, name, change}]}
+//                                                                    the user removed / modified parts and combined the rest
 // Strict schema: known keys only, strings capped and stripped of control/bidi characters, at most 200 parts per list.
-export const PAGE = { maxParts: 200, nameLen: 60, idLen: 60, boardLen: 60, maxPayload: 32 * 1024, analyzeMs: 5000, partsPerSec: 4 };
+export const PAGE = { maxParts: 200, maxModified: EDIT.maxMods, nameLen: 60, idLen: 60, boardLen: 60, maxPayload: 32 * 1024, analyzeMs: 5000, partsPerSec: 4 };
 export const PAGE_SCOPES = ['board', 'scan', 'circuit'];
 const UNSAFE = /[\u0000-\u001f\u007f-\u009f\u200b-\u200f\u2028\u2029\u202a-\u202e\u2060-\u2064\u2066-\u2069\ufeff<>]/g;
 /** A page-supplied string: control, zero-width and bidi characters out, whitespace collapsed, capped. '' if not a string. */
@@ -59,11 +61,26 @@ function pageParts(list) {
   }
   return out;
 }
+/** modified:[{id, name, change}]: same caps as parts, at most 50; each change cleaned like a voice edit (modify.mjs). */
+function pageModified(list) {
+  if (list === undefined) return [];
+  if (!Array.isArray(list) || list.length > PAGE.maxModified) return null;
+  const out = [];
+  for (const p of list) {
+    if (!plain(p) || (p.change !== undefined && !plain(p.change))) return null;
+    const name = pageText(p.name, PAGE.nameLen), id = pageText(p.id, PAGE.idLen) || name;
+    const change = sanitizeChange(p.change);
+    if (!name || !hasChange(change)) continue;   // nothing to judge
+    out.push({ id, name, change });
+  }
+  return out;
+}
 /**
  * Validates one message from the laptop page. Never throws.
  * @param {string | Buffer | object} data raw WebSocket data (or an already parsed object)
  * @returns {{type: 'parts', scope: string, board: string, parts: {id: string, name: string}[]}
- *   | {type: 'analyze', scope: string, board: string, kept: {id: string, name: string}[], removed: {id: string, name: string}[]} | null}
+ *   | {type: 'analyze', scope: string, board: string, kept: {id: string, name: string}[], removed: {id: string, name: string}[],
+ *      modified?: {id: string, name: string, change: object}[]} | null}   modified only when the page sent some
  */
 export function validatePageMessage(data) {
   let m = data;
@@ -79,9 +96,9 @@ export function validatePageMessage(data) {
     return parts ? { type: 'parts', scope: m.scope, board, parts } : null;
   }
   if (m.type === 'analyze') {
-    const kept = pageParts(m.kept), removed = pageParts(m.removed);
-    if (!kept || !removed || kept.length + removed.length > PAGE.maxParts || !removed.length && !kept.length) return null;
-    return { type: 'analyze', scope: m.scope, board, kept, removed };
+    const kept = pageParts(m.kept), removed = pageParts(m.removed), modified = pageModified(m.modified);
+    if (!kept || !removed || !modified || kept.length + removed.length > PAGE.maxParts || !removed.length && !kept.length) return null;
+    return { type: 'analyze', scope: m.scope, board, kept, removed, ...(modified.length ? { modified } : {}) };
   }
   return null;
 }
@@ -182,7 +199,7 @@ export async function startLive() {
  * @param {{onPageMessage?: (msg: object) => void}} [opts] called with each valid, rate-limited page message
  */
 export async function createLiveServer(opts = {}) {
-  const state = { call: null, step: '', transcript: [], brain: '', turns: [], part: null, scans: [], circuit: null, analysis: null, consent: null };
+  const state = { call: null, step: '', transcript: [], brain: '', turns: [], part: null, scans: [], circuit: null, analysis: null, consent: null, modifications: [], checklist: null };
   const listeners = new Set(opts.onPageMessage ? [opts.onPageMessage] : []);
   const limit = createPageRateLimiter();   // one budget for all page sockets: analyze costs a brain call   // replayed to a page that connects mid-call
   // Only this machine's own page may connect (stops cross-site WebSocket hijacking and DNS rebinding).
@@ -243,13 +260,20 @@ export async function createLiveServer(opts = {}) {
     send(event) {
       if (event.type === 'call') {
         state.call = event;
-        if (event.state === 'live') { state.transcript = []; state.turns = []; state.step = ''; state.scans = []; state.circuit = null; state.analysis = null; state.consent = null; }   // a new call starts clean
+        if (event.state === 'live') { state.transcript = []; state.turns = []; state.step = ''; state.scans = []; state.circuit = null; state.analysis = null; state.consent = null; state.modifications = []; state.checklist = null; }   // a new call starts clean
       }
       if (event.type === 'step') state.step = event.text;
       if (event.type === 'brain') state.brain = event.brain;
       if (event.type === 'part') state.part = event;
       if (event.type === 'circuit') state.circuit = event;   // the latest project, replayed to a page that connects mid-call
-      if (event.type === 'scan') { state.scans.push(event); state.scans = state.scans.slice(-6); }   // ~150 KB each with the photo
+      if (event.type === 'scan') { state.scans.push(event); state.scans = state.scans.slice(-6); state.modifications = state.modifications.filter(x => x.scope !== 'scan'); }   // ~150 KB each with the photo; a new scan has no edits yet
+      // Voice edits (modify.mjs): the latest cumulative edit per part, replayed in order; a revert drops that part's edit.
+      if (event.type === 'modify' && event.target) {
+        const key = x => `${x.scope}:${x.target?.id}`;
+        state.modifications = state.modifications.filter(x => key(x) !== key(event));
+        if (!event.revert) state.modifications = [...state.modifications, event].slice(-EDIT.maxMods);
+      }
+      if (event.type === 'checklist') state.checklist = event;   // the whole parts list each time
       if (event.type === 'interior') { const sc = state.scans.find(x => x.id === event.id); if (sc) sc.interior = event.interior; }   // replayed with its scan
       if (event.type === 'analysis') state.analysis = event;
       if (event.type === 'consent') state.consent = event;
