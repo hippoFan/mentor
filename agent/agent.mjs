@@ -87,6 +87,7 @@ const agent = defineAgent({
       try {
         for await (const ev of new VideoStream(track)) {
           if (currentSid !== sid) break;
+          if (ev.frame.width < 64 || ev.frame.height < 64) continue;   // LiveKit sends 8x8 frames as a camera drops: not a picture
           raw = { frame: ev.frame, rotation: Number(ev.rotation) || 0 };
           stats.inFrames++;
         }
@@ -258,6 +259,8 @@ const agent = defineAgent({
         const image = now ? await frameJpeg(now) : null;
         const reply = await brain.turn(heard, image).finally(() => clearTimeout(filler));
         if (seq !== turnSeq || ended) return;   // they spoke again while we were thinking; answer the newer turn
+        // Safety: if Ody says "Stop…" about something it marked, make sure the mark shows as a red warning.
+        if (/^\s*stop\b/i.test(reply.say || '') && reply.marks.length && !reply.marks.some(m => m.kind === 'warn')) reply.marks[0] = { ...reply.marks[0], kind: 'warn' };
         // drawn on the caller's video only when asked for (or a warning); the laptop still gets every mark below
         const draw = shouldDraw(heard, reply.marks);
         marks = draw ? reply.marks : []; marksAt = Date.now();
