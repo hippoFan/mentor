@@ -42,7 +42,7 @@ flowchart LR
     P["iPhone<br/>FaceTime Video"] <-->|Chert| R(("LiveKit<br/>room"))
     R -->|caller video| V["latest frame"]
     R -->|caller voice| S["ElevenLabs Scribe<br/>speech → text"]
-    V --> B{{"Claude Fable 5.2<br/>what to say · where to point"}}
+    V --> B{{"Gemini<br/>what to say · where to point"}}
     S --> B
     B -->|marks + step| O["overlay<br/>arrows, rings, labels"]
     V --> O
@@ -56,9 +56,10 @@ flowchart LR
 - **The agent** (Node, `@livekit/agents`) joins that room. It keeps only the newest frame of the caller's camera and
   publishes its own video track at 15 fps: the caller's frame with Mentor's marks drawn on top.
 - **ElevenLabs** does the listening (Scribe v2 realtime) and the speaking (Flash v2.5).
-- **Claude Fable 5.2** is the brain (Gemini works too, via `MENTOR_BRAIN=gemini`). Each time you finish speaking, it gets what you said plus the current frame and
-  returns structured JSON: a sentence to say, up to three pixel coordinates to mark, the current step, and a recap note.
-  It is called once per spoken turn, never per frame.
+- **Gemini** (gemini-3.5-flash) is the brain; Claude Fable 5.2 is a drop-in alternative (`MENTOR_BRAIN=claude`). Each time
+  you finish speaking, it gets what you said plus the current frame and returns structured JSON: a sentence to say, up to
+  three points to mark, the current step, and a recap note. It is called once per spoken turn, never per frame
+  (about 2.6 s and 1.5k tokens a turn in testing).
 
 ## Run it
 
@@ -68,7 +69,7 @@ flowchart LR
 - An iPhone with FaceTime
 - A **Chert** line (free trial): `npx @trychert/facetime@0.1.0-beta.21 onboard`
 - A **LiveKit Cloud** project (free tier) for the room
-- A brain key: **Anthropic** (Claude Fable 5.2) *or* **Gemini** (free via Google AI Studio)
+- A brain key: **Gemini** (free via Google AI Studio) *or* **Anthropic** (Claude Fable 5.2)
 - An **ElevenLabs** API key
 
 ### Set up
@@ -188,8 +189,8 @@ mentor/
 Built in 12 hours for the HackUTA 2026 theme *Homer's Odyssey*, for the **Best Use of FaceTime (Chert)** and
 **Best Use of ElevenLabs** tracks.
 
-**Built with:** Chert · LiveKit Agents · ElevenLabs (Scribe v2 realtime, Flash v2.5) · Claude Fable 5.2 (Anthropic) ·
-Gemini (optional) · @napi-rs/canvas · Node.js
+**Built with:** Chert · LiveKit Agents · ElevenLabs (Scribe v2 realtime, Flash v2.5) · Gemini · Claude Fable 5.2 (optional) ·
+@napi-rs/canvas · Node.js
 
 ## License
 
