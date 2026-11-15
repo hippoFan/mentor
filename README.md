@@ -239,6 +239,7 @@ Built for the theme *Homer's Odyssey*, for **Best Use of FaceTime (Chert)** and 
 
 MIT for Ody's own code ([LICENSE](LICENSE)), with these exceptions:
 - `agent/chert-rooms.mjs` and `agent/greet.mjs` come from Chert's starter, and Chert's terms apply.
-- Inter is under the SIL Open Font License.
+- Inter is under the SIL Open Font License, and the MediaPipe hand model is under Apache-2.0.
+- Parts pin data comes from wokwi-elements (MIT) and Fritzing (CC-BY-SA 3.0); see `agent/data/parts/LICENSES.md`.
 - `agent/data/uno-pins.json` pin names/positions derive from [wokwi-elements](https://github.com/wokwi/wokwi-elements) (MIT, Copyright (c) 2019 Uri Shaked).
 - The film and README images use a public-domain (CC0) Arduino photo from Wikimedia Commons.

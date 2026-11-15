@@ -23,3 +23,6 @@ SOFTWARE.
 ---
 Exceptions: agent/chert-rooms.mjs and agent/greet.mjs are from Chert's starter (Chert's terms apply);
 agent/fonts/InterVariable.ttf is licensed under the SIL Open Font License 1.1 (agent/fonts/OFL-Inter.txt).
+agent/twin/models/hand_landmarker.task is Google's MediaPipe Hand Landmarker model (Apache License 2.0).
+agent/data/parts/ holds pin-position data from wokwi-elements (MIT) and Fritzing parts (CC-BY-SA 3.0); see
+agent/data/parts/LICENSES.md for per-file sources and attribution.
