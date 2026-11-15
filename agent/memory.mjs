@@ -11,7 +11,7 @@ import { checklistMemory } from './checklist.mjs';
  */
 // Always sent. Speech-to-text often hears a single mumbled word as a name ("Candace."), and the brain then kept calling
 // the caller that; and the old board-only habit made it refuse edits on other objects.
-export const RULES = '[Rules for this call: never call the caller by any name unless they clearly said "my name is ..."; Ody can scan, explode, take apart and edit ANY object by voice (pens, phones, anything), not only boards: never say it can\'t; if a request is unclear, ask one short question.]';
+export const RULES = '[Rules for this call: never call the caller by any name unless they clearly said "my name is ..."; Ody can scan, explode, take apart and edit ANY object by voice (pens, phones, anything), not only boards: never say it can\'t; if a request is unclear, ask one short question. Requests to remove, explode, combine or add parts mean the HOLOGRAM on the laptop unless the caller says "real board"; you cannot change the hologram yourself, so never say you did: tell them the short command to say, e.g. "Say: remove the Wi-Fi module".]';
 
 export function projectMemoryText({ board = '', circuit = '', wiring = '', removed = [], analysis = null, scan = '', mods = [], checklist = [] } = {}) {
   const lines = [];

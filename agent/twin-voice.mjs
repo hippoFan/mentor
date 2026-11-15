@@ -19,12 +19,14 @@ export const TWIN_CMDS = [
 export const MAX_WORDS = 7;
 
 // Politeness and filler that don't count toward the 7 words and are stripped before parsing.
-const LEAD = /^(?:(?:ok(?:ay)?|so|now|and|then|hey|please|can you|could you|would you|will you|go ahead and|let'?s|just|ody)[\s,]+)+/;
-const TAIL = /(?:[\s,]+(?:please|now|for me|thanks|thank you|on (?:the|my) (?:laptop|hologram|model|screen|twin)|from (?:the|my) (?:model|hologram|board|laptop)))+$/;
+const LEAD = /^(?:(?:ok(?:ay)?|so|now|and|then|hey|please|can you|could you|would you|will you|go ahead and|let'?s|just|ody|yes|yeah|yep|sure|alright|all right|um+|uh+)[\s,]+)+/;
+const TAIL = /(?:[\s,]+(?:please|now|for me|thanks|thank you|(?:on|in|from|off|out of) (?:the|my) (?:laptop|hologram|model|screen|twin|3d model|3d view|digital model)))+$/;
 const norm = t => String(t || '').toLowerCase().replace(/[’']/g, "'").replace(/[^a-z0-9'+\s-]/g, ' ').replace(/\s+/g, ' ').trim();
 /** The command words (fillers stripped), or '' if this isn't a short direct command. */
+// Speech-to-text keeps stutters ("re- remove the wifi", "ex- explode it"): drop a cut-off fragment that the next word starts with.
+const unstutter = s => s.replace(/\b([a-z]{1,6})- +(?=\1)/g, '').replace(/\b([a-z]+) \1\b/g, '$1');
 export function commandWords(text) {
-  const s = norm(text).replace(LEAD, '').replace(TAIL, '').trim();
+  const s = unstutter(norm(text)).replace(LEAD, '').replace(TAIL, '').trim();
   if (!s || s.split(' ').length > MAX_WORDS) return '';
   return s;
 }
@@ -62,7 +64,8 @@ export function parseTwin(text) {
   m = s.match(/^restore (.+)$/);
   if (m) { const q = cleanQuery(m[1]); if (q && !VAGUE.test(q)) return [{ action: 'restore', query: q }]; }
   // remove
-  m = s.match(/^(?:remove|hide|take out|take off|take away|delete|drop|pull out|pull off|get rid of|lose)\s+(.+)$/) || s.match(/^(?:take|pull)\s+(.+?)\s+(?:out|off|away)$/);
+  m = s.match(/^(?:remove|hide|take out|take off|take away|delete|drop|pull out|pull off|get rid of|lose)\s+(.+)$/) || s.match(/^(?:take|pull)\s+(.+?)\s+(?:out|off|away)$/)
+    || (/(?:out of|off) (?:the|my) (?:hologram|model|twin|3d model)$/.test(norm(text)) ? s.match(/^(?:take|pull)\s+(.+)$/) : null);
   if (m) {
     const q = m[1].trim();
     if (/^(?:it|that|that one|this one)$/.test(q)) return [{ action: 'remove', query: '__it' }];
