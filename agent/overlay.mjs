@@ -9,9 +9,11 @@ GlobalFonts.registerFromPath(fileURLToPath(new URL('./fonts/InterVariable.ttf', 
 // The caller holds a phone upright, so by default Mentor sends portrait video that fills their screen.
 // MENTOR_OUT=landscape restores the Chert starter's 640x360 (x MENTOR_OUT_SCALE).
 const PORTRAIT = (process.env.MENTOR_OUT || 'portrait') !== 'landscape';
-const K = PORTRAIT ? 1.5 : Number(process.env.MENTOR_OUT_SCALE || 1);
-export const WIDTH = PORTRAIT ? 540 : 640 * K;
-export const HEIGHT = PORTRAIT ? 960 : 360 * K;
+// Portrait 720x1280 by default (sharper on the phone); MENTOR_OUT_HD=0 drops to 540x960 for weak laptops/networks.
+const HD = process.env.MENTOR_OUT_HD !== '0';
+const K = PORTRAIT ? (HD ? 2 : 1.5) : Number(process.env.MENTOR_OUT_SCALE || 1);
+export const WIDTH = PORTRAIT ? (HD ? 720 : 540) : 640 * K;
+export const HEIGHT = PORTRAIT ? (HD ? 1280 : 960) : 360 * K;
 export const FPS = Number(process.env.MENTOR_FPS || 24);   // video back into the call (Chert starter used 15)
 
 const ACCENT = '#FFC845';   // Mentor yellow: only Mentor's own marks

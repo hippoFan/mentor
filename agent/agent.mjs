@@ -121,7 +121,11 @@ const agent = defineAgent({
       stats.outFrames++; stats.renderMs += performance.now() - t0; if (latest) stats.size = `${latest.width}x${latest.height}`;
     };
     frame();
-    await ctx.room.localParticipant.publishTrack(track, { source: TrackSource.SOURCE_CAMERA });
+    // One crisp layer (no simulcast) at a generous bitrate: the picture the caller sees is the product.
+    await ctx.room.localParticipant.publishTrack(track, {
+      source: TrackSource.SOURCE_CAMERA, simulcast: false,
+      videoEncoding: { maxBitrate: BigInt(Number(process.env.MENTOR_OUT_BITRATE || 2_500_000)), maxFramerate: FPS },
+    });
     const timer = setInterval(frame, 1000 / FPS);
     const statsTimer = setInterval(() => {
       if (!stats.outFrames) return;
