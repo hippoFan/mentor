@@ -288,7 +288,7 @@ html.v2 body,html.v2 .paper,html.v2 .forge-page{background:var(--clay),var(--pap
 #page-settings .pk-column{right:3%;bottom:0;width:calc(110px * var(--ody-motif-scale-columns));height:calc(310px * var(--ody-motif-scale-columns));background-image:var(--pk-column);background-size:contain;background-position:bottom}
 @media (max-width:1180px){ #page-profile .pk-cypress,#page-settings .pk-column,#page-main .pk-sprig-l,#page-main .pk-sprig-r{display:none} }
 /* Argos: the kit's ink hound on a papyrus disc */
-html.v2 #argos-btn{background:var(--pk-argos) 54% 46%/58% auto no-repeat,var(--clay),var(--parchment)}
+html.v2 #argos-btn{background:var(--pk-argos) 54% 46%/58% auto no-repeat,var(--oak,#865628)}   /* honey oak like the call panel: the cream dog stands out */
 html.v2 #argos-btn > svg{visibility:hidden}
 /* The Forge: the kit's forge over ink waves at the foot of the page, a sun in the sky */
 .forge-hearth{height:calc(150px * var(--ody-motif-scale-forge))}
