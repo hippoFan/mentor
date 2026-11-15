@@ -109,7 +109,25 @@ async function inlineDetector(video, force, noGpu) {
  */
 export async function startHands({ onHands }) {
   // camera first, so the permission prompt answers the click straight away; then the model (about 8 MB, local)
-  const stream = await navigator.mediaDevices.getUserMedia({ video: { width: { ideal: 640 }, height: { ideal: 480 }, frameRate: { ideal: 30, max: 30 }, facingMode: 'user' }, audio: false });
+  // Many laptops (this Lenovo included) expose two cameras: the colour one and an infrared face-unlock one ("Integrated I",
+  // "IR"). The IR one shows black under normal light, and browsers may pick it by default. Prefer a colour camera;
+  // ?cam=<part of the camera's name> picks one by hand.
+  const look = { width: { ideal: 640 }, height: { ideal: 480 }, frameRate: { ideal: 30, max: 30 } };
+  const isIR = l => /\bIR\b|infra ?red|Integrated I\b|: ?Integrated I$/i.test(l || '');
+  let stream = await navigator.mediaDevices.getUserMedia({ video: { ...look, facingMode: 'user' }, audio: false });
+  try {
+    const want = new URLSearchParams(location.search).get('cam') || '';
+    const cur = stream.getVideoTracks()[0];
+    if (want || isIR(cur?.label)) {
+      const cams = (await navigator.mediaDevices.enumerateDevices()).filter(d => d.kind === 'videoinput');
+      const pick = want ? cams.find(d => d.label.toLowerCase().includes(want.toLowerCase())) : cams.find(d => d.label && !isIR(d.label));
+      if (pick && pick.label !== cur?.label) {
+        for (const t of stream.getTracks()) t.stop();
+        stream = await navigator.mediaDevices.getUserMedia({ video: { ...look, deviceId: { exact: pick.deviceId } }, audio: false });
+      }
+    }
+    console.log('[twin] hands camera:', stream.getVideoTracks()[0]?.label || '(unnamed)');
+  } catch (e) { console.warn('[twin] camera pick skipped:', e?.message || e); }
   const video = document.createElement('video');
   video.muted = true; video.playsInline = true; video.srcObject = stream;
   const q = new URLSearchParams(location.search), force = (q.get('handsDelegate') || '').toUpperCase();
