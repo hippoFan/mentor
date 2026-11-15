@@ -11,58 +11,58 @@ import { subscribe } from './shell.js';
 
 // Tokens come from /twin/odyssey.css; the fallbacks keep the panel readable on a page server without it.
 const css = `
-#argos-btn{position:fixed;right:calc(var(--gutter,24px) + 28px);bottom:calc(var(--gutter,24px) + 40px);z-index:60;width:76px;height:76px;border-radius:50%;border:0;padding:0;
+#argos-btn{position:fixed;right:calc(var(--gutter,var(--ody-space-6)) + var(--ody-space-7));bottom:calc(var(--gutter,var(--ody-space-6)) + var(--ody-space-8));z-index:60;width:calc(var(--ody-space-unit) * 19);height:calc(var(--ody-space-unit) * 19);border-radius:50%;border:0;padding:0;
   background:var(--brick,#983a34);color:var(--bone,#fdf5cc);cursor:pointer;display:grid;place-items:center;
   box-shadow:0 0 0 3px var(--parchment,#fdf5cc),0 0 0 5px var(--navy,#12233f),0 14px 28px #12233f80;transition:transform var(--t-hover,160ms) var(--ease-out,ease-out)}
 #argos-btn:hover{transform:translateY(-3px)}
 #argos-btn:active{transform:translateY(1px);transition-duration:var(--t-press,90ms)}
-#argos-btn:focus-visible{outline:3px solid var(--torch,#ea872f);outline-offset:10px}
-#argos-btn svg{width:54px;height:38px;margin-top:-4px}
-#argos-btn .argos-name{position:absolute;bottom:-14px;left:50%;transform:translateX(-50%);padding:5px 10px;border-radius:999px;background:var(--torch,#ea872f);color:var(--navy,#12233f);
-  font:600 14px/1 var(--f-body,Arial,sans-serif);white-space:nowrap;box-shadow:0 0 0 1.5px var(--navy,#12233f)}
+#argos-btn:focus-visible{outline:calc(var(--ody-space-unit) * 0.75) solid var(--torch,#ea872f);outline-offset:calc(var(--ody-space-unit) * 2.5)}
+#argos-btn svg{width:calc(var(--ody-space-unit) * 13.5);height:calc(var(--ody-space-unit) * 9.5);margin-top:calc(var(--ody-space-1) * -1)}
+#argos-btn .argos-name{position:absolute;bottom:calc(var(--ody-space-4) * -1);left:50%;transform:translateX(-50%);padding:var(--ody-space-1) var(--ody-space-3);border-radius:var(--ody-radius-pill);background:var(--torch,#ea872f);color:var(--navy,#12233f);
+  font:600 var(--ody-text-xs)/1 var(--f-body,Arial,sans-serif);white-space:nowrap;box-shadow:0 0 0 1.5px var(--navy,#12233f)}
 #argos-btn[aria-expanded="true"]{box-shadow:0 0 0 3px var(--parchment,#fdf5cc),0 0 0 5px var(--torch,#ea872f),0 14px 28px #12233f80}
-#argos-panel{position:fixed;right:var(--gutter,24px);bottom:calc(var(--gutter,24px) + 140px);z-index:61;width:min(460px,calc(100vw - 32px));height:min(560px,calc(100vh - 260px));min-height:300px;
-  display:flex;flex-direction:column;background:var(--navy,#12233f);color:var(--bone,#fdf5cc);border-radius:var(--r-lg,20px);overflow:hidden;
-  font:400 18px/1.4 var(--f-body,Arial,sans-serif);box-shadow:0 0 0 1.5px var(--navy,#12233f),0 24px 48px -16px #12233fcc}
+#argos-panel{position:fixed;right:var(--gutter,var(--ody-space-6));bottom:calc(var(--gutter,var(--ody-space-6)) + calc(var(--ody-space-unit) * 35));z-index:61;width:min(calc(var(--ody-space-unit) * 115),calc(100vw - calc(var(--ody-space-unit) * 8)));height:min(calc(var(--ody-space-unit) * 140),calc(100vh - calc(var(--ody-space-unit) * 65)));min-height:calc(var(--ody-space-unit) * 75);
+  display:flex;flex-direction:column;background:var(--navy,#12233f);color:var(--bone,#fdf5cc);border-radius:var(--r-lg,var(--ody-radius-md));overflow:hidden;
+  font:400 var(--ody-text-md)/1.4 var(--f-body,Arial,sans-serif);box-shadow:0 0 0 1.5px var(--navy,#12233f),0 24px 48px -16px #12233fcc}
 #argos-panel[hidden]{display:none}
 
-.argos-head{display:flex;align-items:center;gap:10px;padding:10px 12px 8px 16px}
-.argos-head h2{flex:1;margin:0;font:400 26px/1 var(--f-title,Georgia,serif);color:var(--bone,#fdf5cc)}
-.argos-head label{font:600 16px/1 var(--f-body,Arial,sans-serif);color:var(--mist,#c9d6e8)}
-#argos-panel select{font:500 17px/1.2 var(--f-body,Arial,sans-serif);min-height:40px;border:0;border-radius:10px;background:var(--bone,#fdf5cc);color:var(--pitch,#191a16);padding:4px 8px;max-width:100%}
-#argos-close{min-width:44px;min-height:44px;border:0;background:transparent;color:var(--bone,#fdf5cc);font:400 30px/1 var(--f-title,Georgia,serif);cursor:pointer}
-.argos-tabs{display:grid;grid-template-columns:1fr 1fr;gap:var(--gap,8px);padding:0 12px 8px}
-.argos-tabs button{min-height:44px;border:0;background:transparent;color:var(--bone,#fdf5cc);box-shadow:inset 0 0 0 1.5px #fdf5cc80;border-radius:999px;font:600 17px/1 var(--f-body,Arial,sans-serif);cursor:pointer}
+.argos-head{display:flex;align-items:center;gap:var(--ody-space-3);padding:var(--ody-space-3) var(--ody-space-3) var(--ody-space-2) var(--ody-space-4)}
+.argos-head h2{flex:1;margin:0;font:400 var(--ody-text-xl)/1 var(--f-title,Georgia,serif);color:var(--bone,#fdf5cc)}
+.argos-head label{font:600 var(--ody-text-sm)/1 var(--f-body,Arial,sans-serif);color:var(--mist,#c9d6e8)}
+#argos-panel select{font:500 var(--ody-text-md)/1.2 var(--f-body,Arial,sans-serif);min-height:var(--ody-control-md);border:0;border-radius:var(--ody-radius-sm);background:var(--bone,#fdf5cc);color:var(--pitch,#191a16);padding:var(--ody-space-1) var(--ody-space-2);max-width:100%}
+#argos-close{min-width:calc(var(--ody-space-unit) * 11);min-height:var(--ody-control-lg);border:0;background:transparent;color:var(--bone,#fdf5cc);font:400 var(--ody-text-xl)/1 var(--f-title,Georgia,serif);cursor:pointer}
+.argos-tabs{display:grid;grid-template-columns:1fr 1fr;gap:var(--gap,var(--ody-space-2));padding:0 var(--ody-space-3) var(--ody-space-2)}
+.argos-tabs button{min-height:var(--ody-control-lg);border:0;background:transparent;color:var(--bone,#fdf5cc);box-shadow:inset 0 0 0 1.5px #fdf5cc80;border-radius:var(--ody-radius-pill);font:600 var(--ody-text-md)/1 var(--f-body,Arial,sans-serif);cursor:pointer}
 .argos-tabs button[aria-selected="true"]{background:var(--torch,#ea872f);color:var(--pitch,#191a16);box-shadow:none}
-.argos-row{display:flex;gap:10px;align-items:center;padding:0 12px 8px;font:500 17px/1.3 var(--f-body,Arial,sans-serif);color:var(--mist,#c9d6e8)}
+.argos-row{display:flex;gap:var(--ody-space-3);align-items:center;padding:0 var(--ody-space-3) var(--ody-space-2);font:500 var(--ody-text-md)/1.3 var(--f-body,Arial,sans-serif);color:var(--mist,#c9d6e8)}
 .argos-row[hidden]{display:none}
 .argos-row select{flex:1;min-width:0}
-#argos-multi{width:22px;height:22px;accent-color:var(--torch,#ea872f);flex:none}
-#argos-log{flex:1;overflow:auto;padding:10px 12px;display:flex;flex-direction:column;gap:8px;background:#0b172b;border-top:1px solid #fdf5cc22}
-.argos-msg{max-width:90%;padding:8px 12px;white-space:pre-wrap;word-break:break-word;font:500 18px/1.35 var(--f-body,Arial,sans-serif)}
+#argos-multi{width:calc(var(--ody-space-unit) * 5.5);height:calc(var(--ody-space-unit) * 5.5);accent-color:var(--torch,#ea872f);flex:none}
+#argos-log{flex:1;overflow:auto;padding:var(--ody-space-3) var(--ody-space-3);display:flex;flex-direction:column;gap:var(--ody-space-2);background:#0b172b;border-top:var(--ody-border-thin) solid #fdf5cc22}
+.argos-msg{max-width:90%;padding:var(--ody-space-2) var(--ody-space-3);white-space:pre-wrap;word-break:break-word;font:500 var(--ody-text-md)/1.35 var(--f-body,Arial,sans-serif)}
 .argos-msg.me{align-self:flex-end;background:var(--bone,#fdf5cc);color:var(--pitch,#191a16)}
 .argos-msg.dog{align-self:flex-start;background:var(--stone,#dfd3c7);color:var(--pitch,#191a16)}
-.argos-msg.step{align-self:stretch;max-width:none;background:none;color:var(--mist,#c9d6e8);border-left:4px solid var(--torch,#ea872f);padding:2px 10px;font-size:17px}
+.argos-msg.step{align-self:stretch;max-width:none;background:none;color:var(--mist,#c9d6e8);border-left:calc(var(--ody-space-unit) * 1) solid var(--torch,#ea872f);padding:calc(var(--ody-space-unit) * 0.5) var(--ody-space-3);font-size:var(--ody-text-md)}
 .argos-msg.step.failed{border-color:var(--live,#ff6b5e)}
 .argos-msg.err{background:var(--brick,#983a34);color:var(--bone,#fdf5cc)}
-.argos-msg a{display:inline-flex;align-items:center;min-height:36px;margin:6px 8px 0 0;padding:0 12px;background:var(--pitch,#191a16);color:var(--bone,#fdf5cc);
-  font:600 16px/1 var(--f-body,Arial,sans-serif);text-decoration:none;border-radius:999px}
-.argos-msg a:focus-visible{outline:3px solid var(--pitch,#191a16);outline-offset:2px}
-.argos-note{font:500 16px/1.35 var(--f-body,Arial,sans-serif);color:var(--mist,#c9d6e8);padding:8px 12px 0}
-.argos-in{display:flex;gap:8px;padding:10px 12px 12px}
-#argos-text{flex:1;resize:none;height:52px;font:500 18px/1.3 var(--f-body,Arial,sans-serif);border:0;border-radius:12px;padding:8px 10px;background:var(--bone,#fdf5cc);color:var(--pitch,#191a16)}
+.argos-msg a{display:inline-flex;align-items:center;min-height:var(--ody-control-md);margin:var(--ody-space-2) var(--ody-space-2) 0 0;padding:0 var(--ody-space-3);background:var(--pitch,#191a16);color:var(--bone,#fdf5cc);
+  font:600 var(--ody-text-sm)/1 var(--f-body,Arial,sans-serif);text-decoration:none;border-radius:var(--ody-radius-pill)}
+.argos-msg a:focus-visible{outline:calc(var(--ody-space-unit) * 0.75) solid var(--pitch,#191a16);outline-offset:calc(var(--ody-space-unit) * 0.5)}
+.argos-note{font:500 var(--ody-text-sm)/1.35 var(--f-body,Arial,sans-serif);color:var(--mist,#c9d6e8);padding:var(--ody-space-2) var(--ody-space-3) 0}
+.argos-in{display:flex;gap:var(--ody-space-2);padding:var(--ody-space-3) var(--ody-space-3) var(--ody-space-3)}
+#argos-text{flex:1;resize:none;height:calc(var(--ody-space-unit) * 13);font:500 var(--ody-text-md)/1.3 var(--f-body,Arial,sans-serif);border:0;border-radius:var(--ody-radius-md);padding:var(--ody-space-2) var(--ody-space-3);background:var(--bone,#fdf5cc);color:var(--pitch,#191a16)}
 #argos-text::placeholder{color:#5d5a4c}
-#argos-mic{flex:none;width:52px;height:52px;border-radius:50%;border:0;background:var(--brick,#983a34);color:var(--bone,#fdf5cc);cursor:pointer;display:grid;place-items:center;
+#argos-mic{flex:none;width:calc(var(--ody-space-unit) * 13);height:calc(var(--ody-space-unit) * 13);border-radius:50%;border:0;background:var(--brick,#983a34);color:var(--bone,#fdf5cc);cursor:pointer;display:grid;place-items:center;
   box-shadow:0 0 0 3px var(--pitch,#191a16),0 0 0 5px var(--torch,#ea872f)}
-#argos-mic svg{width:26px;height:26px}
+#argos-mic svg{width:calc(var(--ody-space-unit) * 6.5);height:calc(var(--ody-space-unit) * 6.5)}
 #argos-mic[aria-pressed="true"]{background:var(--live,#ff6b5e);color:var(--pitch,#191a16)}
-.argos-send{flex:none;min-height:52px;padding:0 18px;border:0;border-radius:14px;background:var(--torch,#ea872f);color:var(--navy,#12233f);font:600 17px/1 var(--f-body,Arial,sans-serif);
+.argos-send{flex:none;min-height:var(--ody-control-lg);padding:0 var(--ody-space-5);border:0;border-radius:var(--ody-radius-md);background:var(--torch,#ea872f);color:var(--navy,#12233f);font:600 var(--ody-text-md)/1 var(--f-body,Arial,sans-serif);
   cursor:pointer;box-shadow:0 3px 0 #0a1426}
 .argos-send:active{transform:translateY(3px);box-shadow:0 1px 0 var(--torch-edge,#9a5418)}
-#argos-panel :focus-visible{outline:3px solid var(--torch,#ea872f);outline-offset:2px}
+#argos-panel :focus-visible{outline:calc(var(--ody-space-unit) * 0.75) solid var(--torch,#ea872f);outline-offset:calc(var(--ody-space-unit) * 0.5)}
 #argos-text:focus-visible,#argos-panel select:focus-visible{outline-offset:0}
-.argos-sr{position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap}
-html:not(.v2) #argos-btn{right:20px;bottom:20px;width:76px;height:76px}html:not(.v2) #argos-btn svg{width:54px;height:38px}html:not(.v2) #argos-panel{right:20px;bottom:116px}
+.argos-sr{position:absolute;width:calc(var(--ody-space-unit) * 0.25);height:calc(var(--ody-space-unit) * 0.25);overflow:hidden;clip-path:inset(50%);white-space:nowrap}
+html:not(.v2) #argos-btn{right:var(--ody-space-5);bottom:var(--ody-space-5);width:calc(var(--ody-space-unit) * 19);height:calc(var(--ody-space-unit) * 19)}html:not(.v2) #argos-btn svg{width:calc(var(--ody-space-unit) * 13.5);height:calc(var(--ody-space-unit) * 9.5)}html:not(.v2) #argos-panel{right:var(--ody-space-5);bottom:calc(var(--ody-space-unit) * 29)}
 body[data-page]:not([data-page="argo"]) #argos-btn,body[data-page]:not([data-page="argo"]) #argos-panel{display:none}
 @media (prefers-reduced-motion:reduce){#argos-btn,.argos-send{transition:none}}`;
 

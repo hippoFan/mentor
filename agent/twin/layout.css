@@ -1,0 +1,253 @@
+/* =====================================================================================================================
+   ODY LAYOUT SYSTEM (v7). Loaded LAST by twin.html, so these tokens win over the older ones in odyssey.css / app.css.
+   Every spacing and size in twin.html's <style>, odyssey.css, paper.css, app.css and forge.css now reads one of these.
+   A live tuner may edit any --ody-* token on :root; the derived ones (marked =) follow their source automatically.
+
+   TOKEN INDEX
+   ---- spacing (4/8-pt) ----------------------------------------------------------------------------------------------
+   --ody-space-unit          base unit (4px); every --ody-space-N and every odd one-off size is a multiple of it
+   --ody-space-1 .. -10      = 4 8 12 16 20 24 32 40 48 64 px (unit × 1 2 3 4 5 6 8 10 12 16)
+   --ody-section-gap         vertical gap between page sections (head → content → foot)
+   ---- type (≈1.25 modular from 18px; xs/sm are UI sizes) ----------------------------------------------------------
+   --ody-text-xs             13px  kbd, counters, tiny labels
+   --ody-text-sm             16px  UI labels, buttons, notes (the floor for reading text)
+   --ody-text-md             18px  body
+   --ody-text-lg             22px  card titles, lede
+   --ody-text-xl             28px  section headings, big numbers
+   --ody-text-2xl            35px  stage headings
+   --ody-text-3xl            44px  large display
+   --ody-text-4xl            56px  hero
+   --ody-text-display        the ONE page-title size shared by Home, Argo, The Forge, Profile, Settings
+   --ody-leading-tight/-snug/-body   1.05 / 1.25 / 1.5 line-heights
+   --ody-measure             readable line length for paragraphs (ch)
+   ---- page frame ------------------------------------------------------------------------------------------------------
+   --ody-gutter              page side gutter (left/right padding of every page), per breakpoint
+   --ody-content-max         max width of Home and The Forge content
+   --ody-narrow-max          max width of the single centred column on Profile and Settings
+   --ody-grid-cols           Home grid column count (12)
+   --ody-grid-gap            gap between Home cards / Forge cards
+   --ody-card-pad            inner padding of every card/sheet
+   --ody-card-pad-y          vertical inner padding of every card/sheet
+   --ody-row-pad             vertical padding of key/status rows inside cards
+   ---- radii / borders / shadows ------------------------------------------------------------------------------------
+   --ody-radius-sm           8px   controls, chips, inner tiles
+   --ody-radius-md           16px  cards, sheets, panels, the stage
+   --ody-radius-pill         999px pills
+   --ody-border-thin / --ody-border / --ody-border-thick   1 / 1.5 / 2 px
+   --ody-shadow-1 / -2 / -3  resting / raised / floating
+   ---- controls --------------------------------------------------------------------------------------------------------
+   --ody-control-sm / -md / -lg   32 / 40 / 48 px control heights (lg = touch-safe primary)
+   ---- floating chrome ------------------------------------------------------------------------------------------------
+   --ody-pill-top            distance of the nav pill and the avatar from the window top
+   --ody-pill-h              nav pill height
+   --ody-avatar-size         avatar diameter = pill height x --ody-avatar-scale (1.9: deliberately oversized)
+   --ody-avatar-scale        how many pill-heights the avatar is
+   --ody-avatar-right        avatar's distance from the window's right edge (= gutter)
+   --ody-chrome-clear        = space reserved under the pill before page content starts
+   --ody-menu-w              avatar menu width
+   ---- Home edges ------------------------------------------------------------------------------------------------------
+   --ody-rip-w               width of the torn left edge (to Argo)
+   --ody-column-w            width of the ash column on the right edge (to The Forge); half of it shows
+   --ody-edge-clear          = room kept clear of the rip/column for content
+   ---- Argo ------------------------------------------------------------------------------------------------------------
+   --ody-argo-panel-w        the call panel (chart table) width; the stage takes the rest
+   --ody-argo-gap            gap between panel and stage, and around the stage
+   --ody-argo-head-h         height of the status/Privacy/Tester row above the stage
+   --ody-argo-inset          inset of the stage furniture (title, phone, toolbar, Argos) from the stage edges
+   --ody-pip-w               width of the caller's camera window on the stage
+   --ody-argos-size          diameter of the Argos button on the stage
+   ---- The Forge --------------------------------------------------------------------------------------------------------
+   --ody-forge-card-min      minimum Forge card width (equal-width auto-fill grid)
+   --ody-forge-well-h        height of the art well at the top of each Forge card
+   ---- motifs (decoration scale; 1 = drawn size) -----------------------------------------------------------------------
+   --ody-motif-scale-home    stars, galleys, waves on Home
+   --ody-motif-scale-forge   sun, forge hearth, waves on The Forge
+   --ody-motif-scale-argo    Argo's decorations
+   --ody-motif-scale-columns the Doric columns flanking Profile and Settings
+   ===================================================================================================================== */
+:root{
+  --ody-space-unit:4px;
+  --ody-space-1:calc(var(--ody-space-unit) * 1);
+  --ody-space-2:calc(var(--ody-space-unit) * 2);
+  --ody-space-3:calc(var(--ody-space-unit) * 3);
+  --ody-space-4:calc(var(--ody-space-unit) * 4);
+  --ody-space-5:calc(var(--ody-space-unit) * 5);
+  --ody-space-6:calc(var(--ody-space-unit) * 6);
+  --ody-space-7:calc(var(--ody-space-unit) * 8);
+  --ody-space-8:calc(var(--ody-space-unit) * 10);
+  --ody-space-9:calc(var(--ody-space-unit) * 12);
+  --ody-space-10:calc(var(--ody-space-unit) * 16);
+  --ody-section-gap:var(--ody-space-8);
+
+  --ody-text-xs:13px; --ody-text-sm:16px; --ody-text-md:18px; --ody-text-lg:22px; --ody-text-xl:28px;
+  --ody-text-2xl:35px; --ody-text-3xl:44px; --ody-text-4xl:56px;
+  --ody-text-display:clamp(44px,3.6vw,56px);
+  --ody-leading-tight:1.05; --ody-leading-snug:1.25; --ody-leading-body:1.5;
+  --ody-measure:62ch;
+
+  --ody-gutter:clamp(24px,3.4vw,56px);
+  --ody-content-max:1200px;
+  --ody-narrow-max:640px;
+  --ody-grid-cols:12;
+  --ody-grid-gap:var(--ody-space-6);
+  --ody-card-pad:var(--ody-space-6);
+  --ody-card-pad-y:var(--ody-space-5);
+  --ody-row-pad:var(--ody-space-3);
+
+  --ody-radius-sm:8px; --ody-radius-md:16px; --ody-radius-pill:999px;
+  --ody-border-thin:1px; --ody-border:1.5px; --ody-border-thick:2px;
+  --ody-shadow-1:0 1px 0 #fffdf2 inset,0 2px 0 #12233f14,0 10px 24px -14px #12233f59;
+  --ody-shadow-2:0 2px 0 #12233f1f,0 24px 48px -20px #12233f80;
+  --ody-shadow-3:0 18px 34px -10px #12233f8c,0 6px 12px -4px #12233f4d;
+
+  --ody-control-sm:32px; --ody-control-md:40px; --ody-control-lg:48px;
+
+  --ody-pill-top:var(--ody-space-4);
+  --ody-pill-h:52px;
+  --ody-avatar-size:calc(var(--ody-pill-h) * var(--ody-avatar-scale)); --ody-avatar-scale:1.9;   /* user: ~2x the pill, overhanging on purpose */
+  --ody-avatar-right:var(--ody-gutter);
+  --ody-chrome-clear:calc(var(--ody-pill-top) + var(--ody-pill-h) + var(--ody-space-6));
+  --ody-menu-w:280px;
+
+  --ody-rip-w:80px;
+  --ody-column-w:92px;
+  --ody-edge-clear:calc(var(--ody-rip-w) + var(--ody-space-6));
+
+  --ody-argo-panel-w:clamp(336px,25vw,360px);
+  --ody-argo-gap:var(--ody-space-4);
+  --ody-argo-head-h:var(--ody-control-md);
+  --ody-argo-inset:var(--ody-space-5);
+  --ody-pip-w:clamp(128px,11vw,168px);
+  --ody-argos-size:72px;
+
+  --ody-forge-card-min:272px;
+  --ody-forge-well-h:168px;
+
+  --ody-motif-scale-home:1;
+  --ody-motif-scale-forge:1;
+  --ody-motif-scale-argo:1;
+  --ody-motif-scale-columns:1;
+
+  /* the older token names now read the system, so nothing else has to change */
+  --fs-sm:var(--ody-text-sm); --fs-md:var(--ody-text-md); --fs-lg:var(--ody-text-lg); --fs-xl:var(--ody-text-lg);
+  --fs-2xl:var(--ody-text-xl); --fs-3xl:var(--ody-text-3xl); --fs-4xl:var(--ody-text-4xl); --fs-title:var(--ody-text-display);
+  --r-sm:var(--ody-radius-sm); --r-md:var(--ody-radius-sm); --r-lg:var(--ody-radius-md); --r-pill:var(--ody-radius-pill); --r-slab:var(--ody-radius-md);
+  --gutter:var(--ody-argo-gap); --pad-x:var(--ody-gutter); --gap:var(--ody-space-3);
+  --shadow-1:var(--ody-shadow-1); --shadow-2:var(--ody-shadow-2);
+  --pill-top:var(--ody-pill-top); --pill-clear:var(--ody-chrome-clear);
+  --rail-w:var(--ody-argo-panel-w); --pip:var(--ody-pip-w); --pip-w:var(--ody-pip-w); --app-gutter:var(--ody-space-4);
+}
+@media (max-width:1279px){ :root{ --ody-content-max:1040px; --ody-grid-gap:var(--ody-space-5) } }
+@media (min-width:1800px){ :root{ --ody-content-max:1320px } }
+:root{ --ody-pill-h:calc(var(--ody-control-lg) + var(--ody-space-1) * 2); --ody-avatar-size:calc(var(--ody-pill-h) * var(--ody-avatar-scale)) }
+
+/* =====================================================================================================================
+   v7 RE-LAYOUT: every page on the system above. Selectors match the older layers' specificity so this file (last) wins.
+   ===================================================================================================================== */
+
+/* ---------- floating chrome: pill and avatar share one top line and one height ---------- */
+.appbar .pager{top:var(--ody-pill-top);height:var(--ody-pill-h);padding:var(--ody-space-1);gap:var(--ody-space-1)}
+.appbar .bar-right{top:var(--ody-pill-top);right:var(--ody-avatar-right);gap:var(--ody-space-3);align-items:center}
+.appbar .avatar{width:var(--ody-avatar-size);height:var(--ody-avatar-size)}
+.appbar .avatar svg{width:calc(var(--ody-avatar-size) * .46);height:calc(var(--ody-avatar-size) * .46)}
+.appbar .callpill{margin-top:0}
+.menu{top:calc(var(--ody-pill-top) + var(--ody-avatar-size) + var(--ody-space-3));right:var(--ody-avatar-right);width:var(--ody-menu-w);
+  padding:var(--ody-space-2);border-radius:var(--ody-radius-md)}
+.menu [role=menuitem]{border-radius:var(--ody-radius-sm);min-height:var(--ody-control-lg);padding:0 var(--ody-space-3)}
+.menu-who{padding:var(--ody-space-3)}
+.menu .rule{margin:var(--ody-space-1) var(--ody-space-3) var(--ody-space-2)}
+
+/* ---------- one page-title size, one head rhythm ---------- */
+.t-hero,#main-h,html.v2 .forge-title,html.v2 #argo-h,.page-head h1{font-size:var(--ody-text-display);line-height:var(--ody-leading-tight)}
+.page-head{margin-bottom:var(--ody-section-gap)}
+.eyebrow{margin:0 0 var(--ody-space-2);font-size:var(--ody-text-sm)}
+.lede{margin:var(--ody-space-3) 0 0;max-width:var(--ody-measure);font-size:var(--ody-text-lg);line-height:var(--ody-leading-snug)}
+.page-head::after{height:var(--ody-space-4);max-width:calc(var(--ody-space-unit) * 80);margin-top:var(--ody-space-5)}
+.card{padding:var(--ody-card-pad-y) var(--ody-card-pad) var(--ody-card-pad)}
+.card .t-sect{margin-bottom:var(--ody-space-3)}
+.sheet[data-ink]{border-radius:var(--ody-radius-sm)}
+
+/* ---------- Home: a centred 12-column grid between the torn edge and the column ---------- */
+.page-wrap{padding:var(--ody-chrome-clear) var(--ody-gutter) var(--ody-space-10);max-width:calc(var(--ody-content-max) + var(--ody-gutter) * 2)}
+#page-main .page-wrap{max-width:calc(var(--ody-content-max) + var(--ody-edge-clear) * 2);
+  padding-left:max(var(--ody-gutter),var(--ody-edge-clear));padding-right:max(var(--ody-gutter),var(--ody-edge-clear));padding-bottom:var(--ody-space-7)}
+#page-main .bento{display:grid;grid-template-columns:repeat(var(--ody-grid-cols),minmax(0,1fr));grid-template-areas:none;gap:var(--ody-grid-gap);align-items:stretch}
+#page-main .c-status{grid-column:1 / span 7;grid-row:1}
+#page-main .c-usage{grid-column:8 / span 5;grid-row:1 / span 2}
+#page-main .c-plan{grid-column:1 / span 7;grid-row:2}
+#page-main .c-int{grid-column:1 / -1;grid-row:3}
+#page-main .row{grid-template-columns:calc(var(--ody-space-unit) * 22) calc(var(--ody-space-unit) * 32) minmax(0,1fr);padding:var(--ody-row-pad) 0}
+#page-main .voice-row{grid-template-columns:calc(var(--ody-space-unit) * 22) minmax(0,1fr)}
+#page-main .c-plan .row{grid-template-columns:auto minmax(0,1fr)}
+#page-main .usage{gap:var(--ody-space-3);margin-top:var(--ody-space-4)}
+#page-main .usage .tile{min-height:calc(var(--ody-space-unit) * 20);padding:var(--ody-space-3) var(--ody-space-4);border-radius:var(--ody-radius-sm)}
+#page-main .tile.dash.wide{margin-top:var(--ody-space-3);padding:var(--ody-space-3) var(--ody-space-4);border-radius:var(--ody-radius-sm)}
+#page-main .int-pick{gap:var(--ody-space-3) var(--ody-space-4)}
+#page-main .int-how{max-width:var(--ody-measure)}
+/* motifs keep clear of content: stars sit in the head band beside the title, the sprig only where the margin fits it */
+#page-main .pk-sky{top:var(--ody-chrome-clear);right:calc(max(var(--ody-gutter),var(--ody-edge-clear)) + (100% - min(100%,var(--ody-content-max) + var(--ody-edge-clear) * 2)) / 2);
+  width:calc(300px * var(--ody-motif-scale-home));height:calc(150px * var(--ody-motif-scale-home))}
+#page-main .pk-sprig-l{left:calc(var(--ody-rip-w) - var(--ody-space-4));width:calc(120px * var(--ody-motif-scale-home));height:calc(196px * var(--ody-motif-scale-home));bottom:var(--ody-space-9)}
+@media (max-width:1699px){ #page-main .pk-sprig-l{display:none} }
+@media (max-width:1100px){
+  #page-main .c-status,#page-main .c-usage,#page-main .c-plan,#page-main .c-int{grid-column:1 / -1;grid-row:auto}
+  #page-main .pk-sky{display:none}
+  #page-main .c-int{order:1}
+}
+
+/* ---------- Profile and Settings: one centred 640 px column ---------- */
+.page-wrap.narrow{max-width:calc(var(--ody-narrow-max) + var(--ody-gutter) * 2);gap:var(--ody-grid-gap)}
+.page-wrap.narrow .page-head{margin-bottom:var(--ody-space-2)}
+.keyrow{grid-template-columns:calc(var(--ody-space-unit) * 44) minmax(0,1fr) auto;gap:var(--ody-space-4);padding:var(--ody-row-pad) 0}
+.keyrow .btn{min-height:var(--ody-control-md);padding:0 var(--ody-space-4)}
+.set-provider{max-width:100%}
+.pf-form{gap:var(--ody-space-5);margin-top:var(--ody-space-4);max-width:100%}
+.pf-head{gap:var(--ody-space-5);margin-bottom:var(--ody-space-4)}
+.pf-note,.t-body,.kf-note,.t-note{max-width:var(--ody-measure)}
+.swatch{border-radius:var(--ody-radius-sm)}
+.pk-column{width:calc(96px * var(--ody-motif-scale-columns));height:calc(300px * var(--ody-motif-scale-columns))}
+.pk-column.cl{left:var(--ody-gutter)}.pk-column.cr,#page-settings .pk-column.cr{right:var(--ody-gutter)}
+@media (max-width:1100px){ .pk-column{display:none} }
+
+/* ---------- The Forge: head and grid share one container edge; equal cards ---------- */
+.forge{--f-pad:var(--ody-gutter)}
+html.v2 .forge-head{left:var(--f-pad);right:var(--f-pad);max-width:var(--ody-content-max);margin:0 auto;padding:var(--ody-chrome-clear) 0 0}
+html.v2 .forge-scroll > *{max-width:var(--ody-content-max)}
+html.v2 .forge-relics{grid-template-columns:repeat(auto-fill,minmax(var(--ody-forge-card-min),1fr));gap:var(--ody-grid-gap)}
+html.v2 .forge-well{height:var(--ody-forge-well-h);margin:var(--ody-space-3) var(--ody-space-3) 0}
+html.v2 .forge-txt{padding:var(--ody-space-4) var(--ody-space-4) var(--ody-space-5);gap:var(--ody-space-2)}
+html.v2 .forge-filter,html.v2 .forge-small,html.v2 .forge .forge-btn:not(.forge-side .forge-btn){min-height:var(--ody-control-lg)}
+html.v2 .forge-page::before{top:calc(var(--ody-pill-top) + var(--ody-space-2));right:calc(var(--ody-avatar-right) + var(--ody-avatar-size) + var(--ody-space-10));
+  width:calc(150px * var(--ody-motif-scale-forge));height:calc(150px * var(--ody-motif-scale-forge))}
+
+/* ---------- Argo: header row and stage share the right edge; the stage dominates; one inset for all stage furniture ---------- */
+html.v2 #page-argo{padding:calc(var(--ody-pill-top) + var(--ody-pill-h) + var(--ody-space-3)) var(--ody-argo-gap) var(--ody-argo-gap);gap:var(--ody-argo-gap)}
+html.v2 #page-argo > header{padding:0 var(--ody-space-2) 0 0;min-height:var(--ody-argo-head-h);gap:var(--ody-space-3)}
+html.v2 #page-argo > header .btn-top,html.v2 #page-argo .status,html.v2 #page-argo .consent,html.v2 #page-argo .replay{min-height:var(--ody-argo-head-h)}
+html.v2 #page-argo > main{gap:calc(var(--ody-argo-gap) + var(--ody-space-2))}
+@media (min-width:1280px){ html.v2 #page-argo > main{grid-template-columns:var(--ody-argo-panel-w) minmax(0,1fr)} }
+html.v2 #page-argo .argo-title{left:var(--ody-argo-inset);top:var(--ody-argo-inset)}
+html.v2 #page-argo .stage-head{left:var(--ody-argo-inset);top:calc(var(--ody-argo-inset) + var(--ody-text-display) + var(--ody-space-3));right:calc(var(--ody-pip-w) + var(--ody-argo-inset) * 2)}
+html.v2 #page-argo .phone{right:var(--ody-argo-inset);top:var(--ody-argo-inset);width:var(--ody-pip-w)}
+html.v2 #page-argo .toolbar{bottom:var(--ody-argo-inset)}
+html.v2 #page-argo .modes{right:var(--ody-argo-inset);bottom:calc(var(--ody-argo-inset) + var(--ody-control-md) + var(--ody-space-2) + var(--ody-space-3))}
+html.v2 #page-argo .waiting{left:var(--ody-argo-inset);right:calc(var(--ody-argos-size) + var(--ody-argo-inset) * 2);bottom:calc(var(--ody-argo-inset) + var(--ody-control-md) + var(--ody-space-2) + var(--ody-space-6))}
+html.v2 #page-argo .labelkey,html.v2 #page-argo .handview,html.v2 #page-argo .analysis-card{bottom:calc(var(--ody-argo-inset) + var(--ody-control-md) + var(--ody-space-2) + var(--ody-space-4))}
+html.v2 #argos-btn{right:calc(var(--ody-argo-gap) + var(--ody-argo-inset));bottom:calc(var(--ody-argo-gap) + var(--ody-argo-inset));width:var(--ody-argos-size);height:var(--ody-argos-size)}
+html.v2 #argos-panel{right:calc(var(--ody-argo-gap) + var(--ody-argo-inset));bottom:calc(var(--ody-argo-gap) + var(--ody-argo-inset) + var(--ody-argos-size) + var(--ody-space-3));
+  width:min(calc(var(--ody-space-unit) * 105),calc(100vw - var(--ody-argo-gap) * 4));height:min(calc(var(--ody-space-unit) * 135),calc(100vh - var(--ody-chrome-clear) - var(--ody-argos-size) - var(--ody-space-10)));
+  border-radius:var(--ody-radius-md)}
+html.v2 #argos-panel .argos-in{gap:var(--ody-space-2);padding:var(--ody-space-3) var(--ody-space-4) var(--ody-space-4)}
+html.v2 #argos-panel .argos-head,html.v2 #argos-panel .argos-tabs,html.v2 #argos-panel .argos-row,html.v2 #argos-panel .argos-note{padding-left:var(--ody-space-4);padding-right:var(--ody-space-4)}
+@media (max-width:900px){ :root{ --ody-pip-w:96px } }
+/* v7 pass 2: exact edges */
+html.v2 #page-argo > header{padding-right:0}
+html.v2 .forge-scroll,html.v2 .forge-head{scrollbar-gutter:stable both-edges}
+html.v2 .forge-head{overflow:hidden;scrollbar-width:thin}
+html.v2 .forge-sub{margin-top:var(--ody-space-3);max-width:var(--ody-measure)}
+/* The Forge: head rhythm matches Home (title → 12 → sub → section gap → the bar) */
+html.v2 .forge-head{gap:0}
+html.v2 .forge-scroll{top:calc(var(--ody-chrome-clear) + var(--ody-text-display) * var(--ody-leading-tight) + var(--ody-space-3) + var(--ody-text-lg) * 1.4 + var(--ody-space-8))}
+/* the head reserves the same thin scrollbar gutters as the scroller, then centres its rows on the same max width */
+html.v2 .forge-head{max-width:none;align-items:stretch}
+html.v2 .forge-head > *{width:100%;max-width:var(--ody-content-max);margin-left:auto;margin-right:auto}
