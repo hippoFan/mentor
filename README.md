@@ -184,7 +184,7 @@ Settings are named `ODY_*`. The older `MENTOR_*` names still work.
 | `ELEVENLABS_API_KEY` | yes | ElevenLabs key with Text to Speech + Speech to Text |
 | `GEMINI_API_KEY` / `ANTHROPIC_API_KEY` | one of them | The brain |
 | `ODY_BRAIN` | no | `gemini`, `claude`, or `claude-code` (**owner testing only**, also needs `ODY_OWNER_TESTING=1`; see [SECURITY.md](SECURITY.md)) |
-| `ODY_GEMINI_MODELS` | no | Models to fall through on rate limits (default `gemini-3.5-flash,gemini-3.5-flash-lite,gemini-2.5-flash`) |
+| `ODY_GEMINI_MODELS` | no | Models to fall through on rate limits (default `gemini-3.5-flash-lite,gemini-3.5-flash`; a slow model (504 or over 10 s) is skipped for the rest of the call) |
 | `ODY_TASK` | no | What Ody guides, e.g. `Make the Arduino's onboard LED blink` |
 | `ODY_LANG` | no | `en` (default) or `auto` (answer in the caller's language) |
 | `ODY_OUT` / `ODY_FPS` | no | `portrait` (default, 540×960) or `landscape`; frames per second back into the call (default 24) |

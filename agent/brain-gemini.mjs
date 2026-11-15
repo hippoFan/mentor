@@ -8,8 +8,10 @@ import { RECAP_ASK, RECAP_SCHEMA, SCHEMA, SYSTEM_CORE, normalizeReply, pointingR
 // Models tried in order. The free tier allows only ~20 requests a day per model, and a model can be overloaded, so on a
 // 429 / 503 / 404 Mentor moves to the next one for the rest of the process instead of failing the turn.
 export const GEMINI_MODELS = (process.env.MENTOR_GEMINI_MODELS || process.env.MENTOR_GEMINI_MODEL
-  || 'gemini-3.5-flash,gemini-3.5-flash-lite,gemini-2.5-flash').split(',').map(m => m.trim()).filter(Boolean);
+  || 'gemini-3.5-flash-lite,gemini-3.5-flash').split(',').map(m => m.trim()).filter(Boolean);
 export const GEMINI_MODEL = GEMINI_MODELS[0];
+// Per-attempt deadline for a spoken turn on every model but the last (ODY_GEMINI_TURN_TIMEOUT_MS). Gemini's minimum is 10 s.
+const TURN_TIMEOUT_MS = Number(process.env.MENTOR_GEMINI_TURN_TIMEOUT_MS || 10000);
 const skipped = new Set();   // models that hit their limit in this process
 // How long Gemini thinks per spoken turn (MENTOR_GEMINI_THINKING): LOW (default) or MINIMAL (faster).
 const THINKING = ThinkingLevel[(process.env.MENTOR_GEMINI_THINKING || 'LOW').toUpperCase()] || ThinkingLevel.LOW;
@@ -54,15 +56,20 @@ export class GeminiBrain {
     let last;
     for (const model of GEMINI_MODELS) {
       if (skipped.has(model) && model !== GEMINI_MODELS.at(-1)) continue;
+      // A live call can't wait 30 s: unless this is the last model, each attempt gets a short deadline and a slow model
+      // (timeout, 504 DEADLINE_EXCEEDED) is skipped for the rest of the call like a rate-limited one.
+      const isLast = model === GEMINI_MODELS.at(-1);
+      const attempt = timeout ?? (isLast ? 30_000 : TURN_TIMEOUT_MS);
       try {
-        const response = await this.client.models.generateContent({ model, contents, config: this.#config(model, schema, level, timeout) });
+        const response = await this.client.models.generateContent({ model, contents, config: this.#config(model, schema, level, attempt) });
         return { response, model };
       } catch (error) {
         last = error;
         const status = Number(error?.status || error?.code);
-        if (![429, 503, 404, 500].includes(status)) throw error;
+        const slow = status === 504 || (!status && /timed? ?out|abort|deadline/i.test(`${error?.name} ${error?.message}`));   // 400 'deadline too short' is a config error, not slowness
+        if (![429, 503, 404, 500].includes(status) && !slow) throw error;
         skipped.add(model);
-        console.warn(`[brain:gemini] ${model} unavailable (${status}); trying the next model`);
+        console.warn(`[brain:gemini] ${model} ${slow ? 'too slow' : `unavailable (${status})`}; trying the next model`);
       }
     }
     throw last;
