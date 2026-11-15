@@ -16,7 +16,8 @@ guide: calm, encouraging, never doing the work for them. At most one light Odyss
 when they finish: "you made it home"), never forced, never in the middle of an instruction.`;
 
 /** How marks are expressed differs per model: Claude in image pixels, Gemini in its native 0-1000 grid. */
-export const pointingRules = units => `Pointing: "marks" are drawn on their live video. Use at most 3. Each mark is ${units}.
+export const pointingRules = units => `Pointing: "marks" are drawn on their live video. Use at most 3 for a step, or up to 5
+when they ask what things are or you first see their setup (label the main parts you can see). Each mark is ${units}.
 Point at the exact spot (the hole, port, LED, or pin header
 region). Prefer marking a region you are sure of over a single pin you are not. Leave "marks" empty when nothing
 needs pointing at, or when the image is missing or unclear. Use kind "circle" to highlight, "arrow" to direct.
@@ -129,7 +130,7 @@ export class ClaudeBrain {
 
     const w = image?.width || 1, h = image?.height || 1;
     out.marks = image
-      ? (out.marks || []).slice(0, 3)
+      ? (out.marks || []).slice(0, 5)
           .map(m => ({ ...m, x: m.x / w, y: m.y / h, x2: m.x2 >= 0 ? m.x2 / w : -1, y2: m.y2 >= 0 ? m.y2 / h : -1 }))
           .filter(m => m.x >= 0 && m.x <= 1 && m.y >= 0 && m.y <= 1)
       : [];

@@ -85,7 +85,7 @@ export class GeminiBrain {
     try { out = JSON.parse(response.text || ''); }
     catch { return { say: 'Sorry, say that again?', marks: [], step: '', done: false, note: '', ms }; }
     out.marks = image
-      ? (out.marks || []).slice(0, 3)
+      ? (out.marks || []).slice(0, 5)
           .map(m => ({ ...m, x: m.x / 1000, y: m.y / 1000, x2: m.x2 >= 0 ? m.x2 / 1000 : -1, y2: m.y2 >= 0 ? m.y2 / 1000 : -1 }))
           .filter(m => m.x >= 0 && m.x <= 1 && m.y >= 0 && m.y <= 1)
       : [];

@@ -251,9 +251,13 @@ export function contentBox(f) {
   while (x1 > x0 && !colLit(x1)) x1--;
   while (y0 < y1 && !rowLit(y0)) y0++;
   while (y1 > y0 && !rowLit(y1)) y1--;
-  const bw = x1 - x0 + 1, bh = y1 - y0 + 1;
+  const bw = x1 - x0 + 1;
+  // FaceTime's own self-view (a picture-in-picture of Mentor's video) sits in the bottom ~20% of the picture, and a
+  // status icon in the top ~6%: drop both so Mentor never sees or re-shows its own output.
+  const top = y0 + Math.round((y1 - y0) * 0.06), bottom = y0 + Math.round((y1 - y0) * 0.80);
+  const bh = bottom - top + 1;
   if (bw < w * 0.25 || bh < h * 0.25) return { x: 0, y: 0, w, h };   // mostly dark scene: keep everything
-  return { x: x0, y: y0, w: bw, h: bh };
+  return { x: x0, y: top, w: bw, h: bh };
 }
 
 /** A copy of one rectangle of an RGBA frame. */

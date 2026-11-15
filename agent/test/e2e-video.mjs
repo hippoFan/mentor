@@ -8,7 +8,7 @@ import { randomBytes } from 'node:crypto';
 import { createCanvas, loadImage } from '@napi-rs/canvas';
 import { AccessToken, AgentDispatchClient, RoomServiceClient } from 'livekit-server-sdk';
 import {
-  LocalVideoTrack, Room, RoomEvent, TrackKind, TrackSource, VideoBufferType, VideoFrame, VideoSource, VideoStream,
+  AudioStream, LocalVideoTrack, Room, RoomEvent, TrackKind, TrackSource, VideoBufferType, VideoFrame, VideoSource, VideoStream,
 } from '@livekit/rtc-node';
 
 const [photo, outDir = '.'] = process.argv.slice(2);
@@ -47,6 +47,21 @@ const pump = setInterval(() => src.captureFrame(new VideoFrame(camFrame(Math.rou
 
 let saved = 0, got = 0, firstAt = 0;
 const shots = [3, 8, 12, 16, 20, 25].map(x => x * 1000);
+// Mentor's voice: report loudness each second it is speaking (dBFS; silence is < -60).
+let loudSeconds = 0;
+room.on(RoomEvent.TrackSubscribed, async (trk, _pub, participant) => {
+  if (trk.kind !== TrackKind.KIND_AUDIO) return;
+  console.log(`[e2e] receiving Mentor's audio "${trk.name}" from ${participant.identity}`);
+  let sum = 0, n = 0, t0 = Date.now(), peak = 0;
+  for await (const f of new AudioStream(trk)) {
+    for (const v of f.data) { sum += v * v; n++; peak = Math.max(peak, Math.abs(v)); }
+    if (Date.now() - t0 >= 1000) {
+      const db = n ? 20 * Math.log10(Math.sqrt(sum / n) / 32768 + 1e-9) : -120;
+      if (db > -60) { loudSeconds++; console.log(`[e2e] Mentor audio ${db.toFixed(1)} dBFS (peak ${(20 * Math.log10(peak / 32768 + 1e-9)).toFixed(1)})`); }
+      sum = 0; n = 0; peak = 0; t0 = Date.now();
+    }
+  }
+});
 room.on(RoomEvent.TrackSubscribed, async (trk, _pub, participant) => {
   if (trk.kind !== TrackKind.KIND_VIDEO) return;
   console.log(`[e2e] receiving Mentor's video "${trk.name}" from ${participant.identity}`);
@@ -67,7 +82,7 @@ room.on(RoomEvent.TrackSubscribed, async (trk, _pub, participant) => {
 
 await new Promise(r => setTimeout(r, SECONDS * 1000));
 clearInterval(pump);
-console.log(`[e2e] done: ${got} frames received from Mentor, ${saved} saved`);
+console.log(`[e2e] done: ${got} frames received from Mentor, ${saved} saved, ${loudSeconds} s of audible Mentor audio`);
 await room.disconnect();
 await new RoomServiceClient(host, key, secret).deleteRoom(roomName).catch(() => {});
 process.exit(got ? 0 : 1);
