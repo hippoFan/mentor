@@ -28,7 +28,9 @@ const TASK = process.env.MENTOR_TASK || '';
 const VOICE = Boolean(process.env.ELEVEN_API_KEY);   // without an ElevenLabs key: video-only test mode, no voice
 const TEST_TURN = process.env.MENTOR_TEST_TURN || '';  // test hook: ask the brain this once the first camera frame arrives
 const MARK_TTL_MS = 25_000;
-const FILLER_MS = 1500;      // if the brain is slower than this, say a short filler so the call isn't silent
+const FILLER_MS = 1500;
+const LANG = process.env.MENTOR_LANG || 'en';   // 'auto' = answer in whatever language the caller speaks
+const MAX_TURNS = Number(process.env.MENTOR_MAX_TURNS || 60);      // if the brain is slower than this, say a short filler so the call isn't silent
 const FILLERS = ['Let me take a look.', 'One sec, looking.', 'Okay, checking.'];   // marks fade if nobody talks for a while (camera moved, they are stale)
 const RUNS_DIR = fileURLToPath(new URL('../runs/', import.meta.url));
 
@@ -121,7 +123,7 @@ const agent = defineAgent({
     await mkdir(`${runDir}frames`, { recursive: true });
     let shot = 0;
     const shotTimer = setInterval(async () => {
-      const now = getLatest(); if (!now) return;
+      const now = getLatest(); if (!now || shot >= 200) return;   // cap: ~10 minutes of snapshots per call
       const n = String(++shot).padStart(3, '0');
       try {
         await writeFile(`${runDir}frames/${n}-in.jpg`, (await frameJpeg(now, 720)).jpeg);
@@ -148,7 +150,8 @@ const agent = defineAgent({
     const recap = [];
     const session = VOICE ? new voice.AgentSession({
       // Snappier turns in a noisy room: commit after 0.5 s of silence, and ignore quieter (farther) voices.
-      stt: new elevenlabs.STT({ model: 'scribe_v2_realtime', languageCode: 'en',
+      // MENTOR_LANG=auto lets Scribe detect the language (Mentor then answers in it; the TTS voice is multilingual).
+      stt: new elevenlabs.STT({ model: 'scribe_v2_realtime', ...(LANG === 'auto' ? {} : { languageCode: LANG }),
         serverVad: { vadSilenceThresholdSecs: 0.5, vadThreshold: 0.6, minSpeechDurationMs: 150, minSilenceDurationMs: 300 } }),
       turnDetection: 'vad', minEndpointingDelay: 0.4, maxEndpointingDelay: 2.0,
       tts: new elevenlabs.TTS({
@@ -169,8 +172,21 @@ const agent = defineAgent({
     };
     // Saves brain requests (the free Gemini tier is ~20/day/model): a bare acknowledgement gets no model call.
     const ACKS = /^(ok(ay)?|yeah|yep|yes|sure|mm+|hm+|uh+|um+|cool|nice|got it|alright|thanks|thank you)[.!?]*$/i;
+    // "Show me again": re-show the last marks and repeat the last line instantly, with no model call.
+    const REPLAY = /^(.{0,20}\b)?(again|repeat( that)?|say (that|it) again|show me (that )?again|one more time|what\?|sorry\?|pardon)\W*$/i;
+    let last = null, turns = 0;
     const onTurn = async heard => {
       if (ACKS.test(heard.trim())) { console.log(`[heard] ${heard} (acknowledgement, no brain call)`); live.send({ type: 'heard', text: heard }); return; }
+      if (last && REPLAY.test(heard.trim())) {
+        console.log(`[heard] ${heard} (replay, no brain call)`); live.send({ type: 'heard', text: heard });
+        const now = getLatest();
+        marks = last.marks; marksAt = Date.now(); if (now) tracker.seed(now, marks);
+        say(last.say, 0); return;
+      }
+      if (++turns > MAX_TURNS) {   // cost/DoS guard: a runaway call (e.g. a TV in the room) can't drain the quota
+        if (turns === MAX_TURNS + 1) say("We've covered a lot. Let's pick this up on a new call.");
+        return;
+      }
       const seq = ++turnSeq;
       console.log(`[heard] ${heard}`);
       live.send({ type: 'heard', text: heard });
@@ -181,6 +197,7 @@ const agent = defineAgent({
         const reply = await brain.turn(heard, image).finally(() => clearTimeout(filler));
         if (seq !== turnSeq || ended) return;   // they spoke again while we were thinking; answer the newer turn
         marks = reply.marks; marksAt = Date.now();
+        last = { marks: reply.marks, say: reply.say };
         tracker.seed(now, marks);   // the brain judged `now` (the frame from the turn start): track from there
         live.send({ type: 'turn', brain: brain.provider, model: reply.model || '', ms: reply.ms, marks: reply.marks, step: reply.step, done: !!reply.done });
         if (reply.step) caption = reply.step;

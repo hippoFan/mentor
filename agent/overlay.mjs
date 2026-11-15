@@ -17,6 +17,7 @@ export const FPS = 15;
 const ACCENT = '#FFC845';   // Mentor yellow: only Mentor's own marks
 const INK = '#1D1D1F';
 const SHADOW = 'rgba(0,0,0,0.45)';
+const DANGER = '#FF3B30';   // a "warn" mark: something to fix before powering on
 const FONT = (weight, px) => `${weight} ${px * K}px Inter, sans-serif`;
 const out = createCanvas(WIDTH, HEIGHT);
 const g = out.getContext('2d');
@@ -67,9 +68,9 @@ export function render(frame, marks = [], opts = {}) {
   const pts = marks.map(m => ({ ...m, px: rect.x + m.x * rect.w, py: rect.y + m.y * rect.h }));
   for (const m of pts) if (m.kind === 'wire' && m.x2 >= 0) drawWire(m.px, m.py, rect.x + m.x2 * rect.w, rect.y + m.y2 * rect.h, tick);
   for (const c of layoutCallouts(pts)) {
-    if (c.kind === 'circle' || c.kind === 'wire') drawLeader(c.join, c.px, c.py);
+    if (c.kind === 'circle' || c.kind === 'wire' || c.kind === 'warn') drawLeader(c.join, c.px, c.py, c.kind === 'warn' ? DANGER : ACCENT);
     else drawArrow(c.px, c.py, c.join);
-    drawRing(c.px, c.py, 15 * K * pulse);
+    drawRing(c.px, c.py, 15 * K * (c.kind === 'warn' ? 1 + 0.18 * Math.abs(Math.sin(tick * 0.6)) : pulse), c.kind === 'warn' ? DANGER : ACCENT);
     drawBox(c);
   }
 
@@ -84,9 +85,9 @@ function shadow(on) {
   g.shadowColor = on ? SHADOW : 'transparent'; g.shadowBlur = on ? 6 * K : 0; g.shadowOffsetY = on ? 1 * K : 0;
 }
 
-function drawRing(x, y, r) {
+function drawRing(x, y, r, color = ACCENT) {
   shadow(true);
-  g.lineWidth = 3 * K; g.strokeStyle = ACCENT;
+  g.lineWidth = 3 * K; g.strokeStyle = color;
   g.beginPath(); g.arc(x, y, r, 0, Math.PI * 2); g.stroke();
   shadow(false);
   g.lineWidth = 1 * K; g.strokeStyle = 'rgba(255,255,255,0.85)';   // hairline inside, so the ring reads on yellow parts too
@@ -134,18 +135,18 @@ function layoutCallouts(pts) {
 
 function drawBox(c) {
   shadow(true);
-  g.fillStyle = ACCENT; roundRect(c.x, c.y, c.w, BH, BH / 2); g.fill();
+  g.fillStyle = c.kind === 'warn' ? DANGER : ACCENT; roundRect(c.x, c.y, c.w, BH, BH / 2); g.fill();
   shadow(false);
-  g.font = FONT(600, 13); g.fillStyle = INK; g.textBaseline = 'middle';
+  g.font = FONT(600, 13); g.fillStyle = c.kind === 'warn' ? '#FFFFFF' : INK; g.textBaseline = 'middle';
   g.fillText(c.label, c.x + PAD, c.y + BH / 2 + 0.5 * K);
   g.textBaseline = 'alphabetic';
 }
 
-function drawLeader(a, x, y) {
+function drawLeader(a, x, y, color = ACCENT) {
   const ang = Math.atan2(y - a.y, x - a.x);
   const ex = x - Math.cos(ang) * 16 * K, ey = y - Math.sin(ang) * 16 * K;
   shadow(true);
-  g.lineWidth = 1.5 * K; g.strokeStyle = ACCENT; g.lineCap = 'round';
+  g.lineWidth = 1.5 * K; g.strokeStyle = color; g.lineCap = 'round';
   g.beginPath(); g.moveTo(a.x, a.y); g.lineTo(ex, ey); g.stroke();
   shadow(false);
 }
