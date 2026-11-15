@@ -1,5 +1,6 @@
 // Builds the voyage-log page (+ Wokwi sketch.ino/diagram.json) and sends the recap for one finished call:  node --env-file=../.env send-recap.mjs <runDir> [--no-send]
 // The agent starts this detached when a call ends; you can re-run it by hand (it re-sends the iMessage).
+import './env.mjs';
 import { readFile, writeFile } from 'node:fs/promises';
 import { basename, resolve } from 'node:path';
 import { createBrain } from './brain.mjs';

@@ -69,7 +69,7 @@ Ody is that person, on a FaceTime call:
 | **Stop signs** | It circles a short, a missing resistor or reversed polarity in red and says "Stop," before you power on. |
 | **Knows your exact board** | It identifies the part first (UNO R3 USB-B vs UNO R4 USB-C) and points at *that* board's layout. |
 | **"Show me again"** | Instantly re-shows the last marks and repeats the last line, with no model call. |
-| **Your language** | `MENTOR_LANG=auto`: speak Spanish or Hindi and Ody answers in it. |
+| **Your language** | `ODY_LANG=auto`: speak Spanish or Hindi and Ody answers in it. |
 | **Portrait, full-screen** | It finds your real picture inside FaceTime's frame, drops the self-view, and sends portrait video back that fills your phone. |
 | **Voyage log** | After the call: the steps as legs of a journey, each with its annotated picture, ending in "Home". It also writes `sketch.ino` and `diagram.json` for the Wokwi simulator. |
 | **Laptop screen + tester panel** | Judges see the call live. Press **T** to see what Ody sees, where it pointed, latency per answer, the model and the frame rate. |
@@ -129,7 +129,7 @@ flowchart LR
 - a Gemini key (free in Google AI Studio) or an Anthropic API key
 
 ```sh
-git clone https://github.com/hippoFan/mentor && cd mentor
+git clone https://github.com/hippoFan/ody && cd ody
 cp env.example .env              # fill it in; never commit .env
 cd agent && npm install
 npm run check-keys               # verifies every key without printing it or spending model requests
@@ -146,7 +146,7 @@ FaceTime **Video** the number `chert dev` shows, and open **http://localhost:879
 
 ```sh
 npm run try-brain -- photo.jpg "where is the USB port?"   # one brain answer drawn on a photo
-MENTOR_TEST_TURN="what is this board?" npm start            # terminal 1
+ODY_TEST_TURN="what is this board?" npm start            # terminal 1
 npm run e2e -- photo.jpg ./e2e-out                          # terminal 2: a fake caller streams the photo, saves Ody's
                                                             # frames and measures Ody's audio loudness
 node test/track-test.mjs                                    # AR tracker accuracy + speed
@@ -158,23 +158,25 @@ node test/mock-monitor.mjs                                  # the laptop screen 
 <details>
 <summary><b>Configuration</b> (all in <code>.env</code>, see <a href="env.example"><code>env.example</code></a>)</summary>
 
+Settings are named `ODY_*`. The older `MENTOR_*` names still work.
+
 | Variable | Required | What it is |
 |---|---|---|
 | `LIVEKIT_URL`, `LIVEKIT_API_KEY`, `LIVEKIT_API_SECRET` | yes | One LiveKit project, the same one `chert setup` uses |
 | `AGENT_NAME` | yes | Unique dispatch name, also passed to `chert dev --agent` |
 | `ELEVENLABS_API_KEY` | yes | ElevenLabs key with Text to Speech + Speech to Text |
 | `GEMINI_API_KEY` / `ANTHROPIC_API_KEY` | one of them | The brain |
-| `MENTOR_BRAIN` | no | `gemini`, `claude`, or `claude-code` (**owner testing only**, also needs `MENTOR_OWNER_TESTING=1`; see [SECURITY.md](SECURITY.md)) |
-| `MENTOR_GEMINI_MODELS` | no | Models to fall through on rate limits (default `gemini-3.5-flash,gemini-3.5-flash-lite,gemini-2.5-flash`) |
-| `MENTOR_TASK` | no | What Ody guides, e.g. `Make the Arduino's onboard LED blink` |
-| `MENTOR_LANG` | no | `en` (default) or `auto` (answer in the caller's language) |
-| `MENTOR_OUT` / `MENTOR_FPS` | no | `portrait` (default, 540×960) or `landscape`; frames per second back into the call (default 24) |
-| `MENTOR_OVERLAY` | no | `demand` (default): the caller's video stays a plain camera; marks appear only when they ask where/what/show/connect (or for a safety warning) and fade after 10 s. `always`: the old always-on overlay (step caption, voice bars, every mark) |
-| `MENTOR_SHOW_SPEAKING` | no | `1` shows Ody's voice bars on the caller's video |
-| `MENTOR_SCAN_EFFORT` | no | Effort for "scan this" 3D scans (default `medium`) |
-| `MENTOR_MAX_TURNS` | no | Brain calls per call before Ody wraps up (default 60) |
-| `ELEVEN_VOICE_ID`, `MENTOR_GREETING` | no | Ody's voice and first line |
-| `CHERT_API_KEY`, `CHERT_PROJECT_ID`, `MENTOR_RECAP_TO`, `MENTOR_PUBLIC_URL`, `MENTOR_SEND_RECAP=1` | for the iMessage recap | Off unless `MENTOR_SEND_RECAP=1` |
+| `ODY_BRAIN` | no | `gemini`, `claude`, or `claude-code` (**owner testing only**, also needs `ODY_OWNER_TESTING=1`; see [SECURITY.md](SECURITY.md)) |
+| `ODY_GEMINI_MODELS` | no | Models to fall through on rate limits (default `gemini-3.5-flash,gemini-3.5-flash-lite,gemini-2.5-flash`) |
+| `ODY_TASK` | no | What Ody guides, e.g. `Make the Arduino's onboard LED blink` |
+| `ODY_LANG` | no | `en` (default) or `auto` (answer in the caller's language) |
+| `ODY_OUT` / `ODY_FPS` | no | `portrait` (default, 540×960) or `landscape`; frames per second back into the call (default 24) |
+| `ODY_OVERLAY` | no | `demand` (default): the caller's video stays a plain camera; marks appear only when they ask where/what/show/connect (or for a safety warning) and fade after 10 s. `always`: the old always-on overlay (step caption, voice bars, every mark) |
+| `ODY_SHOW_SPEAKING` | no | `1` shows Ody's voice bars on the caller's video |
+| `ODY_SCAN_EFFORT` | no | Effort for "scan this" 3D scans (default `medium`) |
+| `ODY_MAX_TURNS` | no | Brain calls per call before Ody wraps up (default 60) |
+| `ELEVEN_VOICE_ID`, `ODY_GREETING` | no | Ody's voice and first line |
+| `CHERT_API_KEY`, `CHERT_PROJECT_ID`, `ODY_RECAP_TO`, `ODY_PUBLIC_URL`, `ODY_SEND_RECAP=1` | for the iMessage recap | Off unless `ODY_SEND_RECAP=1` |
 </details>
 
 <details>

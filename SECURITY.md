@@ -26,7 +26,7 @@ Ody is a hackathon project (HackUTA 2026), not a production service.
   Origin checks), so other websites can't read the live camera.
 - **Recap pages:** served only through a tunnel you start yourself (`npm run recaps` + `cloudflared`). Links use a
   random id and expire after 24 h. An unlisted link is not access control, so stop the tunnel when you're done.
-- **Recap iMessage:** off by default (`MENTOR_SEND_RECAP=1`), and sent only to the configured, verified number.
+- **Recap iMessage:** off by default (`ODY_SEND_RECAP=1`), and sent only to the configured, verified number.
 
 ## Model output is untrusted
 - **What the brain can return:** only JSON (what to say, where to point, the step). Nothing it returns is executed or
@@ -40,15 +40,15 @@ Ody is a hackathon project (HackUTA 2026), not a production service.
 - **Recap code:** review any code from a recap before you flash it to real hardware.
 
 ## Subscription testing boundary
-`MENTOR_BRAIN=claude-code` runs the local Claude Code CLI on the **owner's own Claude subscription**, for the owner's
+`ODY_BRAIN=claude-code` runs the local Claude Code CLI on the **owner's own Claude subscription**, for the owner's
 own testing only.
-- **Off by default.** It also refuses to start unless `MENTOR_OWNER_TESTING=1` is set.
+- **Off by default.** It also refuses to start unless `ODY_OWNER_TESTING=1` is set.
 - **Locked down:**
   - no tools, MCP servers, settings, hooks or skills
   - no saved session
   - only basic environment variables passed
 - **Never for anyone else.** It must not serve judges, users or the public. Their calls use an API key
-  (`MENTOR_BRAIN=gemini` or `claude`).
+  (`ODY_BRAIN=gemini` or `claude`).
 
 ## Secrets
 - Keys live in `.env`, which is git-ignored. Only `env.example` is committed.

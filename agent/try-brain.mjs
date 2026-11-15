@@ -1,5 +1,6 @@
 // Test the brain on a still photo, no call needed:  npm run try-brain -- photo.jpg "how do I make it blink?"
 // Writes <photo>.mentor.png with the marks drawn on (pin marks snapped to the board, as in a call). Each run is one paid request.
+import './env.mjs';
 import { readFile, writeFile } from 'node:fs/promises';
 import { createCanvas, loadImage } from '@napi-rs/canvas';
 import { createBrain } from './brain.mjs';

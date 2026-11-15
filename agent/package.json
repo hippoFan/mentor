@@ -1,5 +1,5 @@
 {
-  "name": "mentor-agent",
+  "name": "ody-agent",
   "version": "0.1.0",
   "private": true,
   "type": "module",
@@ -28,6 +28,6 @@
     "three": "0.186.1",
     "ws": "^8.23.0"
   },
-  "description": "Mentor: FaceTime an AI that sees your project and points at it",
+  "description": "Ody: FaceTime an AI that sees your project and points at it",
   "license": "MIT"
 }

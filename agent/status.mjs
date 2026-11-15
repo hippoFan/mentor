@@ -1,6 +1,7 @@
 // Is the Chert line ready?  npm run status   (needs CHERT_API_KEY + CHERT_PROJECT_ID in ../.env)
 // Prints each line's id, number and every readiness/media flag. Another team saw audio_ready:false on a trial
 // line (no audio either way); if you see that, ask Chert for another line before debugging the agent.
+import './env.mjs';
 import { chertLines } from './recap.mjs';
 
 if (!process.env.CHERT_API_KEY || !process.env.CHERT_PROJECT_ID) {

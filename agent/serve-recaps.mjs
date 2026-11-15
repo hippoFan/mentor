@@ -1,6 +1,7 @@
 // Serves recap pages from ../runs on localhost so a tunnel (cloudflared) can share them:
 //   node serve-recaps.mjs   then   cloudflared tunnel --url http://localhost:8787
 // Read-only, GET only, no directory listings; run folders have random names so links are unguessable.
+import './env.mjs';
 import { createServer } from 'node:http';
 import { readFile, stat } from 'node:fs/promises';
 import { basename, extname, join, normalize, sep } from 'node:path';

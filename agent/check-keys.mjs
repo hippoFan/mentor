@@ -1,6 +1,7 @@
 // Checks the keys in ../.env without printing them:  npm run check-keys
 // LiveKit: lists rooms (free). Gemini: looks up each model (no request, so no quota used).
 // Anthropic: lists models (free). ElevenLabs: reads the account's subscription (free).
+import './env.mjs';
 import { RoomServiceClient } from 'livekit-server-sdk';
 import { GoogleGenAI } from '@google/genai';
 import { GEMINI_MODELS } from './brain-gemini.mjs';

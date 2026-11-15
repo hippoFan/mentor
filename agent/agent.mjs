@@ -1,6 +1,7 @@
 // Mentor: FaceTime an AI that sees your parts, draws where things go on your own live video, and talks you through it.
 // Built on Chert's video-agent starter (chert-rooms.mjs, greet.mjs). Caller video in -> overlay -> video out;
 // ElevenLabs hears and speaks; Claude Fable 5.2 (brain.mjs) decides what to say and where to point.
+import './env.mjs';
 import { spawn } from 'node:child_process';
 import { randomBytes } from 'node:crypto';
 import { openSync } from 'node:fs';

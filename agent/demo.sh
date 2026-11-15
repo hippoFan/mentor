@@ -1,13 +1,13 @@
 #!/usr/bin/env bash
 # Keeps Mentor and the Chert connector alive for a demo: restarts either one if it exits.
 #   ./demo.sh                      (Gemini brain; for judges/anyone)
-#   MENTOR_BRAIN=claude-code MENTOR_OWNER_TESTING=1 ./demo.sh   (owner testing only)
+#   ODY_BRAIN=claude-code ODY_OWNER_TESTING=1 ./demo.sh   (owner testing only)
 # Logs: ../logs/agent.log and ../logs/chert-dev.log. Ctrl+C stops both.
 set -u
 cd "$(dirname "$0")"
 LOGS=../logs; mkdir -p "$LOGS"
 AGENT_NAME=$(node --env-file=../.env -e 'process.stdout.write(process.env.AGENT_NAME||"mentor-hackuta")')
-export MENTOR_TASK="${MENTOR_TASK:-Make the Arduino onboard LED blink}"
+export ODY_TASK="${ODY_TASK:-Make the Arduino onboard LED blink}"
 trap 'kill 0; exit 0' INT TERM
 keep() {   # keep <name> <log> <cmd...>
   local name=$1 log=$2; shift 2
