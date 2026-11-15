@@ -1,0 +1,23 @@
+[ws 0.0s] {"type":"hello","call":{"type":"call","state":"live","since":1794715646447},"step":"Plan the blink with built-in LED","transcript":[{"type":"heard","text":"how do I make the LED blink?"},{"type":"say","text":"One sec, looking."},{"type":"say","text":"I can see an Arduino UNO R3. The easiest start is the built-in LED marked L near pin 13, so plug the USB cable into your computer and open the Arduin
+[ws 3.7s] {"type":"video","in":15,"out":24,"ms":20.560840575001446,"size":"1280x684"}
+[ws 8.7s] {"type":"video","in":14.4,"out":23.8,"ms":19.085816033615217,"size":"1280x684"}
+[ws 13.7s] {"type":"video","in":15,"out":24,"ms":21.335545450000062,"size":"1280x684"}
+[ws 18.7s] {"type":"video","in":15,"out":24,"ms":21.029086299997775,"size":"1280x684"}
+[ws 23.7s] {"type":"video","in":15.2,"out":23.8,"ms":20.697490714284484,"size":"1280x684"}
+[ws 28.7s] {"type":"video","in":15,"out":23.8,"ms":21.213493865547054,"size":"1280x684"}
+[ws 33.7s] {"type":"video","in":15.2,"out":23.6,"ms":19.97244461864466,"size":"1280x684"}
+[ws 38.7s] {"type":"video","in":14.8,"out":24,"ms":20.245505775000733,"size":"1280x684"}
+[ws 43.7s] {"type":"video","in":15.2,"out":23.8,"ms":21.768189932774124,"size":"1280x684"}
+[ws 48.7s] {"type":"video","in":15,"out":23.8,"ms":22.191399579831767,"size":"1280x684"}
+[ws 53.7s] {"type":"video","in":15.2,"out":23.4,"ms":21.907495555555215,"size":"1280x684"}
+[ws 58.7s] {"type":"video","in":15,"out":23.6,"ms":20.59086623728809,"size":"1280x684"}
+[ws 63.7s] {"type":"video","in":15,"out":24.2,"ms":20.70083900000097,"size":"1280x684"}
+[ws 68.7s] {"type":"video","in":15.2,"out":23.8,"ms":20.40684584873932,"size":"1280x684"}
+[ws 73.8s] {"type":"video","in":15,"out":23.6,"ms":21.13596337287681,"size":"1280x684"}
+[ws 78.8s] {"type":"video","in":15,"out":23.6,"ms":22.12363725423643,"size":"1280x684"}
+[ws 83.8s] {"type":"video","in":15.2,"out":23.8,"ms":20.2632880000018,"size":"1280x684"}
+[ws 88.8s] {"type":"video","in":15,"out":23.6,"ms":20.70143797457607,"size":"1280x684"}
+[ws 93.8s] {"type":"video","in":15,"out":23.8,"ms":21.031119336139316,"size":"1280x684"}
+[ws 98.8s] {"type":"video","in":15,"out":23.8,"ms":20.26767683193428,"size":"1280x684"}
+[ws 103.8s] {"type":"video","in":10.4,"out":23.8,"ms":21.43807168067394,"size":"1280x684"}
+[ws 108.8s] {"type":"video","in":0,"out":23.8,"ms":25.298848932773314,"size":"1280x684"}

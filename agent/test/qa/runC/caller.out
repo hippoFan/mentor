@@ -1,0 +1,14 @@
+[qa 0.71s] dispatched ody-qa-20923 ody-qa-ce6b9988
+VAAPI is supported.
+{"level":20,"time":1794716159303,"pid":652508,"hostname":"plopee","name":"lk-rtc","msg":"Connect callback received"}
+[qa 2.32s] mentor video track mentor-video
+[qa 2.42s] WS hello; keys type,call,step,transcript,brain,turns,part,scans
+[qa 3.40s] WS state 1
+[qa 7.17s] WS {"type":"video","in":15,"out":23.6,"ms":25.86524577966105,"size":"1280x684"}
+[qa 8.72s] BASELINE size=720x1280 fps samples so far [11.7,23,23.1]
+[qa 8.72s] CMD where is the USB port?
+[qa 8.81s] WS {"type":"heard","text":"where is the USB port?"}
+[qa 9.43s] CMD where does pin 13 go?
+[qa 9.45s] WS {"type":"heard","text":"where does pin 13 go?"}
+[qa 10.93s] HANGUP while brain thinking
+[qa 10.93s] VIDEO size=720x1280 fps(2s windows)=[11.7,23,23.1,24.3] total=200 firstFrameDelay=3407ms

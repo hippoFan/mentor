@@ -1,0 +1,181 @@
+[22:05:37.862] [33mWARN[39m (638993): [36mdev mode is deprecated and will be removed in a future release; use `lk agent dev` instead (https://docs.livekit.io/reference/developer-tools/livekit-cli/#setup)[39m
+[22:05:38.271] [34mDEBUG[39m (639036): [36minitializing inference runner[39m
+    runner: "lk_eot_audio"
+[22:05:38.366] [34mDEBUG[39m (639036): [36mall inference runners initialized[39m
+[22:05:38.368] [32mINFO[39m (638993): [36mstarting worker[39m
+    version: "1.8.0"
+[22:05:38.379] [32mINFO[39m (638993): [36mServer is listening on port 37921[39m
+[22:05:38.477] [34mDEBUG[39m (638993): [36mconnected to LiveKit server[39m
+    version: "1.8.0"
+[22:05:38.515] [32mINFO[39m (638993): [36mregistered worker[39m
+    version: "1.8.0"
+    id: "AW_CiUT5bBsQwUH"
+    agentName: "ody-qa-12975"
+    agentNameIsEnv: false
+    deployment: ""
+    server_info: {
+      "edition": "Cloud",
+      "version": "1.13.11",
+      "protocol": 19,
+      "region": "US Central A",
+      "nodeId": "NC_OCHICAGO1A_pjLMSDbEw5Km",
+      "debugInfo": "",
+      "agentProtocol": 0
+    }
+[22:05:50.506] [32mINFO[39m (638993): [36mreceived job request[39m
+    version: "1.8.0"
+    jobId: "AJ_bctM33fsmVkg"
+    resuming: false
+    agentName: "ody-qa-12975"
+[22:05:51.259] [34mDEBUG[39m (639354): [36minitializing job runner[39m
+[22:05:51.263] [34mDEBUG[39m (639354): [36mjob runner initialized[39m
+[22:05:51.266] [34mDEBUG[39m (639354): [36mjob started[39m
+    jobID: "AJ_bctM33fsmVkg"
+VAAPI is supported.
+{"level":20,"time":1794715551889,"pid":639354,"hostname":"plopee","name":"lk-rtc","msg":"Connect callback received"}
+[mentor] call AJ_bctM33fsmVkg, caller chert-bridge-e2e
+[live] monitor on http://localhost:8794
+[mentor] reading caller video track "facetime-remote-video"
+[brain:claude-code] OWNER TESTING ONLY: running on your personal Claude subscription. Never use this for judges or users.
+[mentor] brain: claude-code
+[22:05:51.970] [34mDEBUG[39m (639354): [36mconnection state changed[39m
+    state: 1
+[22:05:51.972] [34mDEBUG[39m (639354): [36minput stream attached[39m
+    lk.pii.participant_identity: null
+[22:05:51.980] [34mDEBUG[39m (639354): [36mAgent handoff inserted into chat context[39m
+    newAgentId: "mentor_agent"
+[22:05:51.994] [34mDEBUG[39m (639354): [36msetting participant[39m
+    lk.pii.participant_identity: "chert-bridge-e2e"
+[22:05:51.995] [34mDEBUG[39m (639354): [36msetting participant audio input[39m
+    lk.pii.participant_identity: "chert-bridge-e2e"
+[22:05:51.995] [32mINFO[39m (639354): [36mparticipantValue.trackPublications[39m
+    lk.pii.participant_identity: "chert-bridge-e2e"
+    trackPublications: [
+      {
+        "info": {
+          "sid": "TR_VCXZ7kcxHmA7ws",
+          "name": "facetime-remote-video",
+          "kind": "KIND_VIDEO",
+          "source": "SOURCE_CAMERA",
+          "simulcasted": true,
+          "width": 1280,
+          "height": 720,
+          "mimeType": "video/VP8",
+          "muted": false,
+          "remote": true,
+          "encryptionType": "NONE",
+          "audioFeatures": [],
+          "frameMetadataFeatures": []
+        },
+        "ffiHandle": {},
+        "subscribed": true,
+        "track": {
+          "roomRef": {},
+          "audioStreams": {},
+          "info": {
+            "sid": "TR_VCXZ7kcxHmA7ws",
+            "name": "facetime-remote-video",
+            "kind": "KIND_VIDEO",
+            "streamState": "STATE_ACTIVE",
+            "muted": false,
+            "remote": true
+          },
+          "ffi_handle": {},
+          "streamFinalizationRegistry": {}
+        }
+      }
+    ]
+    lengthOfTrackPublications: 1
+[22:05:51.999] [34mDEBUG[39m (639354): [36mTask.runTask: task AgentActivity_onEnter started[39m
+[22:05:52.005] [34mDEBUG[39m (639354): [36mTask.runTask: task AgentActivity_onEnter done[39m
+[22:05:52.006] [34mDEBUG[39m (639354): [36musing audio io: `ParticipantAudioInputStream` -> `AgentSession` -> `ParticipantAudioOutput`[39m
+[22:05:52.006] [34mDEBUG[39m (639354): [36musing transcript io: `AgentSession` -> (none)[39m
+[22:05:52.182] [34mDEBUG[39m (639354): [36mSession started with ID: b3d70a6c902d4ac384d9a4151090aed9[39m
+[heard] where is the USB port?
+[speak] One sec, looking.
+[22:05:54.485] [34mDEBUG[39m (639354): [36mTask.runTask: task AgentActivity.tts_say started[39m
+[22:05:54.490] [34mDEBUG[39m (639354): [36mTask.runTask: task performTextForwarding started[39m
+[22:05:54.491] [34mDEBUG[39m (639354): [36mTask.runTask: task performTTSInference started[39m
+[22:05:54.494] [34mDEBUG[39m (639354): [36mTask.runTask: task performAudioForwarding started[39m
+[22:05:54.499] [34mDEBUG[39m (639354): [36mTask.runTask: task performTextForwarding done[39m
+[22:05:54.818] [34mDEBUG[39m (639354): [36maec warmup active, disabling interruptions[39m
+    warmupDurationMs: 3000
+[22:05:54.827] [34mDEBUG[39m (639354): [36mTask.runTask: task performTTSInference done[39m
+[22:05:55.654] [34mDEBUG[39m (639354): [36mTask.runTask: task performAudioForwarding done[39m
+[22:05:55.871] [34mDEBUG[39m (639354): [36mTask.runTask: task AgentActivity.tts_say done[39m
+[brain:claude-code] sonnet 2882ms
+[say] The USB port is the big silver square connector on the upper left of the board. This is an Arduino UNO R3, and the black barrel jack is just below it.  marks=[{"label":"USB-B port","x":0.2294921875,"y":0.21937842778793418,"kind":"circle","x2":-1,"y2":-1,"pin":"","pin2":""}]
+[speak] The USB port is the big silver square connector on the upper left of the board. 
+[22:05:55.988] [34mDEBUG[39m (639354): [36mTask.runTask: task AgentActivity.tts_say started[39m
+[22:05:55.989] [34mDEBUG[39m (639354): [36mTask.runTask: task performTextForwarding started[39m
+[22:05:55.990] [34mDEBUG[39m (639354): [36mTask.runTask: task performTTSInference started[39m
+[22:05:55.991] [34mDEBUG[39m (639354): [36mTask.runTask: task performAudioForwarding started[39m
+[22:05:55.992] [34mDEBUG[39m (639354): [36mTask.runTask: task performTextForwarding done[39m
+[22:05:56.267] [33mWARN[39m (639354): [36mjob process memory usage is above the warning threshold (advisory only, the process will not be terminated)[39m
+    memoryUsageMB: 1052
+    memoryWarnMB: 1000
+    memoryLimitMB: 0
+    uptime: 5731.21666
+    hasRunningJob: true
+    baselineMemoryMB: 1052
+    growthMemoryMB: 0
+[22:05:56.480] [34mDEBUG[39m (639354): [36mTask.runTask: task performTTSInference done[39m
+[video] in 15.0 fps (1280x684) -> out 22.8 fps, 26.8 ms/frame
+[22:05:57.820] [34mDEBUG[39m (639354): [36maec warmup expired, re-enabling interruptions[39m
+[video] in 15.2 fps (1280x684) -> out 23.2 fps, 29.3 ms/frame
+[22:06:04.429] [34mDEBUG[39m (639354): [36mTask.runTask: task performAudioForwarding done[39m
+[22:06:04.632] [34mDEBUG[39m (639354): [36mTask.runTask: task AgentActivity.tts_say done[39m
+[video] in 15.2 fps (1280x684) -> out 23.6 fps, 28.5 ms/frame
+[video] in 15.0 fps (1280x684) -> out 22.8 fps, 26.9 ms/frame
+[video] in 15.0 fps (1280x684) -> out 21.8 fps, 26.9 ms/frame
+[22:06:19.651] [34mDEBUG[39m (639354): [36mUser away timeout triggered[39m
+[video] in 14.6 fps (1280x684) -> out 20.6 fps, 31.1 ms/frame
+[video] in 15.2 fps (1280x684) -> out 23.4 fps, 22.1 ms/frame
+[video] in 15.0 fps (1280x684) -> out 23.6 fps, 20.8 ms/frame
+[video] in 15.2 fps (1280x684) -> out 24.0 fps, 19.5 ms/frame
+[mentor] caller video gone
+[22:06:41.281] [32mINFO[39m (639354): [36mclosing agent session due to participant disconnect (disable via `RoomInputOptions.closeOnDisconnect=False`)[39m
+    lk.pii.participant_identity: "chert-bridge-e2e"
+    reason: "CLIENT_INITIATED"
+[22:06:41.283] [34mDEBUG[39m (639354): [36mTask.runTask: task AgentActivity_onExit started[39m
+[22:06:41.283] [34mDEBUG[39m (639354): [36mTask.runTask: task AgentActivity_onExit done[39m
+[22:06:41.283] [32mINFO[39m (639354): [36mmainTask: scheduling paused and no more speech tasks to wait[39m
+[22:06:41.283] [32mINFO[39m (639354): [36mAgentActivity mainTask: exiting[39m
+[22:06:41.284] [34mDEBUG[39m (639354): [36minput stream detached[39m
+    lk.pii.participant_identity: "chert-bridge-e2e"
+[22:06:41.444] [34mDEBUG[39m (639354): [36mshutting down[39m
+    jobID: "AJ_bctM33fsmVkg"
+[22:06:41.444] [34mDEBUG[39m (638993): [36mjob exiting[39m
+    reason: "shutdown request"
+[22:06:41.482] [34mDEBUG[39m (639354): [36mconnection state changed[39m
+    state: 0
+[22:06:41.784] [34mDEBUG[39m (639354): [36mrunning EOU detection on commitUserTurn[39m
+[22:06:41.785] [34mDEBUG[39m (639354): [36mrunning EOU detection[39m
+    lk.pii.audio_transcript: ""
+    turnDetectionMode: "vad"
+[22:06:41.785] [34mDEBUG[39m (639354): [36mskipping EOU detection[39m
+[22:06:41.785] [34mDEBUG[39m (639354): [36mUser turn committed[39m
+[22:06:41.788] [34mDEBUG[39m (639354): [36mVAD task closed[39m
+[22:06:41.790] [32mINFO[39m (639354): [36mAgentSession closed[39m
+    reason: "participant_disconnected"
+    error: null
+[22:06:41.792] [34mDEBUG[39m (639354): [36mSession ended, report generated[39m
+    jobId: "AJ_bctM33fsmVkg"
+    lk.pii.room_name: "mentor-e2e-9a6803a7"
+    roomId: "RM_VLpFsww7gjW4"
+    eventsCount: 0
+[22:06:41.792] [34mDEBUG[39m (639354): [36mdisconnected from room[39m
+    jobID: "AJ_bctM33fsmVkg"
+[mentor] call ended; 1 recap steps in /home/plopee/hackuta-2026/mentor/runs/2026-11-15-04-05-2b56099f0224/
+[22:06:41.818] [34mDEBUG[39m (639354): [36mnative resources disposed[39m
+    jobID: "AJ_bctM33fsmVkg"
+[22:06:41.818] [34mDEBUG[39m (639354): [36mJob process shutdown[39m
+    jobID: "AJ_bctM33fsmVkg"
+[22:07:07.612] [34mDEBUG[39m (639036): [36mSIGTERM received in inference proc[39m
+[22:07:07.613] [34mDEBUG[39m (638993): [36mSIGTERM received in CLI.[39m
+[22:07:07.614] [34mDEBUG[39m (638993): [36mshutting down worker[39m
+    version: "1.8.0"
+[22:07:07.615] [34mDEBUG[39m (639036): [36minference process received shutdown request[39m
+[22:07:07.615] [34mDEBUG[39m (639036): [36mInference runners closed[39m
+[22:07:07.616] [34mDEBUG[39m (639036): [36mInference process shutdown[39m
+[22:07:07.672] [34mDEBUG[39m (638993): [36mworker closed due to SIGTERM.[39m

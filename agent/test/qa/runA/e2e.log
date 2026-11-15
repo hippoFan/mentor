@@ -1,0 +1,35 @@
+[e2e] room mentor-e2e-9a6803a7, dispatched "ody-qa-12975" (AD_JyzTf9RPDW7i)
+VAAPI is supported.
+{"level":20,"time":1794715551162,"pid":639285,"hostname":"plopee","name":"lk-rtc","msg":"Connect callback received"}
+[e2e] fake caller joined
+{"level":20,"time":1794715552010,"pid":639285,"hostname":"plopee","name":"lk-rtc","msg":"ignoring incoming byte stream due to no handler for topic: lk.agent.session"}
+{"level":20,"time":1794715552038,"pid":639285,"hostname":"plopee","name":"lk-rtc","msg":"ignoring incoming byte stream due to no handler for topic: lk.agent.session"}
+[e2e] receiving Mentor's video "mentor-video" from agent-AJ_bctM33fsmVkg
+[e2e] receiving Mentor's audio "roomio_audio" from agent-AJ_bctM33fsmVkg
+{"level":20,"time":1794715554851,"pid":639285,"hostname":"plopee","name":"lk-rtc","msg":"ignoring incoming byte stream due to no handler for topic: lk.agent.session"}
+{"level":20,"time":1794715554853,"pid":639285,"hostname":"plopee","name":"lk-rtc","msg":"ignoring incoming byte stream due to no handler for topic: lk.agent.session"}
+[e2e] Mentor audio -23.0 dBFS (peak -3.4)
+[e2e] saved test/qa/runA/out/out-03s.png (720x1280)
+{"level":20,"time":1794715555907,"pid":639285,"hostname":"plopee","name":"lk-rtc","msg":"ignoring incoming byte stream due to no handler for topic: lk.agent.session"}
+{"level":20,"time":1794715555909,"pid":639285,"hostname":"plopee","name":"lk-rtc","msg":"ignoring incoming byte stream due to no handler for topic: lk.agent.session"}
+{"level":20,"time":1794715556269,"pid":639285,"hostname":"plopee","name":"lk-rtc","msg":"ignoring incoming byte stream due to no handler for topic: lk.agent.session"}
+[e2e] Mentor audio -28.6 dBFS (peak -6.3)
+{"level":20,"time":1794715556505,"pid":639285,"hostname":"plopee","name":"lk-rtc","msg":"ignoring incoming byte stream due to no handler for topic: lk.agent.session"}
+[e2e] Mentor audio -17.6 dBFS (peak -2.3)
+[e2e] Mentor audio -21.3 dBFS (peak -5.2)
+[e2e] Mentor audio -21.8 dBFS (peak -4.8)
+[e2e] Mentor audio -22.8 dBFS (peak -6.1)
+[e2e] saved test/qa/runA/out/out-08s.png (720x1280)
+[e2e] Mentor audio -19.7 dBFS (peak -5.2)
+[e2e] Mentor audio -20.3 dBFS (peak -7.6)
+[e2e] Mentor audio -19.9 dBFS (peak -3.4)
+[e2e] Mentor audio -22.0 dBFS (peak -4.8)
+[e2e] saved test/qa/runA/out/out-12s.png (720x1280)
+{"level":20,"time":1794715564664,"pid":639285,"hostname":"plopee","name":"lk-rtc","msg":"ignoring incoming byte stream due to no handler for topic: lk.agent.session"}
+{"level":20,"time":1794715564666,"pid":639285,"hostname":"plopee","name":"lk-rtc","msg":"ignoring incoming byte stream due to no handler for topic: lk.agent.session"}
+[e2e] Mentor audio -51.1 dBFS (peak -27.1)
+[e2e] saved test/qa/runA/out/out-16s.png (720x1280)
+[e2e] saved test/qa/runA/out/out-20s.png (720x1280)
+[e2e] saved test/qa/runA/out/out-25s.png (720x1280)
+{"level":20,"time":1794715579690,"pid":639285,"hostname":"plopee","name":"lk-rtc","msg":"ignoring incoming byte stream due to no handler for topic: lk.agent.session"}
+[e2e] done: 1054 frames received from Mentor, 6 saved, 11 s of audible Mentor audio

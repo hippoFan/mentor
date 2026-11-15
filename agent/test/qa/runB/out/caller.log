@@ -1,0 +1,15 @@
+[qa 0.52s] dispatched ody-qa-20923 ody-qa-f062a30b
+[qa 1.16s] WS error 
+[qa 2.05s] mentor video track mentor-video
+[qa 7.58s] BASELINE size=720x1280 fps samples so far [10.4,21.2,22.7]
+[qa 7.58s] CMD how do I make the LED blink?
+[qa 97.58s] LATENCY "how do I make the LED blink?" -> turn: TIMEOUT ms
+[qa 97.58s] marks for non-pointing turn: 
+[qa 98.68s] DIFF[01-nonpointing] vs baseline = 0.83 (>~1.5 means drawing visible)
+[qa 118.95s] CMD okay
+[qa 119.76s] ack: any new turn event? 0
+[qa 119.76s] CMD show me again
+[qa 124.77s] REPLAY say after TIMEOUT ms:  turns 0 vs 0
+[qa 125.07s] DIFF[02-replay] vs baseline = 0.83 (>~1.5 means drawing visible)
+[qa 137.16s] DIFF[03-after-ttl] vs baseline = 1.21 (>~1.5 means drawing visible)
+[qa 137.46s] CMD scan this

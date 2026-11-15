@@ -1,0 +1,3 @@
+ok  scan intent
+ok  sanitiser caps and validates
+2 scan tests passed

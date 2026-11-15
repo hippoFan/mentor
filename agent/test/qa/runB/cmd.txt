@@ -1,0 +1,2 @@
+where is the USB port?
+where does pin 13 go?

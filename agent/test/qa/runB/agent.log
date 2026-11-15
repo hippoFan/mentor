@@ -1,0 +1,314 @@
+[22:07:10.386] [33mWARN[39m (642278): [36mdev mode is deprecated and will be removed in a future release; use `lk agent dev` instead (https://docs.livekit.io/reference/developer-tools/livekit-cli/#setup)[39m
+[22:07:10.818] [34mDEBUG[39m (642309): [36minitializing inference runner[39m
+    runner: "lk_eot_audio"
+[22:07:10.929] [34mDEBUG[39m (642309): [36mall inference runners initialized[39m
+[22:07:10.930] [32mINFO[39m (642278): [36mstarting worker[39m
+    version: "1.8.0"
+[22:07:10.946] [32mINFO[39m (642278): [36mServer is listening on port 37737[39m
+[22:07:11.038] [34mDEBUG[39m (642278): [36mconnected to LiveKit server[39m
+    version: "1.8.0"
+[22:07:11.069] [32mINFO[39m (642278): [36mregistered worker[39m
+    version: "1.8.0"
+    id: "AW_7ecyWqGWCwp3"
+    agentName: "ody-qa-20923"
+    agentNameIsEnv: false
+    deployment: ""
+    server_info: {
+      "edition": "Cloud",
+      "version": "1.13.11",
+      "protocol": 19,
+      "region": "US Central A",
+      "nodeId": "NC_OCHICAGO1A_pjLMSDbEw5Km",
+      "debugInfo": "",
+      "agentProtocol": 0
+    }
+[22:07:25.144] [32mINFO[39m (642278): [36mreceived job request[39m
+    version: "1.8.0"
+    jobId: "AJ_EsN4Vy7Ti8SD"
+    resuming: false
+    agentName: "ody-qa-20923"
+[22:07:25.815] [34mDEBUG[39m (642610): [36minitializing job runner[39m
+[22:07:25.819] [34mDEBUG[39m (642610): [36mjob runner initialized[39m
+[22:07:25.822] [34mDEBUG[39m (642610): [36mjob started[39m
+    jobID: "AJ_EsN4Vy7Ti8SD"
+VAAPI is supported.
+{"level":20,"time":1794715646429,"pid":642610,"hostname":"plopee","name":"lk-rtc","msg":"Connect callback received"}
+[mentor] call AJ_EsN4Vy7Ti8SD, caller chert-bridge-qa
+[live] monitor on http://localhost:8794
+[mentor] reading caller video track "facetime-remote-video"
+[brain:claude-code] OWNER TESTING ONLY: running on your personal Claude subscription. Never use this for judges or users.
+[mentor] brain: claude-code
+[mentor] no ELEVENLABS_API_KEY: voice off (video-only test mode)
+[video] in 14.2 fps (1280x684) -> out 23.6 fps, 19.9 ms/frame
+[qa] turn: how do I make the LED blink?
+[heard] how do I make the LED blink?
+[say:muted] One sec, looking.
+[brain:claude-code] sonnet 2908ms
+[say] I can see an Arduino UNO R3. The easiest start is the built-in LED marked L near pin 13, so plug the USB cable into your computer and open the Arduino IDE's Blink example. Can you tell me if you have the IDE open?  marks=[]
+[say:muted] I can see an Arduino UNO R3. The easiest start is the built-in LED marked L near pin 13, so plug the USB cable into your computer and open the Arduino IDE's Blink example. Can you tell me if you have the IDE open?
+[22:07:35.850] [33mWARN[39m (642610): [36mjob process memory usage is above the warning threshold (advisory only, the process will not be terminated)[39m
+    memoryUsageMB: 1025
+    memoryWarnMB: 1000
+    memoryLimitMB: 0
+    uptime: 10676.091718000001
+    hasRunningJob: true
+    baselineMemoryMB: 994
+    growthMemoryMB: 31
+[video] in 15.0 fps (1280x684) -> out 23.2 fps, 20.4 ms/frame
+[video] in 15.2 fps (1280x684) -> out 21.6 fps, 24.9 ms/frame
+[video] in 15.0 fps (1280x684) -> out 23.4 fps, 23.1 ms/frame
+[video] in 15.0 fps (1280x684) -> out 23.8 fps, 20.2 ms/frame
+[video] in 15.0 fps (1280x684) -> out 24.0 fps, 20.6 ms/frame
+[video] in 15.0 fps (1280x684) -> out 22.8 fps, 23.4 ms/frame
+[video] in 15.2 fps (1280x684) -> out 23.6 fps, 24.2 ms/frame
+[video] in 15.0 fps (1280x684) -> out 24.2 fps, 20.5 ms/frame
+[video] in 15.0 fps (1280x684) -> out 23.8 fps, 21.9 ms/frame
+[video] in 14.6 fps (1280x684) -> out 22.8 fps, 25.2 ms/frame
+[video] in 15.0 fps (1280x684) -> out 24.0 fps, 19.3 ms/frame
+[video] in 15.0 fps (1280x684) -> out 23.8 fps, 19.4 ms/frame
+[video] in 15.2 fps (1280x684) -> out 23.8 fps, 26.1 ms/frame
+[video] in 15.2 fps (1280x684) -> out 23.8 fps, 28.2 ms/frame
+[video] in 15.0 fps (1280x684) -> out 23.8 fps, 28.1 ms/frame
+[video] in 15.2 fps (1280x684) -> out 23.8 fps, 29.1 ms/frame
+[video] in 14.4 fps (1280x684) -> out 22.0 fps, 29.2 ms/frame
+[video] in 15.0 fps (1280x684) -> out 24.0 fps, 21.3 ms/frame
+[video] in 15.2 fps (1280x684) -> out 24.0 fps, 20.3 ms/frame
+[video] in 15.0 fps (1280x684) -> out 23.8 fps, 20.0 ms/frame
+[video] in 15.0 fps (1280x684) -> out 23.6 fps, 20.6 ms/frame
+[video] in 15.0 fps (1280x684) -> out 23.4 fps, 21.3 ms/frame
+[qa] turn: okay
+[heard] okay (acknowledgement, no brain call)
+[qa] turn: show me again
+[heard] show me again (replay, no brain call)
+[say:muted] I can see an Arduino UNO R3. The easiest start is the built-in LED marked L near pin 13, so plug the USB cable into your computer and open the Arduino IDE's Blink example. Can you tell me if you have the IDE open?
+[video] in 15.0 fps (1280x684) -> out 23.8 fps, 20.6 ms/frame
+[video] in 15.2 fps (1280x684) -> out 24.0 fps, 20.4 ms/frame
+[22:09:36.054] [33mWARN[39m (642610): [36mjob process memory usage is above the warning threshold (advisory only, the process will not be terminated)[39m
+    memoryUsageMB: 1052.2
+    memoryWarnMB: 1000
+    memoryLimitMB: 0
+    uptime: 130880.32660600002
+    hasRunningJob: true
+    baselineMemoryMB: 994
+    growthMemoryMB: 58.2
+[video] in 15.0 fps (1280x684) -> out 23.4 fps, 22.1 ms/frame
+[video] in 15.0 fps (1280x684) -> out 23.4 fps, 20.8 ms/frame
+[qa] turn: scan this
+[heard] scan this (scan)
+[say:muted] Scanning, hold it steady.
+[video] in 15.2 fps (1280x684) -> out 23.6 fps, 20.5 ms/frame
+[video] in 15.0 fps (1280x684) -> out 23.2 fps, 22.0 ms/frame
+[brain:claude-code] scan sonnet 9499ms
+[scan] Arduino UNO R3 (12 parts, 90%) in 9499 ms
+[say:muted] Got it, your Arduino UNO R3. It's on your laptop.
+[video] in 15.2 fps (1280x684) -> out 24.0 fps, 20.1 ms/frame
+[video] in 15.2 fps (1280x684) -> out 23.6 fps, 21.7 ms/frame
+[video] in 15.0 fps (1280x684) -> out 23.8 fps, 20.5 ms/frame
+[video] in 15.0 fps (1280x684) -> out 24.0 fps, 19.9 ms/frame
+[video] in 15.2 fps (1280x684) -> out 23.8 fps, 21.1 ms/frame
+[video] in 15.0 fps (1280x684) -> out 23.6 fps, 21.0 ms/frame
+[video] in 15.2 fps (1280x684) -> out 23.8 fps, 21.7 ms/frame
+[video] in 15.0 fps (1280x684) -> out 23.6 fps, 21.1 ms/frame
+[video] in 15.0 fps (1280x684) -> out 23.8 fps, 21.2 ms/frame
+[video] in 15.0 fps (1280x684) -> out 24.0 fps, 20.6 ms/frame
+[video] in 14.4 fps (1280x684) -> out 23.8 fps, 19.1 ms/frame
+[video] in 15.0 fps (1280x684) -> out 24.0 fps, 21.3 ms/frame
+[video] in 15.0 fps (1280x684) -> out 24.0 fps, 21.0 ms/frame
+[video] in 15.2 fps (1280x684) -> out 23.8 fps, 20.7 ms/frame
+[video] in 15.0 fps (1280x684) -> out 23.8 fps, 21.2 ms/frame
+[video] in 15.2 fps (1280x684) -> out 23.6 fps, 20.0 ms/frame
+[video] in 14.8 fps (1280x684) -> out 24.0 fps, 20.2 ms/frame
+[video] in 15.2 fps (1280x684) -> out 23.8 fps, 21.8 ms/frame
+[video] in 15.0 fps (1280x684) -> out 23.8 fps, 22.2 ms/frame
+[video] in 15.2 fps (1280x684) -> out 23.4 fps, 21.9 ms/frame
+[22:11:36.149] [33mWARN[39m (642610): [36mjob process memory usage is above the warning threshold (advisory only, the process will not be terminated)[39m
+    memoryUsageMB: 1040.4
+    memoryWarnMB: 1000
+    memoryLimitMB: 0
+    uptime: 250975.355909
+    hasRunningJob: true
+    baselineMemoryMB: 994
+    growthMemoryMB: 46.5
+[video] in 15.0 fps (1280x684) -> out 23.6 fps, 20.6 ms/frame
+[video] in 15.0 fps (1280x684) -> out 24.2 fps, 20.7 ms/frame
+[video] in 15.2 fps (1280x684) -> out 23.8 fps, 20.4 ms/frame
+[video] in 15.0 fps (1280x684) -> out 23.6 fps, 21.1 ms/frame
+[video] in 15.0 fps (1280x684) -> out 23.6 fps, 22.1 ms/frame
+[video] in 15.2 fps (1280x684) -> out 23.8 fps, 20.3 ms/frame
+[video] in 15.0 fps (1280x684) -> out 23.6 fps, 20.7 ms/frame
+[video] in 15.0 fps (1280x684) -> out 23.8 fps, 21.0 ms/frame
+[video] in 15.0 fps (1280x684) -> out 23.8 fps, 20.3 ms/frame
+[video] in 10.4 fps (1280x684) -> out 23.8 fps, 21.4 ms/frame
+[video] in 0.0 fps (1280x684) -> out 23.8 fps, 25.3 ms/frame
+[video] in 0.0 fps (1280x684) -> out 24.0 fps, 24.3 ms/frame
+[22:12:36.598] [32mINFO[39m (642278): [36mreceived job request[39m
+    version: "1.8.0"
+    jobId: "AJ_tUsU2nByvMJg"
+    resuming: false
+    agentName: "ody-qa-20923"
+[video] in 0.0 fps (1280x684) -> out 23.8 fps, 22.2 ms/frame
+[22:12:37.354] [34mDEBUG[39m (647470): [36minitializing job runner[39m
+[22:12:37.358] [34mDEBUG[39m (647470): [36mjob runner initialized[39m
+[22:12:37.362] [34mDEBUG[39m (647470): [36mjob started[39m
+    jobID: "AJ_tUsU2nByvMJg"
+VAAPI is supported.
+{"level":20,"time":1794715958216,"pid":647470,"hostname":"plopee","name":"lk-rtc","msg":"Connect callback received"}
+[mentor] call AJ_tUsU2nByvMJg, caller chert-bridge-qa
+[mentor] caller video gone
+[video] in 0.0 fps (1280x684) -> out 24.0 fps, 19.2 ms/frame
+[video] in 0.0 fps (1280x684) -> out 24.2 fps, 4.1 ms/frame
+[video] in 0.0 fps (1280x684) -> out 24.0 fps, 4.2 ms/frame
+[video] in 0.0 fps (1280x684) -> out 24.0 fps, 3.9 ms/frame
+[video] in 0.0 fps (1280x684) -> out 24.2 fps, 3.9 ms/frame
+[22:13:03.594] [34mDEBUG[39m (642610): [36mshutting down[39m
+    jobID: "AJ_EsN4Vy7Ti8SD"
+[22:13:03.599] [34mDEBUG[39m (642278): [36mjob exiting[39m
+    reason: "shutdown request"
+[22:13:03.609] [34mDEBUG[39m (642610): [36mdisconnected from room[39m
+    jobID: "AJ_EsN4Vy7Ti8SD"
+[mentor] call ended; 2 recap steps in /home/plopee/hackuta-2026/mentor/runs/2026-11-15-04-07-4a356c457b4d/
+[22:13:03.641] [34mDEBUG[39m (642610): [36mnative resources disposed[39m
+    jobID: "AJ_EsN4Vy7Ti8SD"
+[22:13:03.641] [34mDEBUG[39m (642610): [36mJob process shutdown[39m
+    jobID: "AJ_EsN4Vy7Ti8SD"
+[22:13:27.073] [32mINFO[39m (642278): [36mreceived job request[39m
+    version: "1.8.0"
+    jobId: "AJ_Q6xnxHajUgJC"
+    resuming: false
+    agentName: "ody-qa-20923"
+[22:13:27.851] [34mDEBUG[39m (648554): [36minitializing job runner[39m
+[22:13:27.855] [34mDEBUG[39m (648554): [36mjob runner initialized[39m
+[22:13:27.858] [34mDEBUG[39m (648554): [36mjob started[39m
+    jobID: "AJ_Q6xnxHajUgJC"
+VAAPI is supported.
+{"level":20,"time":1794716008450,"pid":648554,"hostname":"plopee","name":"lk-rtc","msg":"Connect callback received"}
+[mentor] call AJ_Q6xnxHajUgJC, caller chert-bridge-qa
+[live] monitor on http://localhost:8794
+[mentor] reading caller video track "facetime-remote-video"
+[brain:claude-code] OWNER TESTING ONLY: running on your personal Claude subscription. Never use this for judges or users.
+[mentor] brain: claude-code
+[mentor] no ELEVENLABS_API_KEY: voice off (video-only test mode)
+[22:13:32.860] [33mWARN[39m (648554): [36mjob process memory usage is above the warning threshold (advisory only, the process will not be terminated)[39m
+    memoryUsageMB: 1012.4
+    memoryWarnMB: 1000
+    memoryLimitMB: 0
+    uptime: 5757.7301549999975
+    hasRunningJob: true
+    baselineMemoryMB: 1012.4
+    growthMemoryMB: 0
+[video] in 14.4 fps (1280x684) -> out 23.6 fps, 20.5 ms/frame
+[qa] turn: can I plug the 5 volt pin straight into ground?
+[heard] can I plug the 5 volt pin straight into ground?
+[say:muted] One sec, looking.
+[brain:claude-code] sonnet 3020ms
+[say] No, never connect 5V directly to ground, that is a short circuit and can damage the board or your computer's USB port. If you want, tell me what you're trying to build and I'll help you wire it properly.  marks=[]
+[say:muted] No, never connect 5V directly to ground, that is a short circuit and can damage the board or your computer's USB port. If you want, tell me what you're trying to build and I'll help you wire it properly.
+[video] in 14.8 fps (1280x684) -> out 23.4 fps, 20.0 ms/frame
+[video] in 0.0 fps (1280x684) -> out 24.0 fps, 20.6 ms/frame
+[video] in 0.0 fps (1280x684) -> out 23.8 fps, 23.4 ms/frame
+[22:13:50.097] [34mDEBUG[39m (647470): [36mshutting down[39m
+    jobID: "AJ_tUsU2nByvMJg"
+[22:13:50.098] [34mDEBUG[39m (642278): [36mjob exiting[39m
+    reason: "shutdown request"
+[video] in 0.0 fps (1280x684) -> out 24.0 fps, 23.4 ms/frame
+[video] in 0.0 fps (1280x684) -> out 24.2 fps, 26.3 ms/frame
+[mentor] caller video gone
+[video] in 0.0 fps (1280x684) -> out 24.4 fps, 7.4 ms/frame
+[22:14:05.099] [33mWARN[39m (647470): [36mentrypoint did not exit in time; proceeding with session cleanup[39m
+    jobID: "AJ_tUsU2nByvMJg"
+    timeout: 15000
+[22:14:05.101] [34mDEBUG[39m (647470): [36mdisconnected from room[39m
+    jobID: "AJ_tUsU2nByvMJg"
+[22:14:05.102] [34mDEBUG[39m (647470): [36mnative resources disposed[39m
+    jobID: "AJ_tUsU2nByvMJg"
+[22:14:05.103] [34mDEBUG[39m (647470): [36mJob process shutdown[39m
+    jobID: "AJ_tUsU2nByvMJg"
+[video] in 0.0 fps (1280x684) -> out 24.2 fps, 4.0 ms/frame
+[22:14:12.668] [32mINFO[39m (642278): [36mreceived job request[39m
+    version: "1.8.0"
+    jobId: "AJ_DUEzuhwmAPHh"
+    resuming: false
+    agentName: "ody-qa-20923"
+[22:14:13.486] [34mDEBUG[39m (649763): [36minitializing job runner[39m
+[22:14:13.490] [34mDEBUG[39m (649763): [36mjob runner initialized[39m
+[22:14:13.493] [34mDEBUG[39m (649763): [36mjob started[39m
+    jobID: "AJ_DUEzuhwmAPHh"
+VAAPI is supported.
+[video] in 0.0 fps (1280x684) -> out 24.2 fps, 3.6 ms/frame
+{"level":20,"time":1794716054091,"pid":649763,"hostname":"plopee","name":"lk-rtc","msg":"Connect callback received"}
+[mentor] call AJ_DUEzuhwmAPHh, caller chert-bridge-qa
+[video] in 0.0 fps (1280x684) -> out 24.4 fps, 3.2 ms/frame
+[22:14:23.476] [34mDEBUG[39m (648554): [36mshutting down[39m
+    jobID: "AJ_Q6xnxHajUgJC"
+[22:14:23.482] [34mDEBUG[39m (642278): [36mjob exiting[39m
+    reason: "shutdown request"
+[22:14:23.491] [34mDEBUG[39m (648554): [36mdisconnected from room[39m
+    jobID: "AJ_Q6xnxHajUgJC"
+[mentor] call ended; 1 recap steps in /home/plopee/hackuta-2026/mentor/runs/2026-11-15-04-13-3a429fea1bdf/
+[22:14:23.530] [34mDEBUG[39m (648554): [36mnative resources disposed[39m
+    jobID: "AJ_Q6xnxHajUgJC"
+[22:14:23.531] [34mDEBUG[39m (648554): [36mJob process shutdown[39m
+    jobID: "AJ_Q6xnxHajUgJC"
+[22:15:29.545] [34mDEBUG[39m (649763): [36mshutting down[39m
+    jobID: "AJ_DUEzuhwmAPHh"
+[22:15:29.547] [34mDEBUG[39m (642278): [36mjob exiting[39m
+    reason: "shutdown request"
+[22:15:44.553] [33mWARN[39m (649763): [36mentrypoint did not exit in time; proceeding with session cleanup[39m
+    jobID: "AJ_DUEzuhwmAPHh"
+    timeout: 15000
+[22:15:44.555] [34mDEBUG[39m (649763): [36mdisconnected from room[39m
+    jobID: "AJ_DUEzuhwmAPHh"
+[22:15:44.557] [34mDEBUG[39m (649763): [36mnative resources disposed[39m
+    jobID: "AJ_DUEzuhwmAPHh"
+[22:15:44.558] [34mDEBUG[39m (649763): [36mJob process shutdown[39m
+    jobID: "AJ_DUEzuhwmAPHh"
+[22:15:58.647] [32mINFO[39m (642278): [36mreceived job request[39m
+    version: "1.8.0"
+    jobId: "AJ_ZPriqzkThTdm"
+    resuming: false
+    agentName: "ody-qa-20923"
+[22:15:59.352] [34mDEBUG[39m (652576): [36minitializing job runner[39m
+[22:15:59.356] [34mDEBUG[39m (652576): [36mjob runner initialized[39m
+[22:15:59.359] [34mDEBUG[39m (652576): [36mjob started[39m
+    jobID: "AJ_ZPriqzkThTdm"
+VAAPI is supported.
+{"level":20,"time":1794716160034,"pid":652576,"hostname":"plopee","name":"lk-rtc","msg":"Connect callback received"}
+[mentor] call AJ_ZPriqzkThTdm, caller chert-bridge-qa
+[live] monitor on http://localhost:8794
+[mentor] reading caller video track "facetime-remote-video"
+[brain:claude-code] OWNER TESTING ONLY: running on your personal Claude subscription. Never use this for judges or users.
+[mentor] brain: claude-code
+[mentor] no ELEVENLABS_API_KEY: voice off (video-only test mode)
+[22:16:04.370] [33mWARN[39m (652576): [36mjob process memory usage is above the warning threshold (advisory only, the process will not be terminated)[39m
+    memoryUsageMB: 1019.1
+    memoryWarnMB: 1000
+    memoryLimitMB: 0
+    uptime: 5693.141125000082
+    hasRunningJob: true
+    baselineMemoryMB: 1019.1
+    growthMemoryMB: 0
+[video] in 15.0 fps (1280x684) -> out 23.6 fps, 25.9 ms/frame
+[qa] turn: where is the USB port?
+[heard] where is the USB port?
+[qa] turn: where does pin 13 go?
+[heard] where does pin 13 go?
+[mentor] caller video gone
+[say:muted] Okay, checking.
+[22:16:09.596] [34mDEBUG[39m (652576): [36mshutting down[39m
+    jobID: "AJ_ZPriqzkThTdm"
+[22:16:09.602] [34mDEBUG[39m (642278): [36mjob exiting[39m
+    reason: "shutdown request"
+[22:16:09.613] [34mDEBUG[39m (652576): [36mdisconnected from room[39m
+    jobID: "AJ_ZPriqzkThTdm"
+[mentor] call ended; 0 recap steps in /home/plopee/hackuta-2026/mentor/runs/2026-11-15-04-16-44721bb25174/
+[22:16:09.619] [34mDEBUG[39m (652576): [36mnative resources disposed[39m
+    jobID: "AJ_ZPriqzkThTdm"
+[22:16:09.619] [34mDEBUG[39m (652576): [36mJob process shutdown[39m
+    jobID: "AJ_ZPriqzkThTdm"
+[22:16:51.354] [34mDEBUG[39m (642278): [36mSIGTERM received in CLI.[39m
+[22:16:51.355] [34mDEBUG[39m (642278): [36mshutting down worker[39m
+    version: "1.8.0"
+[22:16:51.356] [34mDEBUG[39m (642309): [36minference process received shutdown request[39m
+[22:16:51.357] [34mDEBUG[39m (642309): [36mInference runners closed[39m
+[22:16:51.358] [34mDEBUG[39m (642309): [36mInference process shutdown[39m
+[22:16:51.522] [34mDEBUG[39m (642278): [36mworker closed due to SIGTERM.[39m

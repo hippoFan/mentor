@@ -1,0 +1,20 @@
+[
+ {
+  "t": 7170,
+  "type": "video",
+  "in": 15,
+  "out": 23.6,
+  "ms": 25.86524577966105,
+  "size": "1280x684"
+ },
+ {
+  "t": 8810,
+  "type": "heard",
+  "text": "where is the USB port?"
+ },
+ {
+  "t": 9454,
+  "type": "heard",
+  "text": "where does pin 13 go?"
+ }
+]

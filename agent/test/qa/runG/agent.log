@@ -1,0 +1,103 @@
+[22:16:54.127] [33mWARN[39m (653922): [36mdev mode is deprecated and will be removed in a future release; use `lk agent dev` instead (https://docs.livekit.io/reference/developer-tools/livekit-cli/#setup)[39m
+[22:16:54.453] [34mDEBUG[39m (653953): [36minitializing inference runner[39m
+    runner: "lk_eot_audio"
+[22:16:54.549] [32mINFO[39m (653922): [36mstarting worker[39m
+    version: "1.8.0"
+[22:16:54.547] [34mDEBUG[39m (653953): [36mall inference runners initialized[39m
+[22:16:54.562] [32mINFO[39m (653922): [36mServer is listening on port 38797[39m
+[22:16:54.658] [34mDEBUG[39m (653922): [36mconnected to LiveKit server[39m
+    version: "1.8.0"
+[22:16:54.693] [32mINFO[39m (653922): [36mregistered worker[39m
+    version: "1.8.0"
+    id: "AW_8PW9kcoFCgDp"
+    agentName: "ody-qa-23002"
+    agentNameIsEnv: false
+    deployment: ""
+    server_info: {
+      "edition": "Cloud",
+      "version": "1.13.11",
+      "protocol": 19,
+      "region": "US Central A",
+      "nodeId": "NC_OCHICAGO1A_aZJX7rwSSGqh",
+      "debugInfo": "",
+      "agentProtocol": 0
+    }
+[22:17:02.475] [32mINFO[39m (653922): [36mreceived job request[39m
+    version: "1.8.0"
+    jobId: "AJ_W6GttwwvPiWK"
+    resuming: false
+    agentName: "ody-qa-23002"
+[22:17:03.365] [34mDEBUG[39m (654179): [36minitializing job runner[39m
+[22:17:03.369] [34mDEBUG[39m (654179): [36mjob runner initialized[39m
+[22:17:03.371] [34mDEBUG[39m (654179): [36mjob started[39m
+    jobID: "AJ_W6GttwwvPiWK"
+VAAPI is supported.
+{"level":20,"time":1794716224062,"pid":654179,"hostname":"plopee","name":"lk-rtc","msg":"Connect callback received"}
+[mentor] call AJ_W6GttwwvPiWK, caller chert-bridge-qa
+[live] monitor on http://localhost:8794
+[mentor] reading caller video track "facetime-remote-video"
+[mentor] brain: gemini
+[mentor] no ELEVENLABS_API_KEY: voice off (video-only test mode)
+[22:17:08.425] [33mWARN[39m (654179): [36mjob process memory usage is above the warning threshold (advisory only, the process will not be terminated)[39m
+    memoryUsageMB: 1003
+    memoryWarnMB: 1000
+    memoryLimitMB: 0
+    uptime: 5889.740504000001
+    hasRunningJob: true
+    baselineMemoryMB: 1003
+    growthMemoryMB: 0
+[video] in 14.4 fps (1280x684) -> out 22.4 fps, 25.2 ms/frame
+[qa] turn: where is the USB port?
+[heard] where is the USB port?
+[brain:gemini] qa-invalid-model-xyz unavailable (404); trying the next model
+[mentor] brain failed 404 {"error":{"code":404,"message":"models/qa-invalid-model-xyz is not found for API version v1, or is not supported for generateContent. Call ModelService.ListModels to see the list of available models and their supported methods.","status":"NOT_FOUND"}}
+[say:muted] Sorry, I lost my train of thought. Say that again?
+[qa] turn: where is pin 1?
+[heard] where is pin 1?
+[brain:gemini] qa-invalid-model-xyz unavailable (404); trying the next model
+[mentor] brain failed 404 {"error":{"code":404,"message":"models/qa-invalid-model-xyz is not found for API version v1, or is not supported for generateContent. Call ModelService.ListModels to see the list of available models and their supported methods.","status":"NOT_FOUND"}}
+[say:muted] Sorry, I lost my train of thought. Say that again?
+[qa] turn: where is pin 2?
+[heard] where is pin 2?
+[qa] turn: where is pin 3?
+[heard] where is pin 3?
+[brain:gemini] qa-invalid-model-xyz unavailable (404); trying the next model
+[mentor] brain failed 404 {"error":{"code":404,"message":"models/qa-invalid-model-xyz is not found for API version v1, or is not supported for generateContent. Call ModelService.ListModels to see the list of available models and their supported methods.","status":"NOT_FOUND"}}
+[qa] turn: where is pin 4?
+[heard] where is pin 4?
+[brain:gemini] qa-invalid-model-xyz unavailable (404); trying the next model
+[mentor] brain failed 404 {"error":{"code":404,"message":"models/qa-invalid-model-xyz is not found for API version v1, or is not supported for generateContent. Call ModelService.ListModels to see the list of available models and their supported methods.","status":"NOT_FOUND"}}
+[qa] turn: where is pin 5?
+[heard] where is pin 5?
+[brain:gemini] qa-invalid-model-xyz unavailable (404); trying the next model
+[mentor] brain failed 404 {"error":{"code":404,"message":"models/qa-invalid-model-xyz is not found for API version v1, or is not supported for generateContent. Call ModelService.ListModels to see the list of available models and their supported methods.","status":"NOT_FOUND"}}
+[brain:gemini] qa-invalid-model-xyz unavailable (404); trying the next model
+[mentor] brain failed 404 {"error":{"code":404,"message":"models/qa-invalid-model-xyz is not found for API version v1, or is not supported for generateContent. Call ModelService.ListModels to see the list of available models and their supported methods.","status":"NOT_FOUND"}}
+[say:muted] Sorry, I lost my train of thought. Say that again?
+[video] in 15.0 fps (1280x684) -> out 23.2 fps, 22.2 ms/frame
+[video] in 15.0 fps (1280x684) -> out 23.4 fps, 21.5 ms/frame
+[mentor] caller video gone
+[qa] turn: scan this
+[heard] scan this (scan)
+[say:muted] Scanning, hold it steady.
+[video] in 1.8 fps (8x8) -> out 24.2 fps, 5.6 ms/frame
+[say:muted] I can't see anything yet. Point your camera at it and say scan again.
+[qa] turn: where is the USB port?
+[heard] where is the USB port?
+[brain:gemini] qa-invalid-model-xyz unavailable (404); trying the next model
+[mentor] brain failed 404 {"error":{"code":404,"message":"models/qa-invalid-model-xyz is not found for API version v1, or is not supported for generateContent. Call ModelService.ListModels to see the list of available models and their supported methods.","status":"NOT_FOUND"}}
+[say:muted] Sorry, I lost my train of thought. Say that again?
+[mentor] reading caller video track "facetime-remote-video"
+[video] in 11.2 fps (1280x684) -> out 23.8 fps, 18.7 ms/frame
+[mentor] caller video gone
+[22:17:31.642] [34mDEBUG[39m (654179): [36mshutting down[39m
+    jobID: "AJ_W6GttwwvPiWK"
+[22:17:31.646] [34mDEBUG[39m (653922): [36mjob exiting[39m
+    reason: "shutdown request"
+[22:17:31.648] [34mDEBUG[39m (654179): [36mdisconnected from room[39m
+    jobID: "AJ_W6GttwwvPiWK"
+[mentor] call ended; 0 recap steps in /home/plopee/hackuta-2026/mentor/runs/2026-11-15-04-17-29d1b2a10ebe/
+[22:17:31.651] [34mDEBUG[39m (654179): [36mnative resources disposed[39m
+    jobID: "AJ_W6GttwwvPiWK"
+[22:17:31.651] [34mDEBUG[39m (654179): [36mJob process shutdown[39m
+    jobID: "AJ_W6GttwwvPiWK"
