@@ -15,7 +15,11 @@
     "status": "node --env-file=../.env status.mjs",
     "check-keys": "node --env-file=../.env check-keys.mjs",
     "e2e": "node --env-file=../.env test/e2e-video.mjs",
-    "dev-agent": "node --env-file=../.env agent.mjs dev"
+    "dev-agent": "node --env-file=../.env agent.mjs dev",
+    "watchdog": "node watchdog.mjs",
+    "replay": "node replay.mjs",
+    "record": "node record.mjs",
+    "usage": "node --env-file=../.env usage.mjs"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "1.8.0",

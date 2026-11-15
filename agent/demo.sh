@@ -2,7 +2,7 @@
 # Keeps Mentor and the Chert connector alive for a demo: restarts either one if it exits.
 #   ./demo.sh                      (Gemini brain; for judges/anyone)
 #   ODY_BRAIN=claude-code ODY_OWNER_TESTING=1 ./demo.sh   (owner testing only)
-# Logs: ../logs/agent.log and ../logs/chert-dev.log. Ctrl+C stops both.
+# Logs: ../logs/agent.log, ../logs/chert-dev.log, ../logs/record.log (+ ../logs/sessions/). Ctrl+C stops all.
 set -u
 cd "$(dirname "$0")"
 LOGS=../logs; mkdir -p "$LOGS"
@@ -21,8 +21,10 @@ keep() {   # keep <name> <log> <cmd...>
 : > "$LOGS/agent.log"; : > "$LOGS/chert-dev.log"; : > "$LOGS/hub.log"
 keep hub "$LOGS/hub.log" node hub.mjs &      # the laptop page, always on (http://localhost:8790 and /twin)
 sleep 2
+keep record "$LOGS/record.log" node record.mjs &   # every call -> ../logs/sessions/<time>.jsonl (replay.mjs plays it back)
 keep agent "$LOGS/agent.log" node --env-file=../.env agent.mjs start &
 sleep 6
 keep chert "$LOGS/chert-dev.log" chert dev --agent "$AGENT_NAME" --takeover &
 echo "[demo] running. Laptop screen: http://localhost:8790   3D twin: http://localhost:8790/twin   Ctrl+C to stop."
+echo "[demo] presenting? in another pane: npm run watchdog -- --arm 60   (no call in 60 s -> backup demo; b = backup now, s = stop)"
 wait
