@@ -21,3 +21,6 @@ agent/test/qa/photo.jpg
 # backup demo: built from a real call (camera frames), keep it on this laptop only
 agent/demo-data/
 agent/logs/
+
+# The Forge: designs saved on this laptop (scans, refinements, imports)
+designs/

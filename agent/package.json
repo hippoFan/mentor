@@ -30,6 +30,7 @@
     "@livekit/rtc-node": "0.13.35",
     "@mediapipe/tasks-vision": "1.2.0",
     "@napi-rs/canvas": "1.1.1",
+    "openscad-wasm-prebuilt": "1.2.0",
     "three": "0.186.1",
     "ws": "^8.23.0"
   },

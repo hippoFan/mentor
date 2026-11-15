@@ -196,7 +196,8 @@ export async function startLive() {
 
 /**
  * The laptop page + its WebSocket on 127.0.0.1:PORT. Used by hub.mjs (always on) or by a call when no hub runs.
- * @param {{onPageMessage?: (msg: object) => void}} [opts] called with each valid, rate-limited page message
+ * @param {{onPageMessage?: (msg: object) => void, routes?: (req, res) => Promise<void>}} [opts] onPageMessage: each valid,
+ *   rate-limited page message; routes: the /argos/ HTTP handler (argos/server.mjs)
  */
 export async function createLiveServer(opts = {}) {
   const state = { call: null, step: '', transcript: [], brain: '', turns: [], part: null, scans: [], circuit: null, analysis: null, consent: null, modifications: [], checklist: null };
@@ -219,7 +220,7 @@ export async function createLiveServer(opts = {}) {
         const { html, csp } = await appPage();
         res.writeHead(200, { 'content-type': 'text/html; charset=utf-8', 'cache-control': 'no-store', 'x-frame-options': 'DENY',
           'content-security-policy': csp, 'referrer-policy': 'no-referrer', 'x-content-type-options': 'nosniff',
-          'permissions-policy': 'camera=(self), microphone=(), geolocation=()' }).end(html);
+          'permissions-policy': 'camera=(self), microphone=(self), geolocation=()' }).end(html);   // mic: Argos's record button
       } catch { res.writeHead(404).end(); }
     } else if ((req.method === 'GET' || req.method === 'HEAD') && STATIC.some(([re]) => re.test(req.url))) {
       const [re, file] = STATIC.find(([r]) => r.test(req.url)), m = req.url.match(re);
@@ -228,6 +229,10 @@ export async function createLiveServer(opts = {}) {
         res.writeHead(200, { 'content-type': TYPES[m[1].split('.').pop()], 'cache-control': 'no-cache',
           'x-content-type-options': 'nosniff', 'referrer-policy': 'no-referrer' }).end(body);
       } catch { res.writeHead(404).end(); }
+    } else if (opts.routes && req.url.startsWith('/argos/')) {
+      // Argos (argos/server.mjs): anything that changes state must come from this page itself (no cross-site requests).
+      if (req.method !== 'GET' && req.method !== 'HEAD' && !okOrigin(req.headers.origin)) { res.writeHead(403).end(); return; }
+      try { await opts.routes(req, res); } catch { if (!res.headersSent) res.writeHead(500).end(); }
     } else res.writeHead(404).end();
   });
   const wss = new WebSocketServer({

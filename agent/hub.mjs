@@ -7,6 +7,7 @@ import { createServer } from 'node:http';
 import { mkdir, writeFile } from 'node:fs/promises';
 import { WebSocketServer } from 'ws';
 import { createLiveServer } from './live.mjs';
+import { createArgos } from './argos/server.mjs';
 
 const HUB_PORT = Number(process.env.MENTOR_HUB_PORT || 8789);
 const token = randomBytes(24).toString('hex');
@@ -16,9 +17,13 @@ await writeFile(new URL('../logs/hub.token', import.meta.url), token + '\n', { m
 // Page -> agent: the laptop page's validated, rate-limited messages (parts on the stage, "analyze this combination")
 // go to the call that is publishing right now, and only to it.
 let publisher = null;
+// Argos (argos/server.mjs): the laptop's own assistant, Forge store and refinement, on the same page server under /argos/.
+let argos = null;
 const live = await createLiveServer({
-  onPageMessage: msg => { if (publisher?.readyState === 1) publisher.send(JSON.stringify(msg)); },
+  onPageMessage: msg => { argos?.onPageMessage(msg); if (publisher?.readyState === 1) publisher.send(JSON.stringify(msg)); },
+  routes: (req, res) => argos.route(req, res),
 });
+argos = createArgos({ send: e => live.send(e), callLive: () => publisher?.readyState === 1 });
 const server = createServer((req, res) => res.writeHead(404).end());
 const pub = new WebSocketServer({
   server, path: '/publish', maxPayload: 4 * 1024 * 1024,   // frames + scan photos
@@ -28,7 +33,7 @@ pub.on('error', () => {}); server.on('error', e => { console.error('[hub] publis
 pub.on('connection', ws => {
   console.log('[hub] a call connected');
   publisher = ws;   // one call at a time on a line; the newest publisher gets the page's messages
-  ws.on('message', data => { try { live.send(JSON.parse(String(data))); } catch { /* ignore junk */ } });
+  ws.on('message', data => { let e; try { e = JSON.parse(String(data)); } catch { return; } live.send(e); argos.onPublished(e); });
   ws.on('close', () => { if (publisher === ws) publisher = null; console.log('[hub] call disconnected'); live.send({ type: 'call', state: 'ended' }); });
   ws.on('error', () => {});
 });
