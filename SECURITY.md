@@ -56,8 +56,16 @@ own testing only.
 - The laptop page can send two things back to the agent: the parts on its 3D stage and "analyze this combo". Both are
   Origin-checked, schema-validated (≤200 parts, names ≤60 chars) and rate-limited, and they never reach a shell or a URL.
 
+## Argos (laptop assistant)
+- Routes live under `/argos/` on the same 127.0.0.1 page server: Host-checked, and every non-GET must carry the page's
+  own Origin. Design files are served with `nosniff`, `no-store` and same-origin CORP.
+- Model-written OpenSCAD is compiled by OpenSCAD's WASM build in a worker thread: no shell, an in-memory file system
+  only (no host files), `include`/`use`/`import`/`surface` refused, 60 000-character cap, 20 s time limit.
+
 ## Secrets
 - Keys live in `.env`, which is git-ignored. Only `env.example` is committed.
+- The laptop page can see only whether each key is set (never a key or part of one) and can't set or change keys
+  (`POST /argos/keys` always answers 403).
 - `npm run check-keys` verifies keys without printing them and without spending model requests.
 
 ## Reporting a vulnerability

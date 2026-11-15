@@ -27,6 +27,10 @@ Each provider handles data under its own terms and privacy policy. Ody never sel
 ## What stays on the laptop running Ody
 - **Per call:** a snapshot of what Ody saw and what it showed back (every 3 s), your scans, and the transcript. These are
   kept in a local folder and deleted automatically after **7 days** (checked whenever Ody starts or a call begins).
+- **The Forge (Argos, on the laptop page):** each scan from a call is also saved as a design (shape, OpenSCAD code and
+  the scan photo) in a git-ignored `designs/` folder, and deleted after the same **7 days**. Nothing is saved after you
+  say "stop recording" or "no". Argos's chat and refinements on the laptop send design names and code (never your
+  photo) to the laptop's own model (Gemini by default); its record button sends the laptop user's voice to ElevenLabs.
 - **Ody's working log:** a text log on the laptop that includes what was said. The team clears it after the event.
 - **Recap page:** opened through a random link that expires after **24 hours**.
 - **Laptop screen (the 3D twin):** local only. It accepts no connections from other computers or websites.
