@@ -68,11 +68,17 @@ export function render(frame, marks = [], opts = {}) {
 
   const pulse = 1 + 0.04 * Math.sin(tick * 0.35);   // a slight pulse so a mark reads as live, not painted on
   const pts = marks.map(m => ({ ...m, px: rect.x + m.x * rect.w, py: rect.y + m.y * rect.h }));
-  for (const m of pts) if (m.kind === 'wire' && m.x2 >= 0) drawWire(m.px, m.py, rect.x + m.x2 * rect.w, rect.y + m.y2 * rect.h, tick);
+  for (const m of pts) {
+    if (m.kind !== 'wire' || !(m.x2 >= 0)) continue;
+    if (m.geo) drawHoloWire(mapGeo(m.geo, rect), tick);
+    else drawHoloWire(flatGeo(m.px, m.py, rect.x + m.x2 * rect.w, rect.y + m.y2 * rect.h), tick);
+  }
   for (const c of layoutCallouts(pts)) {
     if (c.kind === 'circle' || c.kind === 'wire' || c.kind === 'warn') drawLeader(c.join, c.px, c.py, c.kind === 'warn' ? DANGER : ACCENT);
     else drawArrow(c.px, c.py, c.join);
-    drawRing(c.px, c.py, 15 * K * (c.kind === 'warn' ? 1 + 0.18 * Math.abs(Math.sin(tick * 0.6)) : pulse), c.kind === 'warn' ? DANGER : ACCENT);
+    if (c.kind !== 'wire' || !(c.x2 >= 0)) {   // a wire has its own glowing contact rings at both holes
+      drawRing(c.px, c.py, 15 * K * (c.kind === 'warn' ? 1 + 0.18 * Math.abs(Math.sin(tick * 0.6)) : pulse), c.kind === 'warn' ? DANGER : ACCENT);
+    }
     drawBox(c);
   }
 
@@ -168,22 +174,106 @@ function drawArrow(x, y, tail) {
   shadow(false);
 }
 
-// AR wire: where a jumper goes, from (x1,y1) to (x2,y2): a curved cable with light flowing along it toward the
-// destination, an end ring at the destination, so the caller sees the wire "placed" before touching anything.
-function drawWire(x1, y1, x2, y2, tick) {
-  const mx = (x1 + x2) / 2, my = (y1 + y2) / 2, len = Math.hypot(x2 - x1, y2 - y1) || 1;
-  const bow = Math.min(90 * K, len * 0.28);                   // bow sideways like a real jumper wire
-  const cx = mx + (-(y2 - y1) / len) * bow, cy = my + ((x2 - x1) / len) * bow;
-  const path = () => { g.beginPath(); g.moveTo(x1, y1); g.quadraticCurveTo(cx, cy, x2, y2); };
-  shadow(true);
+// AR wire: a holographic 3D jumper. With a registered board (board.mjs wireGeometry) the cable rises out of the board
+// plane from the exact header hole and arcs over to the other end; dark plugs sit in both holes, a glowing contact ring
+// lies flat on the board at each hole, and the arc casts a soft shadow on the board. Light pulses flow toward the target.
+const HOLO_A = '#3BE8FF', HOLO_B = '#A86BFF';
+
+/** Board geometry (normalised to the frame) -> output px. */
+function mapGeo(geo, rect) {
+  const P = ([x, y]) => [rect.x + x * rect.w, rect.y + y * rect.h];
+  return {
+    path: geo.path.map(P), shadow: geo.shadow.map(P), plugs: geo.plugs.map(pl => pl.map(P)), rings: geo.rings.map(r => r.map(P)),
+    width: Math.max(3 * K, Math.min(16 * K, geo.width * rect.w)), plugWidth: Math.max(5 * K, Math.min(24 * K, geo.plugWidth * rect.w)),
+  };
+}
+
+/** Without a registered board: a screen-space stand-in (plugs point up the screen, the arc rises above both ends). */
+function flatGeo(x1, y1, x2, y2) {
+  const len = Math.hypot(x2 - x1, y2 - y1) || 1, plug = 20 * K, lift = Math.min(170 * K, 30 * K + 0.45 * len);
+  const p0 = [x1, y1 - plug], p3 = [x2, y2 - plug];
+  const top = Math.min(p0[1], p3[1]) - lift;
+  const p1 = [x1 + (x2 - x1) * 0.12, top], p2 = [x2 + (x1 - x2) * 0.12, top];
+  const path = [], shadow = [];
+  for (let i = 0; i <= 28; i++) {
+    const t = i / 28, s = 1 - t, a = s * s * s, b = 3 * s * s * t, c = 3 * s * t * t, d = t * t * t;
+    const x = a * p0[0] + b * p1[0] + c * p2[0] + d * p3[0], y = a * p0[1] + b * p1[1] + c * p2[1] + d * p3[1];
+    path.push([x, y]);
+    const h = (y1 + (y2 - y1) * t) - y;   // height above the line between the holes
+    shadow.push([x1 + (x2 - x1) * t + h * 0.18, y1 + (y2 - y1) * t + h * 0.06]);
+  }
+  const ring = (x, y) => Array.from({ length: 24 }, (_, i) => [x + 6 * K * Math.cos(i * Math.PI / 12), y + 2.6 * K * Math.sin(i * Math.PI / 12)]);
+  return { path, shadow, plugs: [[[x1, y1], p0], [[x2, y2], p3]], rings: [ring(x1, y1), ring(x2, y2)], width: 6 * K, plugWidth: 9 * K };
+}
+
+function polyline(pts) {
+  g.beginPath(); g.moveTo(pts[0][0], pts[0][1]);
+  for (let i = 1; i < pts.length; i++) g.lineTo(pts[i][0], pts[i][1]);
+}
+
+function drawHoloWire(geo, tick) {
+  const { path, shadow: shade, plugs, rings, width: w, plugWidth: pw } = geo;
+  const a = path[0], z = path[path.length - 1];
+  const grad = g.createLinearGradient(a[0], a[1], z[0], z[1]);
+  grad.addColorStop(0, HOLO_A); grad.addColorStop(1, HOLO_B);
+  g.lineCap = 'round'; g.lineJoin = 'round';
+
+  // shadow of the arc on the board / desk: two soft dark strokes
+  g.strokeStyle = 'rgba(0,0,0,0.16)'; g.lineWidth = w * 2.6; polyline(shade); g.stroke();
+  g.strokeStyle = 'rgba(0,0,0,0.22)'; g.lineWidth = w * 1.2; polyline(shade); g.stroke();
+
+  // contact rings, flat on the board (perspective ellipses), pulsing
+  const pulse = 0.65 + 0.35 * Math.sin(tick * 0.25);
+  for (const r of rings) {
+    polyline(r); g.closePath();
+    g.strokeStyle = `rgba(59,232,255,${(0.22 * pulse).toFixed(3)})`; g.lineWidth = 5 * K; g.stroke();
+    g.strokeStyle = `rgba(59,232,255,${(0.95 * pulse).toFixed(3)})`; g.lineWidth = 1.6 * K; g.stroke();
+  }
+
+  // dark matte plugs seated in the holes
+  for (const [base, topP] of plugs) {
+    g.lineCap = 'butt';
+    g.strokeStyle = '#26272B'; g.lineWidth = pw; g.beginPath(); g.moveTo(base[0], base[1]); g.lineTo(topP[0], topP[1]); g.stroke();
+    const dx = topP[0] - base[0], dy = topP[1] - base[1], L = Math.hypot(dx, dy) || 1, nx = -dy / L, ny = dx / L;
+    g.strokeStyle = 'rgba(255,255,255,0.16)'; g.lineWidth = Math.max(1, pw * 0.18);   // a matte highlight down one side
+    g.beginPath(); g.moveTo(base[0] + nx * pw * 0.25, base[1] + ny * pw * 0.25); g.lineTo(topP[0] + nx * pw * 0.25, topP[1] + ny * pw * 0.25); g.stroke();
+    g.fillStyle = '#3A3B41'; g.beginPath(); g.ellipse(topP[0], topP[1], pw / 2, pw / 4, Math.atan2(ny, nx), 0, Math.PI * 2); g.fill();
+  }
   g.lineCap = 'round';
-  g.lineWidth = 6 * K; g.strokeStyle = 'rgba(255,200,69,0.35)'; path(); g.stroke();   // the cable body
-  shadow(false);
-  g.lineWidth = 2.5 * K; g.strokeStyle = ACCENT; g.setLineDash([10 * K, 12 * K]);
-  g.lineDashOffset = -tick * 2.2 * K; path(); g.stroke();                               // light flowing to the target
-  g.setLineDash([]);
-  g.fillStyle = ACCENT; g.beginPath(); g.arc(x1, y1, 4.5 * K, 0, Math.PI * 2); g.fill();   // start of the wire
-  drawRing(x2, y2, 12 * K * (1 + 0.08 * Math.sin(tick * 0.5)));                           // where it goes in
+
+  // glow: wide translucent strokes, then a bloom pass
+  g.strokeStyle = grad;
+  g.globalAlpha = 0.10; g.lineWidth = w * 4.2; polyline(path); g.stroke();
+  g.globalAlpha = 0.22; g.lineWidth = w * 2.4; polyline(path); g.stroke();
+  g.globalAlpha = 0.45; g.lineWidth = w * 1.5; polyline(path); g.stroke();   // bloom (cheaper than a blurred shadow)
+  g.globalAlpha = 1;
+  g.lineWidth = w; polyline(path); g.stroke();   // the tube itself
+
+  // braided texture: thin diagonal stripes across the tube
+  g.strokeStyle = 'rgba(255,255,255,0.28)'; g.lineWidth = Math.max(1, w * 0.16); g.lineCap = 'butt';
+  g.beginPath();
+  const step = Math.max(3, w * 0.9);
+  let carry = 0;
+  for (let i = 1; i < path.length; i++) {
+    const [x0, y0] = path[i - 1], [x1, y1] = path[i];
+    const seg = Math.hypot(x1 - x0, y1 - y0); if (!seg) continue;
+    const tx = (x1 - x0) / seg, ty = (y1 - y0) / seg, nx = -ty, ny = tx, hw = w * 0.42;
+    for (let d = step - carry; d <= seg; d += step) {
+      const cx = x0 + tx * d, cy = y0 + ty * d;
+      g.moveTo(cx + nx * hw - tx * hw * 0.7, cy + ny * hw - ty * hw * 0.7);
+      g.lineTo(cx - nx * hw + tx * hw * 0.7, cy - ny * hw + ty * hw * 0.7);
+    }
+    carry = (carry + seg) % step;
+  }
+  g.stroke();
+
+  // bright core, then light pulses travelling toward the target
+  g.lineCap = 'round';
+  g.strokeStyle = 'rgba(235,252,255,0.85)'; g.lineWidth = Math.max(1, w * 0.26); polyline(path); g.stroke();
+  g.setLineDash([w * 1.6, w * 7]); g.lineDashOffset = -tick * w * 0.55;
+  g.shadowColor = HOLO_A; g.shadowBlur = 8 * K;
+  g.strokeStyle = 'rgba(255,255,255,0.95)'; g.lineWidth = w * 0.7; polyline(path); g.stroke();
+  g.setLineDash([]); g.shadowColor = 'transparent'; g.shadowBlur = 0;
 }
 
 // The current step, as a floating dark pill centred near the bottom (the caller's view stays uncovered).

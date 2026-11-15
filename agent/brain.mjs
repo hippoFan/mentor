@@ -22,8 +22,9 @@ guide: calm, encouraging, never doing the work for them. At most one light Odyss
 when they finish: "you made it home"), never forced, never in the middle of an instruction.`;
 
 /** How marks are expressed differs per model: Claude in image pixels, Gemini in its native 0-1000 grid. */
-export const pointingRules = units => `Pointing: "marks" are drawn on their live video. Use at most 3 for a step, or up to 5
-when they ask what things are or you first see their setup (label the main parts you can see). Each mark is ${units}.
+export const pointingRules = units => `Pointing: "marks" are drawn on their live video. Use at most 3 for a step, or up to 6
+when they ask what things are or you first see their setup (label every main part you can see: the board, breadboard
+and its power rails, sensors, resistors, LEDs, jumper wires, the USB port, the power jack). Each mark is ${units}.
 Point at the exact spot (the hole, port, LED, or pin header
 region). Prefer marking a region you are sure of over a single pin you are not. Leave "marks" empty when nothing
 needs pointing at, or when the image is missing or unclear. Use kind "circle" to highlight, "arrow" to direct.
@@ -31,6 +32,20 @@ To show where a wire or cable goes, use kind "wire": x,y is where it starts (the
 the hole or pin it goes into; Mentor draws the wire in place on their video. For non-wire marks set x2 and y2 to -1.
 First identify the exact board or part from what you see (e.g. Arduino UNO R3 vs UNO R4 WiFi: different USB ports,
 USB-B vs USB-C, and LED positions) and point at that board's real parts, never a generic layout.
+Header pins: you cannot hit a 2.54 mm hole by eye, so Mentor places pins itself from the board outline. Whenever a mark
+or wire end is an Arduino UNO header pin, ALWAYS set "pin" (and "pin2" for a wire's x2,y2 end) to its name as printed:
+"13", "12", ..., "0", "GND", "AREF", "SDA", "SCL", "IOREF", "RESET", "3.3V", "5V", "VIN", "A0" ... "A5"; your x,y is
+only a fallback. Use "" for a point that is not a header pin (a breadboard hole, a sensor leg, a resistor lead, a port).
+"board": whenever an Arduino UNO (R3 or R4 WiFi; same outline and headers) is in view, set "model" ("uno-r3" or
+"uno-r4-wifi") and "corners": the 4 corners of the blue PCB itself, each ${units}, as [x, y], in this order:
+A = the corner where the USB-connector edge meets the long edge with the digital header (pins 0-13, GND, AREF);
+B = the other end of that digital-header edge (next to pins 1/TX and 0/RX);
+C = the end of the opposite long edge (the power + analog header) next to A5;
+D = the corner where the USB/barrel-jack edge meets that power-header edge (next to the round barrel jack).
+Find the orientation from features (USB port + barrel jack on one short edge; digital header along one long edge;
+POWER and ANALOG IN header along the other), not from where the board sits in the picture. Give the PCB corner, not the
+tip of the USB connector. If a corner is just outside the picture, estimate where it is. Be precise: Mentor maps every pin
+from these 4 points. Use model "other" for any other board and "none" when no board is in view; then "corners" is [].
 "step" is a short title for the current step (max 8 words). Set "done" true only when the whole task is finished.
 "note" is one line for the after-call recap (what was done or decided this turn), or empty.`;
 
@@ -39,7 +54,7 @@ export const SYSTEM = `${SYSTEM_CORE}\n\n${pointingRules('a pixel coordinate (x 
 export const SCHEMA = {
   type: 'object',
   additionalProperties: false,
-  required: ['say', 'marks', 'step', 'done', 'note'],
+  required: ['say', 'marks', 'board', 'step', 'done', 'note'],
   properties: {
     say: { type: 'string' },
     marks: {
@@ -47,7 +62,7 @@ export const SCHEMA = {
       items: {
         type: 'object',
         additionalProperties: false,
-        required: ['label', 'x', 'y', 'kind', 'x2', 'y2'],
+        required: ['label', 'x', 'y', 'kind', 'x2', 'y2', 'pin', 'pin2'],
         properties: {
           label: { type: 'string' },
           x: { type: 'integer' },
@@ -55,7 +70,18 @@ export const SCHEMA = {
           kind: { type: 'string', enum: ['arrow', 'circle', 'wire', 'warn'] },
           x2: { type: 'integer' },   // wire only: where the wire goes in; -1 otherwise
           y2: { type: 'integer' },
+          pin: { type: 'string' },    // UNO header pin at x,y ("13", "GND", "5V", "A0"...), "" if not a header pin
+          pin2: { type: 'string' },   // wire only: header pin at x2,y2, else ""
         },
+      },
+    },
+    board: {   // the UNO's 4 PCB corners (A..D, see pointingRules); model "none"/"other" with corners [] otherwise
+      type: 'object',
+      additionalProperties: false,
+      required: ['model', 'corners'],
+      properties: {
+        model: { type: 'string', enum: ['uno-r3', 'uno-r4-wifi', 'other', 'none'] },
+        corners: { type: 'array', items: { type: 'array', items: { type: 'integer' } } },
       },
     },
     step: { type: 'string' },
@@ -81,7 +107,30 @@ export function sanitizeReply(out) {
   out.step = clean(out.step, 120);
   out.note = clean(out.note, 160);
   out.done = Boolean(out.done);
-  out.marks = (Array.isArray(out.marks) ? out.marks : []).map(m => ({ ...m, label: clean(m.label, 40) }));
+  out.marks = (Array.isArray(out.marks) ? out.marks : []).map(m => ({ ...m, label: clean(m.label, 40), pin: clean(m.pin, 8), pin2: clean(m.pin2, 8) }));
+  return out;
+}
+
+export const MAX_MARKS = 6;
+const NO_BOARD = () => ({ model: 'none', corners: [] });
+
+/**
+ * Converts a reply's marks and board corners from the model's units to 0..1 of the image (sx, sy: the model's full
+ * width / height, e.g. image pixels for Claude, 1000 for Gemini). Corners may lie a little outside the picture.
+ */
+export function normalizeReply(out, sx, sy, hasImage = true) {
+  out.marks = hasImage
+    ? (Array.isArray(out.marks) ? out.marks : []).slice(0, MAX_MARKS)
+        .map(m => ({ ...m, x: m.x / sx, y: m.y / sy, x2: m.x2 >= 0 ? m.x2 / sx : -1, y2: m.y2 >= 0 ? m.y2 / sy : -1,
+          pin: m.pin ?? '', pin2: m.pin2 ?? '' }))
+        .filter(m => m.x >= 0 && m.x <= 1 && m.y >= 0 && m.y <= 1)
+    : [];
+  const b = out.board;
+  const corners = hasImage && b && Array.isArray(b.corners) && b.corners.length === 4
+    && b.corners.every(c => Array.isArray(c) && c.length >= 2 && c.every(Number.isFinite))
+    ? b.corners.map(c => [c[0] / sx, c[1] / sy]) : [];
+  out.board = b && typeof b.model === 'string' ? { model: b.model, corners } : NO_BOARD();
+  if (out.board.corners.some(([x, y]) => x < -0.5 || x > 1.5 || y < -0.5 || y > 1.5)) out.board.corners = [];
   return out;
 }
 
@@ -108,8 +157,9 @@ export class ClaudeBrain {
   /**
    * @param {string} heard what the caller said this turn
    * @param {{jpeg: Buffer, width: number, height: number} | null} image latest camera frame
-   * @returns {Promise<{say: string, marks: {label: string, x: number, y: number, kind: string}[], step: string, done: boolean, note: string, ms: number}>}
-   *   marks come back normalised to 0..1 of the image
+   * @returns {Promise<{say: string, marks: {label: string, x: number, y: number, kind: string, x2: number, y2: number, pin: string, pin2: string}[],
+   *   board: {model: string, corners: number[][]}, step: string, done: boolean, note: string, ms: number}>}
+   *   marks and board corners come back normalised to 0..1 of the image
    */
   turn(heard, image) { return this.#serial(() => this.#turn(heard, image)); }
 
@@ -145,12 +195,7 @@ export class ClaudeBrain {
     try { out = JSON.parse(text); }
     catch { return { say: 'Sorry, say that again?', marks: [], step: '', done: false, note: '', ms }; }
 
-    const w = image?.width || 1, h = image?.height || 1;
-    out.marks = image
-      ? (out.marks || []).slice(0, 5)
-          .map(m => ({ ...m, x: m.x / w, y: m.y / h, x2: m.x2 >= 0 ? m.x2 / w : -1, y2: m.y2 >= 0 ? m.y2 / h : -1 }))
-          .filter(m => m.x >= 0 && m.x <= 1 && m.y >= 0 && m.y <= 1)
-      : [];
+    normalizeReply(out, image?.width || 1, image?.height || 1, Boolean(image));
     sanitizeReply(out);
     out.ms = ms;
     console.log(`[brain] ${ms}ms in=${response.usage?.input_tokens} cached=${response.usage?.cache_read_input_tokens} out=${response.usage?.output_tokens}`);

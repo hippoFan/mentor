@@ -9,7 +9,7 @@ import { mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { createInterface } from 'node:readline';
-import { RECAP_ASK, RECAP_SCHEMA, SCHEMA, SYSTEM, sanitizeReply } from './brain.mjs';
+import { RECAP_ASK, RECAP_SCHEMA, SCHEMA, SYSTEM, normalizeReply, sanitizeReply } from './brain.mjs';
 
 const MODEL = process.env.MENTOR_CLAUDE_CODE_MODEL || 'sonnet';
 const BIN = process.env.MENTOR_CLAUDE_BIN || 'claude';
@@ -78,10 +78,7 @@ export class ClaudeCodeBrain {
     const ms = Date.now() - t0;
     const out = d.structured_output || (() => { try { return JSON.parse(d.result); } catch { return null; } })();
     if (!out) return { say: 'Sorry, say that again?', marks: [], step: '', done: false, note: '', ms };
-    const w = image?.width || 1, h = image?.height || 1;
-    out.marks = image ? (out.marks || []).slice(0, 5)
-      .map(m => ({ ...m, x: m.x / w, y: m.y / h, x2: m.x2 >= 0 ? m.x2 / w : -1, y2: m.y2 >= 0 ? m.y2 / h : -1 }))
-      .filter(m => m.x >= 0 && m.x <= 1 && m.y >= 0 && m.y <= 1) : [];
+    normalizeReply(out, image?.width || 1, image?.height || 1, Boolean(image));
     sanitizeReply(out);
     out.ms = ms; out.model = `claude-code ${MODEL}`;
     this.messages.push({ heard, say: out.say });

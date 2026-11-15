@@ -8,6 +8,7 @@
 //   const pts = t.update(latestFrame);        // [{ x, y, conf, visible }] same order, normalised in latestFrame
 //
 // Frames are RGBA { data, width, height }.
+import { TRACK_POINTS, apply, boardFromH, boardFromReply, homography, resolveMarks, wireGeometry } from './board.mjs';
 
 const WORK_W = 240;        // tracking resolution (long frames are box-averaged down to about this width)
 const LEVELS = 4;          // pyramid: 240, 120, 60, 30 px wide -> catches ~±100 px jumps at 480 wide
@@ -146,7 +147,7 @@ export function createTracker(opts = {}) {
   let pts = [];
 
   const out = () => pts.map(p => ({
-    x: p.ox / (prev ? prev.fw : 1), y: p.oy / (prev ? prev.fh : 1), conf: p.conf, visible: p.visible,
+    x: p.ox / (prev ? prev.fw : 1), y: p.oy / (prev ? prev.fh : 1), conf: p.conf, visible: p.visible, ok: p.ok,
   }));
 
   return {
@@ -154,7 +155,7 @@ export function createTracker(opts = {}) {
     reset(frame, points) {
       prev = frame ? pyramid(frame) : null; prevFrame = frame; seed = prev;
       pts = (prev ? points : []).map(q => {
-        const p = { x: q.x * prev.fw / prev.f, y: q.y * prev.fh / prev.f, vx: 0, vy: 0, conf: 1, visible: true, lost: false,
+        const p = { x: q.x * prev.fw / prev.f, y: q.y * prev.fh / prev.f, vx: 0, vy: 0, conf: 1, visible: true, lost: false, ok: true,
           fx: oneEuro(), fy: oneEuro(), ox: q.x * prev.fw, oy: q.y * prev.fh, sx: 0, sy: 0 };
         p.sx = p.x; p.sy = p.y;
         return p;
@@ -179,7 +180,7 @@ export function createTracker(opts = {}) {
       const cur = pyramid(frame);
       const W = cur.levels[0].w, H = cur.levels[0].h;
       for (const p of pts) {
-        if (p.lost) continue;
+        if (p.lost) { p.ok = false; continue; }
         const fwd = lk(prev, cur, p.x, p.y, p.x + p.vx, p.y + p.vy);
         let ok = false;
         if (fwd && fwd[0] >= 1 && fwd[1] >= 1 && fwd[0] <= W - 2 && fwd[1] <= H - 2) {
@@ -195,6 +196,7 @@ export function createTracker(opts = {}) {
           p.conf *= 0.5;
         }
         if (!ok) { p.vx *= 0.5; p.vy *= 0.5; }
+        p.ok = ok;
         if (p.visible && p.conf < HIDE) p.visible = false;
         else if (!p.visible && p.conf > SHOW) p.visible = true;
         if (p.conf < 0.05) { p.lost = true; p.visible = false; }   // part left the view: hide until the next answer
@@ -205,6 +207,12 @@ export function createTracker(opts = {}) {
       prev = cur; prevFrame = frame;
       return out();
     },
+    /** Re-anchor point i at a known spot (normalised), e.g. where a board fit says it must be. */
+    move(i, nx, ny) {
+      const p = pts[i]; if (!p || !prev) return;
+      p.x = nx * prev.fw / prev.f; p.y = ny * prev.fh / prev.f; p.ox = nx * prev.fw; p.oy = ny * prev.fh;
+      p.vx = p.vy = 0; p.lost = false; p.visible = true; p.conf = Math.max(p.conf, 0.5); p.fx.reset(); p.fy.reset();
+    },
     get size() { return pts.length; },
   };
 }
@@ -212,33 +220,98 @@ export function createTracker(opts = {}) {
 /**
  * Convenience for Mentor's marks: tracks x,y (and x2,y2 for wires) and returns marks moved to their tracked spots.
  * Marks whose anchor is lost are dropped; a wire whose far end is lost keeps its last good far end.
+ *
+ * Board registration (board.mjs): when the brain also gave an UNO's corners, the tracker follows the corners plus a grid
+ * of points on the PCB and re-fits the board homography every frame (the board is planar), so every mark or wire end
+ * with a header pin stays on its exact hole. Wires then carry `geo` (3D jumper geometry for the overlay). If the fit
+ * fails (too few points, implausible quad) the last good fit is kept for up to BOARD_HOLD_MS, then pin marks fall back to
+ * per-point tracking like every other mark.
  */
+export const BOARD_HOLD_MS = 1000;
 export function createMarkTracker() {
   const t = createTracker();
   let base = [], index = [];   // index[i] = [slot of x,y, slot of x2,y2 or -1]
+  let boardSlots = [];         // [slot, [u, v]] board points being tracked
+  let good = null, goodAt = 0, size = null, lastFrame = null, lastRes = [];
+  const sameSize = b => b && size && b.w === size.w && b.h === size.h;
+
+  /** Board fit from the tracked board points (weighted least squares, one round of outlier rejection). */
+  function fit(p) {
+    const vis = boardSlots.filter(([s]) => p[s].ok && p[s].visible && p[s].conf > 0.3)
+      .map(([s, uv]) => ({ uv, xy: [p[s].x * size.w, p[s].y * size.h], w: p[s].conf }));
+    if (vis.length < 5) return null;
+    let H = homography(vis.map(q => q.uv), vis.map(q => q.xy), vis.map(q => q.w));
+    if (!H) return null;
+    const res = vis.map(q => { const [x, y] = apply(H, ...q.uv); return Math.hypot(x - q.xy[0], y - q.xy[1]); });
+    const med = [...res].sort((a, b) => a - b)[res.length >> 1];
+    const keep = vis.filter((_, i) => res[i] <= Math.max(3 * med, 0.006 * Math.max(size.w, size.h)));
+    if (keep.length < vis.length && keep.length >= 5) H = homography(keep.map(q => q.uv), keep.map(q => q.xy), keep.map(q => q.w));
+    const b = boardFromH(H, size);
+    if (b) {   // board points that slipped or failed: put them back where the board says they are
+      const tol = 0.006 * Math.max(size.w, size.h);
+      for (const [s, uv] of boardSlots) {
+        const [x, y] = b.project(uv[0], uv[1], 0);
+        if (x < 0 || y < 0 || x >= size.w || y >= size.h) continue;
+        if (!p[s].ok || Math.hypot(x - p[s].x * size.w, y - p[s].y * size.h) > tol) t.move(s, x / size.w, y / size.h);
+      }
+    }
+    return b;
+  }
+
   return {
-    seed(frame, marks) {
-      base = marks || [];
-      const pts = []; index = [];
+    /** The board the marks are registered to right now (null if none). */
+    get board() { return good; },
+    /**
+     * @param {{data: Uint8Array, width: number, height: number} | null} frame the frame the brain judged
+     * @param {any[]} marks normalised marks from the brain
+     * @param {{model: string, corners: number[][]}} [board] the brain's board (corners normalised)
+     */
+    seed(frame, marks, board, now = Date.now()) {
+      size = frame ? { w: frame.width, h: frame.height } : null;
+      const b = size ? boardFromReply(board, size, frame) : null;   // corners snapped to the visible header holes
+      base = resolveMarks(marks || [], b);
+      const pts = []; index = []; boardSlots = [];
       for (const m of base) {
         const a = pts.push({ x: m.x, y: m.y }) - 1;
-        const b = m.x2 >= 0 && m.y2 >= 0 ? pts.push({ x: m.x2, y: m.y2 }) - 1 : -1;
-        index.push([a, b]);
+        const c = m.x2 >= 0 && m.y2 >= 0 ? pts.push({ x: m.x2, y: m.y2 }) - 1 : -1;
+        index.push([a, c]);
       }
+      if (b && base.length) {
+        for (const uv of TRACK_POINTS) {
+          const [x, y] = b.norm(uv[0], uv[1], 0);
+          if (x > 0.02 && x < 0.98 && y > 0.02 && y < 0.98) boardSlots.push([pts.push({ x, y }) - 1, uv]);
+        }
+      }
+      good = b; goodAt = now; lastFrame = null;
       t.reset(frame, pts);
     },
-    update(frame) {
+    update(frame, now = Date.now()) {
       if (!base.length) return base;
-      const p = t.update(frame);
+      if (frame && frame === lastFrame) return lastRes;
+      const p = t.update(frame, now);
       if (!p.length) return base;   // no frame to track in: show the marks where the brain put them
+      if (frame) size = { w: frame.width, h: frame.height };
+      let b = null;
+      if (boardSlots.length) {
+        b = fit(p);
+        if (b) { good = b; goodAt = now; }
+        else if (good && now - goodAt <= BOARD_HOLD_MS && sameSize(good)) b = good;
+        else good = null;
+      }
       const res = [];
       base.forEach((m, i) => {
-        const [a, b] = index[i];
-        if (!p[a].visible) return;
-        const n = { ...m, x: p[a].x, y: p[a].y };
-        if (b >= 0) { n.x2 = p[b].x; n.y2 = p[b].y; }
+        const [a, c] = index[i];
+        const pinA = b && m.pinKey, pinB = b && m.pin2Key;
+        if (!pinA && !p[a].visible) return;
+        const n = { ...m };
+        [n.x, n.y] = pinA ? b.pinPoint(m.pinKey) : [p[a].x, p[a].y];
+        if (c >= 0) [n.x2, n.y2] = pinB ? b.pinPoint(m.pin2Key) : [p[c].x, p[c].y];
+        if (b && m.kind === 'wire' && c >= 0) {   // registered board: draw the jumper in 3D (a non-pin end sits on the board plane)
+          n.geo = wireGeometry(b, pinA ? { pin: m.pinKey } : { x: n.x, y: n.y }, pinB ? { pin: m.pin2Key } : { x: n.x2, y: n.y2 });
+        }
         res.push(n);
       });
+      lastFrame = frame; lastRes = res;
       return res;
     },
   };

@@ -1,0 +1,333 @@
+{
+ "_source": "Pin names and positions from wokwi/wokwi-elements src/arduino-uno-element.ts (MIT License, Copyright (c) 2019 Uri Shaked), converted from element px (96 dpi, viewBox x offset -4 mm) to board mm; snapped to the official 0.1\" UNO R3 header grid (cross-checked against the KiCad Arduino_UNO_R3 footprint). \"wokwi\" keeps the converted original for reference.",
+ "_license": "MIT (wokwi-elements). Board dimensions are physical facts of the Arduino UNO R3 / R4 WiFi form factor.",
+ "frame": "u (mm) along the long edge from the USB/barrel-jack edge; v (mm) from the power/analog header edge toward the digital header edge. Board top face is z=0, z up.",
+ "models": [
+  "uno-r3",
+  "uno-r4-wifi"
+ ],
+ "pcb": {
+  "w": 68.58,
+  "h": 53.34,
+  "thickness": 1.6
+ },
+ "corners": {
+  "A": [
+   0,
+   53.34
+  ],
+  "B": [
+   66.04,
+   53.34
+  ],
+  "C": [
+   66.04,
+   0
+  ],
+  "D": [
+   0,
+   0
+  ]
+ },
+ "cornerNotes": {
+  "A": "USB edge x digital-header edge",
+  "B": "far end of the digital-header edge (D0/RX side)",
+  "C": "far end of the power/analog edge (A5 side)",
+  "D": "barrel-jack edge x power-header edge"
+ },
+ "headerTop": 8.5,
+ "pitch": 2.54,
+ "aliases": {
+  "GND": "GND.1",
+  "D0": "0",
+  "RX": "0",
+  "TX": "1",
+  "3V3": "3.3V",
+  "3.3": "3.3V",
+  "VCC": "5V",
+  "RST": "RESET",
+  "A4.2": "SDA",
+  "A5.2": "SCL"
+ },
+ "pins": {
+  "0": {
+   "u": 63.5,
+   "v": 50.8,
+   "row": "digital",
+   "wokwi": [
+    63.601,
+    50.959
+   ]
+  },
+  "1": {
+   "u": 60.96,
+   "v": 50.8,
+   "row": "digital",
+   "wokwi": [
+    61.088,
+    50.959
+   ]
+  },
+  "2": {
+   "u": 58.42,
+   "v": 50.8,
+   "row": "digital",
+   "wokwi": [
+    58.574,
+    50.959
+   ]
+  },
+  "3": {
+   "u": 55.88,
+   "v": 50.8,
+   "row": "digital",
+   "wokwi": [
+    56.06,
+    50.959
+   ]
+  },
+  "4": {
+   "u": 53.34,
+   "v": 50.8,
+   "row": "digital",
+   "wokwi": [
+    53.547,
+    50.959
+   ]
+  },
+  "5": {
+   "u": 50.8,
+   "v": 50.8,
+   "row": "digital",
+   "wokwi": [
+    51.033,
+    50.959
+   ]
+  },
+  "6": {
+   "u": 48.26,
+   "v": 50.8,
+   "row": "digital",
+   "wokwi": [
+    48.52,
+    50.959
+   ]
+  },
+  "7": {
+   "u": 45.72,
+   "v": 50.8,
+   "row": "digital",
+   "wokwi": [
+    46.006,
+    50.959
+   ]
+  },
+  "8": {
+   "u": 41.656,
+   "v": 50.8,
+   "row": "digital",
+   "wokwi": [
+    41.773,
+    50.959
+   ]
+  },
+  "9": {
+   "u": 39.116,
+   "v": 50.8,
+   "row": "digital",
+   "wokwi": [
+    39.127,
+    50.959
+   ]
+  },
+  "10": {
+   "u": 36.576,
+   "v": 50.8,
+   "row": "digital",
+   "wokwi": [
+    36.614,
+    50.959
+   ]
+  },
+  "11": {
+   "u": 34.036,
+   "v": 50.8,
+   "row": "digital",
+   "wokwi": [
+    34.1,
+    50.959
+   ]
+  },
+  "12": {
+   "u": 31.496,
+   "v": 50.8,
+   "row": "digital",
+   "wokwi": [
+    31.586,
+    50.959
+   ]
+  },
+  "13": {
+   "u": 28.956,
+   "v": 50.8,
+   "row": "digital",
+   "wokwi": [
+    29.073,
+    50.959
+   ]
+  },
+  "SCL": {
+   "u": 18.796,
+   "v": 50.8,
+   "row": "digital",
+   "wokwi": [
+    19.019,
+    50.959
+   ]
+  },
+  "SDA": {
+   "u": 21.336,
+   "v": 50.8,
+   "row": "digital",
+   "wokwi": [
+    21.665,
+    50.959
+   ]
+  },
+  "AREF": {
+   "u": 23.876,
+   "v": 50.8,
+   "row": "digital",
+   "wokwi": [
+    24.046,
+    50.959
+   ]
+  },
+  "GND.1": {
+   "u": 26.416,
+   "v": 50.8,
+   "row": "digital",
+   "wokwi": [
+    26.559,
+    50.959
+   ]
+  },
+  "IOREF": {
+   "u": 30.48,
+   "v": 2.54,
+   "row": "power",
+   "wokwi": [
+    30.66,
+    2.672
+   ]
+  },
+  "RESET": {
+   "u": 33.02,
+   "v": 2.54,
+   "row": "power",
+   "wokwi": [
+    33.174,
+    2.672
+   ]
+  },
+  "3.3V": {
+   "u": 35.56,
+   "v": 2.54,
+   "row": "power",
+   "wokwi": [
+    35.688,
+    2.672
+   ]
+  },
+  "5V": {
+   "u": 38.1,
+   "v": 2.54,
+   "row": "power",
+   "wokwi": [
+    38.333,
+    2.672
+   ]
+  },
+  "GND.2": {
+   "u": 40.64,
+   "v": 2.54,
+   "row": "power",
+   "wokwi": [
+    40.847,
+    2.672
+   ]
+  },
+  "GND.3": {
+   "u": 43.18,
+   "v": 2.54,
+   "row": "power",
+   "wokwi": [
+    43.36,
+    2.672
+   ]
+  },
+  "VIN": {
+   "u": 45.72,
+   "v": 2.54,
+   "row": "power",
+   "wokwi": [
+    45.874,
+    2.672
+   ]
+  },
+  "A0": {
+   "u": 50.8,
+   "v": 2.54,
+   "row": "power",
+   "wokwi": [
+    51.033,
+    2.672
+   ]
+  },
+  "A1": {
+   "u": 53.34,
+   "v": 2.54,
+   "row": "power",
+   "wokwi": [
+    53.547,
+    2.672
+   ]
+  },
+  "A2": {
+   "u": 55.88,
+   "v": 2.54,
+   "row": "power",
+   "wokwi": [
+    56.06,
+    2.672
+   ]
+  },
+  "A3": {
+   "u": 58.42,
+   "v": 2.54,
+   "row": "power",
+   "wokwi": [
+    58.574,
+    2.672
+   ]
+  },
+  "A4": {
+   "u": 60.96,
+   "v": 2.54,
+   "row": "power",
+   "wokwi": [
+    61.088,
+    2.672
+   ]
+  },
+  "A5": {
+   "u": 63.5,
+   "v": 2.54,
+   "row": "power",
+   "wokwi": [
+    63.601,
+    2.672
+   ]
+  }
+ }
+}

@@ -194,7 +194,7 @@ const agent = defineAgent({
       if (last && REPLAY.test(heard.trim())) {
         console.log(`[heard] ${heard} (replay, no brain call)`); live.send({ type: 'heard', text: heard });
         const now = getLatest();
-        marks = last.marks; marksAt = Date.now(); if (now) tracker.seed(now, marks);
+        marks = last.marks; marksAt = Date.now(); if (now) tracker.seed(now, marks, last.board);
         say(last.say, 0); return;
       }
       if (++turns > MAX_TURNS) {   // cost/DoS guard: a runaway call (e.g. a TV in the room) can't drain the quota
@@ -211,9 +211,10 @@ const agent = defineAgent({
         const reply = await brain.turn(heard, image).finally(() => clearTimeout(filler));
         if (seq !== turnSeq || ended) return;   // they spoke again while we were thinking; answer the newer turn
         marks = reply.marks; marksAt = Date.now();
-        last = { marks: reply.marks, say: reply.say };
-        tracker.seed(now, marks);   // the brain judged `now` (the frame from the turn start): track from there
-        live.send({ type: 'turn', brain: brain.provider, model: reply.model || '', ms: reply.ms, marks: reply.marks, step: reply.step, done: !!reply.done });
+        last = { marks: reply.marks, say: reply.say, board: reply.board };
+        tracker.seed(now, marks, reply.board);   // the brain judged `now` (the frame from the turn start): track from there;
+        // with UNO corners the tracker registers the board and snaps pin marks/wires to their exact holes (board.mjs)
+        live.send({ type: 'turn', brain: brain.provider, model: reply.model || '', ms: reply.ms, marks: reply.marks, board: tracker.board ? tracker.board.corners() : null, step: reply.step, done: !!reply.done });
         if (reply.step) caption = reply.step;
         if (reply.done) caption = 'Done. You made it home.';   // nostos: the Odyssey's homecoming
         if (reply.step || reply.done) live.send({ type: 'step', text: caption, done: !!reply.done });

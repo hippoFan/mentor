@@ -61,7 +61,7 @@ Mentor is that person, on a FaceTime call:
 | | |
 |---|---|
 | **AR marks that stick** | Rings and labels follow each part as your phone moves: a pyramidal Lucas-Kanade tracker in plain JS, with no dependencies. Synthetic handheld test: 1.6 px mean error at about 1 ms per frame. |
-| **AR wires** | "Where does this wire go?" Mentor draws the jumper in place, as a bowed cable with light flowing into the right hole. |
+| **AR wires on the exact hole** | "Where does this wire go?" On an Arduino UNO (R3 / R4 WiFi), Mentor registers the board from its 4 corners, snaps them to the real header holes, and draws a holographic 3D jumper from the exact pin hole, arcing up out of the board and staying registered as the phone moves (`board.mjs`). |
 | **Stop signs** | It circles a short, a missing resistor or reversed polarity in red and says "Stop," before you power on. |
 | **Knows your exact board** | It identifies the part first (UNO R3 USB-B vs UNO R4 USB-C) and points at *that* board's layout. |
 | **"Show me again"** | Instantly re-shows the last marks and repeats the last line, with no model call. |
@@ -174,6 +174,8 @@ agent/
   brain-claude-code.mjs  owner-testing brain on the local Claude Code CLI (locked down)
   overlay.mjs          what the caller sees: crop, rings, labels, AR wires, warnings
   tracker.mjs          pyramidal Lucas-Kanade point tracker (no deps)
+  board.mjs            UNO registration: homography + pose from 4 corners, hole snapping, 3D jumper geometry
+  data/uno-pins.json   UNO header hole positions (from wokwi-elements, MIT)
   live.mjs, monitor.html   the laptop screen (local only, Origin/Host checked)
   recap.mjs, send-recap.mjs, serve-recaps.mjs   voyage log, Wokwi files, iMessage
   check-keys.mjs, status.mjs   key + line checks
@@ -224,4 +226,5 @@ Built for the theme *Homer's Odyssey*, for **Best Use of FaceTime (Chert)** and 
 MIT for Mentor's own code ([LICENSE](LICENSE)), with these exceptions:
 - `agent/chert-rooms.mjs` and `agent/greet.mjs` come from Chert's starter, and Chert's terms apply.
 - Inter is under the SIL Open Font License.
+- `agent/data/uno-pins.json` pin names/positions derive from [wokwi-elements](https://github.com/wokwi/wokwi-elements) (MIT, Copyright (c) 2019 Uri Shaked).
 - The film and README images use a public-domain (CC0) Arduino photo from Wikimedia Commons.
