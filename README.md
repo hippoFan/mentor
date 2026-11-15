@@ -139,6 +139,9 @@ All settings are environment variables in `mentor/.env` (see [`env.example`](env
 | `ELEVEN_VOICE_ID` | no | Voice for Mentor; ElevenLabs default if unset |
 | `MENTOR_TASK` | no | The task Mentor guides, e.g. `Make the Arduino Uno's onboard LED blink` |
 | `MENTOR_EFFORT` | no | Claude effort, `low` (default, fastest) or `medium` |
+| `MENTOR_GEMINI_MODELS` | no | Gemini models to try in order (default `gemini-3.5-flash,gemini-3.5-flash-lite,gemini-2.5-flash`); on a rate limit or overload Mentor moves to the next |
+| `MENTOR_GEMINI_THINKING` | no | `LOW` (default) or `MINIMAL` (faster) |
+| `MENTOR_OUT_SCALE` | no | `1` = 640×360 video back into the call (default), `2` = 1280×720 |
 | `MENTOR_GREETING` | no | The first line Mentor says |
 | `CHERT_API_KEY`, `CHERT_PROJECT_ID` | for recap/status | Project API key (`ftk_…`) from the Chert Developer page |
 | `MENTOR_RECAP_TO` | for recap | Phone number to text the recap to (must be verified on the project) |
@@ -176,6 +179,8 @@ mentor/
   moment you finish speaking. Older turns, images included, are prompt-cached, so a five-minute call stays cheap.
 - **Append-only conversation.** Every request and reply goes back to Claude unchanged, including its thinking
   blocks, so the history stays valid and the cache keeps hitting.
+- **Looks like it belongs on a phone.** Thin yellow rings with a soft shadow, solid labels that never overlap (each tries
+  left, right, above and below its mark and takes the first free spot), and the step as a floating pill. Inter, bundled.
 - **Marks fade.** Arrows clear after 25 seconds of silence, so stale arrows never point at a spot the camera has
   moved away from. If your camera turns off, Mentor drops the old frame instead of judging an old view.
 - **Greets on time.** FaceTime hangs up on an agent that stays silent for 10 seconds after connecting, so the greeting
@@ -185,6 +190,9 @@ mentor/
 - **Safety.** Mentor tells you to unplug power before rewiring, and it never declares a circuit "safe".
 
 ## Limits
+
+- Gemini's free tier allows about **20 requests a day per model**. Mentor falls through `MENTOR_GEMINI_MODELS` when one
+  runs out, but a full demo day needs a paid key. `npm run check-keys` checks keys without spending any requests.
 
 - The free Chert trial allows calls of up to 5 minutes, and the line handles one call at a time.
 - The caller's camera only reaches the agent if caller capture is enabled on the Chert line.

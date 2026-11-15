@@ -4,7 +4,14 @@
 import { GoogleGenAI, ThinkingLevel } from '@google/genai';
 import { RECAP_ASK, RECAP_SCHEMA, SCHEMA, SYSTEM_CORE, pointingRules } from './brain.mjs';
 
-export const GEMINI_MODEL = process.env.MENTOR_GEMINI_MODEL || 'gemini-3.5-flash';
+// Models tried in order. The free tier allows only ~20 requests a day per model, and a model can be overloaded, so on a
+// 429 / 503 / 404 Mentor moves to the next one for the rest of the process instead of failing the turn.
+export const GEMINI_MODELS = (process.env.MENTOR_GEMINI_MODELS || process.env.MENTOR_GEMINI_MODEL
+  || 'gemini-3.5-flash,gemini-3.5-flash-lite,gemini-2.5-flash').split(',').map(m => m.trim()).filter(Boolean);
+export const GEMINI_MODEL = GEMINI_MODELS[0];
+const skipped = new Set();   // models that hit their limit in this process
+// How long Gemini thinks per spoken turn (MENTOR_GEMINI_THINKING): LOW (default) or MINIMAL (faster).
+const THINKING = ThinkingLevel[(process.env.MENTOR_GEMINI_THINKING || 'LOW').toUpperCase()] || ThinkingLevel.LOW;
 
 const SYSTEM = `${SYSTEM_CORE}\n\n${pointingRules(
   'a point in the attached image on a 0-1000 grid: x from 0 (left edge) to 1000 (right edge), y from 0 (top) to 1000 (bottom)')}`;
@@ -28,14 +35,34 @@ export class GeminiBrain {
     return run;
   }
 
-  #config(schema, level) {
+  #config(model, schema, level, timeout = 30_000) {
     return {
       systemInstruction: SYSTEM + (this.task ? `\n\nThe caller's task: ${this.task}` : ''),
       responseMimeType: 'application/json',
       responseJsonSchema: schema,
-      thinkingConfig: { thinkingLevel: level },
-      httpOptions: { timeout: 30_000 },
+      // Gemini 2.x takes a token budget instead of a level; 0 = no thinking (fastest).
+      thinkingConfig: model.startsWith('gemini-2') ? { thinkingBudget: level === ThinkingLevel.MEDIUM ? 1024 : 0 } : { thinkingLevel: level },
+      httpOptions: { timeout },
     };
+  }
+
+  /** One request, falling through GEMINI_MODELS on rate limits, overload or a missing model. */
+  async #generate(contents, schema, level, timeout) {
+    let last;
+    for (const model of GEMINI_MODELS) {
+      if (skipped.has(model) && model !== GEMINI_MODELS.at(-1)) continue;
+      try {
+        const response = await this.client.models.generateContent({ model, contents, config: this.#config(model, schema, level, timeout) });
+        return { response, model };
+      } catch (error) {
+        last = error;
+        const status = Number(error?.status || error?.code);
+        if (![429, 503, 404, 500].includes(status)) throw error;
+        skipped.add(model);
+        console.warn(`[brain:gemini] ${model} unavailable (${status}); trying the next model`);
+      }
+    }
+    throw last;
   }
 
   /** Same contract as ClaudeBrain.turn: marks come back normalised to 0..1 of the image. */
@@ -49,11 +76,7 @@ export class GeminiBrain {
     const user = { role: 'user', parts };
 
     const t0 = Date.now();
-    const response = await this.client.models.generateContent({
-      model: GEMINI_MODEL,
-      contents: [...this.messages, user],
-      config: this.#config(SCHEMA, ThinkingLevel.LOW),
-    });
+    const { response, model } = await this.#generate([...this.messages, user], SCHEMA, THINKING);
     const ms = Date.now() - t0;
     const modelTurn = response.candidates?.[0]?.content;
     if (modelTurn) this.messages.push(user, modelTurn);   // failed/blocked turn: nothing appended
@@ -68,18 +91,15 @@ export class GeminiBrain {
       : [];
     out.ms = ms;
     const u = response.usageMetadata || {};
-    console.log(`[brain:gemini] ${ms}ms in=${u.promptTokenCount} cached=${u.cachedContentTokenCount ?? 0} out=${u.candidatesTokenCount}`);
+    console.log(`[brain:gemini] ${model} ${ms}ms in=${u.promptTokenCount} cached=${u.cachedContentTokenCount ?? 0} out=${u.candidatesTokenCount}`);
     return out;
   }
 
   /** Same contract as ClaudeBrain.finish. */
   async finish() {
     if (!this.messages.length) return null;
-    const response = await this.client.models.generateContent({
-      model: GEMINI_MODEL,
-      contents: [...this.messages, { role: 'user', parts: [{ text: RECAP_ASK }] }],
-      config: { ...this.#config(RECAP_SCHEMA, ThinkingLevel.MEDIUM), httpOptions: { timeout: 120_000 } },
-    });
+    const { response } = await this.#generate([...this.messages, { role: 'user', parts: [{ text: RECAP_ASK }] }],
+      RECAP_SCHEMA, ThinkingLevel.MEDIUM, 120_000);
     try { return JSON.parse(response.text || ''); } catch { return null; }
   }
 }

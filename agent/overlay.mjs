@@ -1,13 +1,20 @@
-// Draws the picture the caller sees: their own camera frame, with Mentor's arrows, circles and labels on top,
-// plus a caption bar with the current step. Returns one RGBA frame (WIDTH x HEIGHT) for the outgoing video track.
-import { createCanvas, ImageData } from '@napi-rs/canvas';
+// Draws the picture the caller sees: their own camera frame, with Mentor's rings, leader lines and labels on top,
+// plus a floating caption with the current step. Returns one RGBA frame (WIDTH x HEIGHT) for the outgoing video track.
+// Look: thin yellow rings with a soft shadow (no outlines), solid yellow labels, a dark frosted caption pill. Inter.
+import { fileURLToPath } from 'node:url';
+import { createCanvas, GlobalFonts, ImageData } from '@napi-rs/canvas';
 
-export const WIDTH = 640;
-export const HEIGHT = 360;
+GlobalFonts.registerFromPath(fileURLToPath(new URL('./fonts/InterVariable.ttf', import.meta.url)), 'Inter');
+
+const K = Number(process.env.MENTOR_OUT_SCALE || 1);   // 1 = 640x360 (Chert starter size); 2 = 1280x720
+export const WIDTH = 640 * K;
+export const HEIGHT = 360 * K;
 export const FPS = 15;
 
-const ACCENT = '#FFC845';   // arrows + rings: warm yellow reads on most backgrounds
-const INK = '#111111';
+const ACCENT = '#FFC845';   // Mentor yellow: only Mentor's own marks
+const INK = '#1D1D1F';
+const SHADOW = 'rgba(0,0,0,0.45)';
+const FONT = (weight, px) => `${weight} ${px * K}px Inter, sans-serif`;
 const out = createCanvas(WIDTH, HEIGHT);
 const g = out.getContext('2d');
 let src = createCanvas(16, 16);   // holds the caller frame at its native size; resized when the frame size changes
@@ -30,7 +37,7 @@ export function fitRect(w, h) {
  */
 export function render(frame, marks = [], opts = {}) {
   const { caption = '', tick = 0, speaking = false } = opts;
-  g.fillStyle = '#0B1A22';
+  g.fillStyle = '#1D1D1F';
   g.fillRect(0, 0, WIDTH, HEIGHT);
 
   let rect = { x: 0, y: 0, w: WIDTH, h: HEIGHT };
@@ -41,97 +48,141 @@ export function render(frame, marks = [], opts = {}) {
     rect = fitRect(frame.width, frame.height);
     g.drawImage(src, rect.x, rect.y, rect.w, rect.h);
   } else {
-    g.fillStyle = '#E8F1F5';
-    g.font = 'bold 26px sans-serif';
     g.textAlign = 'center';
-    g.fillText('Mentor', WIDTH / 2, HEIGHT / 2 - 8);
-    g.font = '16px sans-serif';
-    g.fillText('Turn on your camera and show me your project', WIDTH / 2, HEIGHT / 2 + 20);
+    g.lineWidth = 3 * K; g.strokeStyle = ACCENT;
+    g.beginPath(); g.arc(WIDTH / 2, HEIGHT / 2 - 34 * K, 13 * K, 0, Math.PI * 2); g.stroke();
+    g.fillStyle = '#F5F5F7'; g.font = FONT(700, 22);
+    g.fillText('Mentor', WIDTH / 2, HEIGHT / 2 + 8 * K);
+    g.fillStyle = '#A1A1A6'; g.font = FONT(500, 14);
+    g.fillText('Turn on your camera and show me your project', WIDTH / 2, HEIGHT / 2 + 32 * K);
     g.textAlign = 'left';
   }
 
-  const pulse = 1 + 0.12 * Math.sin(tick * 0.4);
+  const pulse = 1 + 0.04 * Math.sin(tick * 0.35);   // a slight pulse so a mark reads as live, not painted on
   const pts = marks.map(m => ({ ...m, px: rect.x + m.x * rect.w, py: rect.y + m.y * rect.h }));
   for (const c of layoutCallouts(pts)) {
     if (c.kind === 'circle') drawLeader(c.join, c.px, c.py);
     else drawArrow(c.px, c.py, c.join);
-    drawRing(c.px, c.py, 16 * pulse);
+    drawRing(c.px, c.py, 15 * K * pulse);
     drawBox(c);
   }
 
   if (caption) drawCaption(caption);
-  if (speaking) { g.fillStyle = ACCENT; g.beginPath(); g.arc(WIDTH - 18, 18, 6 * pulse, 0, Math.PI * 2); g.fill(); }
+  if (speaking) drawSpeaking(tick);
 
   const img = g.getImageData(0, 0, WIDTH, HEIGHT);
   return new Uint8Array(img.data.buffer, img.data.byteOffset, img.data.length);
 }
 
-function drawRing(x, y, r) {
-  g.lineWidth = 6; g.strokeStyle = INK; g.beginPath(); g.arc(x, y, r, 0, Math.PI * 2); g.stroke();
-  g.lineWidth = 3; g.strokeStyle = ACCENT; g.beginPath(); g.arc(x, y, r, 0, Math.PI * 2); g.stroke();
+function shadow(on) {
+  g.shadowColor = on ? SHADOW : 'transparent'; g.shadowBlur = on ? 6 * K : 0; g.shadowOffsetY = on ? 1 * K : 0;
 }
 
-// Callouts: each label sits beside its own mark (left of marks in the left half, right of marks in the right half),
-// joined to it by a line, and labels on the same side are pushed apart vertically so they never stack.
-const GAP = 55, BH = 24;
+function drawRing(x, y, r) {
+  shadow(true);
+  g.lineWidth = 3 * K; g.strokeStyle = ACCENT;
+  g.beginPath(); g.arc(x, y, r, 0, Math.PI * 2); g.stroke();
+  shadow(false);
+  g.lineWidth = 1 * K; g.strokeStyle = 'rgba(255,255,255,0.85)';   // hairline inside, so the ring reads on yellow parts too
+  g.beginPath(); g.arc(x, y, r - 2 * K, 0, Math.PI * 2); g.stroke();
+}
+
+// Callouts: each label tries left, right, above, then below its own mark and takes the first spot that is inside the
+// frame (clear of the caption) and overlaps no other label or ring. A line joins label and mark, so it is never ambiguous.
+const GAP = 46 * K, BH = 22 * K, PAD = 9 * K, RING = 22 * K;
 function layoutCallouts(pts) {
-  g.font = 'bold 15px sans-serif';
-  const out = pts.filter(p => p.label).map(p => {
-    const w = g.measureText(p.label).width + 16;
-    const left = p.px >= WIDTH / 2 ? false : p.px - GAP - w >= 4;   // fall back to the right if no room on the left
-    const x = left ? p.px - GAP - w : Math.min(WIDTH - w - 4, p.px + GAP);
-    return { ...p, left, w, x, y: p.py - BH / 2 };
-  });
-  for (const side of [true, false]) {
-    const col = out.filter(c => c.left === side).sort((a, b) => a.y - b.y);
-    for (let i = 0; i < col.length; i++) {
-      col[i].y = Math.max(4, Math.min(HEIGHT - BH - 44, col[i].y));
-      if (i && col[i].y < col[i - 1].y + BH + 8) col[i].y = col[i - 1].y + BH + 8;
+  g.font = FONT(600, 13);
+  const placed = [];   // boxes already taken: labels, plus every ring's square
+  const rings = pts.map(p => ({ x: p.px - RING, y: p.py - RING, w: RING * 2, h: RING * 2 }));
+  const hit = (r, list) => list.some(b => r.x < b.x + b.w + 6 * K && r.x + r.w + 6 * K > b.x && r.y < b.y + b.h + 6 * K && r.y + r.h + 6 * K > b.y);
+  const inside = r => r.x >= 6 * K && r.y >= 6 * K && r.x + r.w <= WIDTH - 6 * K && r.y + r.h <= HEIGHT - 52 * K;
+  const out = [];
+  for (const p of pts.filter(q => q.label)) {
+    const w = g.measureText(p.label).width + PAD * 2;
+    const sides = p.px < WIDTH / 2 ? ['left', 'right', 'up', 'down'] : ['right', 'left', 'up', 'down'];
+    const at = side => ({
+      left:  { x: p.px - GAP - w, y: p.py - BH / 2 },
+      right: { x: p.px + GAP,     y: p.py - BH / 2 },
+      up:    { x: p.px - w / 2,   y: p.py - GAP - BH },
+      down:  { x: p.px - w / 2,   y: p.py + GAP },
+    })[side];
+    let best = null;
+    for (let push = 0; push <= 4 && !best; push++) {           // if every side is blocked, try further out
+      for (const side of sides) {
+        const o = at(side), d = push * (BH + 6 * K);
+        const r = { x: o.x + (side === 'left' ? -d : side === 'right' ? d : 0), y: o.y + (side === 'up' ? -d : side === 'down' ? d : 0), w, h: BH, side };
+        if (inside(r) && !hit(r, placed) && !hit(r, rings)) { best = r; break; }
+      }
     }
+    if (!best) {   // nothing free: clamp the preferred spot into the frame
+      const o = at(sides[0]);
+      best = { x: Math.max(6 * K, Math.min(WIDTH - w - 6 * K, o.x)), y: Math.max(6 * K, Math.min(HEIGHT - BH - 52 * K, o.y)), w, h: BH, side: sides[0] };
+    }
+    placed.push(best);
+    const join = best.side === 'left' ? { x: best.x + w, y: best.y + BH / 2 } : best.side === 'right' ? { x: best.x, y: best.y + BH / 2 }
+      : best.side === 'up' ? { x: best.x + w / 2, y: best.y + BH } : { x: best.x + w / 2, y: best.y };
+    out.push({ ...p, x: best.x, y: best.y, w, join });
   }
-  for (const c of out) c.join = { x: c.left ? c.x + c.w : c.x, y: c.y + BH / 2 };
   return out;
 }
 
 function drawBox(c) {
-  g.font = 'bold 15px sans-serif';
-  g.fillStyle = INK; roundRect(c.x - 2, c.y - 2, c.w + 4, BH + 4, 14); g.fill();
-  g.fillStyle = ACCENT; roundRect(c.x, c.y, c.w, BH, 12); g.fill();
-  g.fillStyle = INK; g.fillText(c.label, c.x + 8, c.y + 17);
+  shadow(true);
+  g.fillStyle = ACCENT; roundRect(c.x, c.y, c.w, BH, BH / 2); g.fill();
+  shadow(false);
+  g.font = FONT(600, 13); g.fillStyle = INK; g.textBaseline = 'middle';
+  g.fillText(c.label, c.x + PAD, c.y + BH / 2 + 0.5 * K);
+  g.textBaseline = 'alphabetic';
 }
 
 function drawLeader(a, x, y) {
   const ang = Math.atan2(y - a.y, x - a.x);
-  const ex = x - Math.cos(ang) * 18, ey = y - Math.sin(ang) * 18;
-  for (const [w, c] of [[5, INK], [2.5, ACCENT]]) {
-    g.lineWidth = w; g.strokeStyle = c; g.lineCap = 'round';
-    g.beginPath(); g.moveTo(a.x, a.y); g.lineTo(ex, ey); g.stroke();
-  }
+  const ex = x - Math.cos(ang) * 16 * K, ey = y - Math.sin(ang) * 16 * K;
+  shadow(true);
+  g.lineWidth = 1.5 * K; g.strokeStyle = ACCENT; g.lineCap = 'round';
+  g.beginPath(); g.moveTo(a.x, a.y); g.lineTo(ex, ey); g.stroke();
+  shadow(false);
 }
 
 function drawArrow(x, y, tail) {
-  const fromX = tail.x, fromY = tail.y;
-  const ang = Math.atan2(y - fromY, x - fromX);
-  const tipX = x - Math.cos(ang) * 20, tipY = y - Math.sin(ang) * 20;
-  for (const [w, c] of [[9, INK], [5, ACCENT]]) {
-    g.lineWidth = w; g.strokeStyle = c; g.fillStyle = c; g.lineCap = 'round';
-    g.beginPath(); g.moveTo(fromX, fromY); g.lineTo(tipX, tipY); g.stroke();
-    const h = w === 9 ? 18 : 14;
-    g.beginPath();
-    g.moveTo(tipX, tipY);
-    g.lineTo(tipX - h * Math.cos(ang - 0.45), tipY - h * Math.sin(ang - 0.45));
-    g.lineTo(tipX - h * Math.cos(ang + 0.45), tipY - h * Math.sin(ang + 0.45));
-    g.closePath(); g.fill();
-  }
+  const ang = Math.atan2(y - tail.y, x - tail.x);
+  const tipX = x - Math.cos(ang) * 19 * K, tipY = y - Math.sin(ang) * 19 * K;
+  const h = 9 * K;
+  shadow(true);
+  g.lineWidth = 2.5 * K; g.strokeStyle = ACCENT; g.fillStyle = ACCENT; g.lineCap = 'round'; g.lineJoin = 'round';
+  g.beginPath(); g.moveTo(tail.x, tail.y); g.lineTo(tipX - Math.cos(ang) * h * 0.6, tipY - Math.sin(ang) * h * 0.6); g.stroke();
+  g.beginPath();
+  g.moveTo(tipX, tipY);
+  g.lineTo(tipX - h * Math.cos(ang - 0.5), tipY - h * Math.sin(ang - 0.5));
+  g.lineTo(tipX - h * Math.cos(ang + 0.5), tipY - h * Math.sin(ang + 0.5));
+  g.closePath(); g.fill();
+  shadow(false);
 }
 
+// The current step, as a floating dark pill centred near the bottom (the caller's view stays uncovered).
 function drawCaption(text) {
-  g.font = 'bold 16px sans-serif';
-  const line = text.length > 70 ? text.slice(0, 67) + '...' : text;
-  g.fillStyle = 'rgba(0,0,0,0.65)';
-  g.fillRect(0, HEIGHT - 36, WIDTH, 36);
-  g.fillStyle = '#FFFFFF';
-  g.fillText(line, 12, HEIGHT - 12);
+  g.font = FONT(600, 14);
+  let line = text;
+  const max = WIDTH - 64 * K;
+  while (g.measureText(line).width > max && line.length > 4) line = line.slice(0, -2);
+  if (line !== text) line = line.trimEnd() + '…';
+  const w = g.measureText(line).width + 28 * K, h = 30 * K;
+  const x = (WIDTH - w) / 2, y = HEIGHT - h - 14 * K;
+  g.fillStyle = 'rgba(29,29,31,0.78)'; roundRect(x, y, w, h, h / 2); g.fill();
+  g.fillStyle = '#FFFFFF'; g.textBaseline = 'middle'; g.textAlign = 'center';
+  g.fillText(line, WIDTH / 2, y + h / 2 + 0.5 * K);
+  g.textBaseline = 'alphabetic'; g.textAlign = 'left';
+}
+
+// While Mentor talks: three small bars top-right, like a voice level.
+function drawSpeaking(tick) {
+  const x0 = WIDTH - 34 * K, y0 = 14 * K;
+  g.fillStyle = 'rgba(29,29,31,0.6)'; roundRect(x0 - 8 * K, y0 - 4 * K, 36 * K, 24 * K, 12 * K); g.fill();
+  g.fillStyle = ACCENT;
+  for (let i = 0; i < 3; i++) {
+    const hh = (5 + 7 * Math.abs(Math.sin(tick * 0.5 + i * 1.3))) * K;
+    roundRect(x0 + i * 7 * K, y0 + 8 * K - hh / 2, 4 * K, hh, 2 * K); g.fill();
+  }
 }
 
 function roundRect(x, y, w, h, r) {

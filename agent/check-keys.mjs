@@ -1,9 +1,9 @@
 // Checks the keys in ../.env without printing them:  npm run check-keys
-// LiveKit: lists rooms (free). Gemini: looks up the model, then one tiny request (free tier).
+// LiveKit: lists rooms (free). Gemini: looks up each model (no request, so no quota used).
 // Anthropic: lists models (free). ElevenLabs: reads the account's subscription (free).
 import { RoomServiceClient } from 'livekit-server-sdk';
 import { GoogleGenAI } from '@google/genai';
-import { GEMINI_MODEL } from './brain-gemini.mjs';
+import { GEMINI_MODELS } from './brain-gemini.mjs';
 
 const env = process.env;
 const set = k => Boolean(env[k] && !/^(wss:\/\/)?YOUR_/.test(env[k]));
@@ -33,11 +33,11 @@ row('AGENT_NAME', set('AGENT_NAME') ? true : null, set('AGENT_NAME') ? 'set' : '
 if (set('GEMINI_API_KEY') || set('GOOGLE_API_KEY')) {
   try {
     const ai = new GoogleGenAI({ apiKey: env.GEMINI_API_KEY || env.GOOGLE_API_KEY });
-    await ai.models.get({ model: GEMINI_MODEL });
-    const r = await ai.models.generateContent({ model: GEMINI_MODEL, contents: 'Reply with the single word: ready',
-      config: { maxOutputTokens: 200, httpOptions: { timeout: 30_000 } } });
-    row('Gemini', true, `${GEMINI_MODEL} answered "${(r.text || '').trim().slice(0, 20)}"`);
-  } catch (e) { row('Gemini', false, `${GEMINI_MODEL}: ${why(e)}`); }
+    // Lookup only: a real request would spend the free tier's ~20 requests/day/model.
+    const found = [];
+    for (const m of GEMINI_MODELS) { try { await ai.models.get({ model: m }); found.push(m); } catch { /* not available to this key */ } }
+    row('Gemini', found.length > 0, found.length ? `key accepted; models: ${found.join(', ')}` : 'key accepted but none of MENTOR_GEMINI_MODELS is available');
+  } catch (e) { row('Gemini', false, why(e)); }
 } else row('Gemini', null, 'no GEMINI_API_KEY');
 
 // Anthropic
