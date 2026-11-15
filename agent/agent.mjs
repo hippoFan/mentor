@@ -4,7 +4,7 @@
 import './env.mjs';
 import { spawn } from 'node:child_process';
 import { randomBytes } from 'node:crypto';
-import { openSync } from 'node:fs';
+import { mkdirSync, openSync } from 'node:fs';
 import { mkdir, writeFile } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
 import { AutoSubscribe, defineAgent, voice } from '@livekit/agents';
@@ -148,6 +148,27 @@ const agent = defineAgent({
     const DETAIL_ZOOM = process.env.MENTOR_DETAIL_ZOOM !== '0';
     const source = new VideoSource(WIDTH, HEIGHT);
     const track = LocalVideoTrack.createVideoTrack('mentor-video', source);
+    // ODY_RECORD_VIDEO=1: also save what the caller sees (Ody's outgoing video, no audio) as an MP4 in ../logs/call-videos/,
+    // only after consent and never after "stop recording". A backup for demos; the folder is git-ignored.
+    let rec = null;
+    const recWrite = px => {
+      if (process.env.MENTOR_RECORD_VIDEO !== '1' || !consented() || gate?.noRecording) {
+        if (rec && gate?.noRecording) { try { rec.stdin.end(); } catch { /* gone */ } rec = null; }
+        return;
+      }
+      if (!rec) {
+        const dir = new URL('../logs/call-videos/', import.meta.url).pathname;
+        try { mkdirSync(dir, { recursive: true }); } catch { /* exists */ }
+        const file = `${dir}${new Date().toISOString().replace(/[:.]/g, '-')}.mp4`;
+        rec = spawn('ffmpeg', ['-loglevel', 'error', '-y', '-f', 'rawvideo', '-pix_fmt', 'rgba', '-s', `${WIDTH}x${HEIGHT}`, '-r', String(FPS), '-i', '-',
+          '-c:v', 'libx264', '-preset', 'veryfast', '-crf', '20', '-pix_fmt', 'yuv420p', '-movflags', '+faststart', file], { stdio: ['pipe', 'ignore', 'inherit'] });
+        rec.on('error', () => { rec = null; });
+        rec.stdin.on('error', () => {});
+        console.log(`[mentor] recording the caller's view to ${file}`);
+      }
+      if (rec.stdin.writableLength < 64 * WIDTH * HEIGHT) rec.stdin.write(Buffer.from(px.buffer, px.byteOffset, px.byteLength));   // drop frames rather than buffer without limit
+    };
+    const recStop = () => { if (rec) { try { rec.stdin.end(); } catch { /* gone */ } rec = null; } };
     const frame = () => {
       // overlays on demand (overlay-policy.mjs): plain camera unless the caller asked to be shown something
       if (!consented() && marks.length) marks = [];   // before consent the caller's video carries no overlay
@@ -161,6 +182,7 @@ const agent = defineAgent({
       for (const k of ['cx', 'cy', 'zoom']) view[k] += (target[k] - view[k]) * 0.08;
       const px = render(latest, shown, { caption: o.caption, tick: tick++, speaking: o.speaking, view });
       source.captureFrame(new VideoFrame(px, WIDTH, HEIGHT, VideoBufferType.RGBA));
+      recWrite(px);
       stats.outFrames++; stats.renderMs += performance.now() - t0; if (latest) stats.size = `${latest.width}x${latest.height}`;
     };
     frame();
@@ -812,6 +834,7 @@ const agent = defineAgent({
     };
     ctx.addShutdownCallback(async () => {
       ended = true;
+      recStop();
       clearTimeout(combineTimer);
       clearInterval(timer);
       clearInterval(monitorTimer);
