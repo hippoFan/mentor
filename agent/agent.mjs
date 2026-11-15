@@ -22,7 +22,7 @@ import { createMarkTracker } from './tracker.mjs';
 import { cropJpeg, isScanIntent, parseModelCorrection, scanLine } from './scan.mjs';
 import { researchInterior } from './research.mjs';
 import { depthAvailable, estimateDepth } from './depth.mjs';
-import { CIRCUIT_BOARDS, boardPins, circuitEvent, circuitIntent, createProject, describe as describeCircuit, findComponent, handleUtterance, markDone, nextStep, partFromWords, setBoard } from './circuit.mjs';
+import { CIRCUIT_BOARDS, boardPins, circuitEvent, circuitIntent, createProject, describe as describeCircuit, findComponent, handleUtterance, markDone, modelLine, nextStep, parseSwap, partFromWords, physicalIntent, setBoard } from './circuit.mjs';
 import { MARK_TTL_MS, OVERLAY, overlayFrame, shouldDraw } from './overlay-policy.mjs';
 import { matchPart, parseTwin, partList } from './twin-voice.mjs';
 import { createAnalyzer } from './combo.mjs';
@@ -261,6 +261,11 @@ const agent = defineAgent({
     };
     // Voice circuit builder ("add a distance sensor"): one project per call, wired to real pins (circuit.mjs).
     let circuit = createProject({ board: 'arduino-uno' }), circuitBusy = false;
+    // Digital by default (teammate-notes/01-digital-by-default.md): a circuit change happens on the laptop's model and is
+    // confirmed in one line. The real-board walk-through (next jumper spoken + ringed on the caller's video) runs only
+    // after the caller asks ("walk me through it"); then "done" steps it. A change ends it, unless the caller said the
+    // change is for the real board. Mid-build (some wires done), the first change asks once: "On the model or your real board?"
+    let guiding = false, where = null, askedWhere = false;
     const CIRCUIT_ON = process.env.MENTOR_CIRCUIT !== '0';
     const DONE_RE = /^\W*(ok(ay)?[\s,]*)?(done|did it|got it|plugged( it)? in|it'?s in|finished|next( one| step| wire)?|what'?s next)\W*$/i;
     // "Show me how to connect it" (connect.mjs): the next jumper as a holographic wire on the caller's video, from the
@@ -295,16 +300,24 @@ const agent = defineAgent({
     const circuitTurn = async heard => {
       if (circuitBusy) return true;
       const kind = circuitIntent(heard);
-      const done = !kind && circuit.components?.length && DONE_RE.test(heard);
+      const done = !kind && guiding && circuit.components?.length && DONE_RE.test(heard);   // "done" steps only a started walk-through
       if (!kind && !done) return false;
+      // Mid-build, a change could mean the model only or the real board too: ask once per call, then remember.
+      if (kind === 'change' && where === null && !askedWhere && guiding && circuit.done?.length) {
+        askedWhere = true; pending = { kind: 'where', text: heard, at: Date.now() };
+        console.log(`[heard] ${heard} (circuit: asking model or real board)`); live.send({ type: 'heard', text: heard });
+        say('On the model or your real board?', 0); return true;
+      }
       circuitBusy = true;
       try {
         console.log(`[heard] ${heard} (circuit: ${kind || 'done'})`); live.send({ type: 'heard', text: heard });
         if (lastPart && CIRCUIT_BOARDS.includes(lastPart) && lastPart !== circuit.board) circuit = setBoard(circuit, lastPart);   // the board Ody recognised
-        let sayText;
+        let sayText, walk = false;
         if (done) {
           circuit = markDone(circuit); const n = nextStep(circuit);
           sayText = n ? n.say : 'That was the last wire. Your circuit is complete.';
+          if (!n) guiding = false;
+          walk = !!n;
           live.send(circuitEvent(circuit, { say: sayText }));
         } else {
           const now = getLatest(); const image = kind === 'change' && now ? await frameJpeg(now, 960) : null;
@@ -315,18 +328,19 @@ const agent = defineAgent({
           const unk = !r.changed && r.rejected?.some(x => /^I don't have an? .+ in my parts library/.test(x.reason)) ? unknownPart(heard) : null;
           if (unk) { circuitBusy = false; await checklistAddTurn(heard, { query: heard, name: unk, qty: 1 }); return true; }
           circuit = r.state;
-          const n = nextStep(circuit);
-          sayText = [r.say, r.changed && n ? `First: ${n.say}` : ''].filter(Boolean).join(' ');
+          if (kind === 'next') { guiding = true; walk = true; sayText = r.say; }   // "what's the next wire?": the walk-through, asked for
+          else if (r.changed && where === 'real' && nextStep(circuit)) { guiding = true; walk = true; sayText = `${modelLine(r)} On your board: ${nextStep(circuit).say}`; }
+          else { if (r.changed) guiding = false; sayText = r.changed ? modelLine(r) : r.say; }   // confirmed on the model, no jumper spoken
           live.send(circuitEvent(circuit, { ...r, say: sayText }));
         }
         say(sayText, 0);
-        void showNext();
+        if (walk) void showNext();   // rings the step on the caller's video (only during a walk-through they asked for)
       } catch (e) { console.warn('[circuit] failed:', e?.message || e); say("I couldn't change the circuit. Say it again, simply: add a distance sensor.", 0); }
       finally { circuitBusy = false; }
       return true;
     };
     // "Scan this": a dedicated brain call builds an approximate 3D model of whatever is on camera for the laptop's /twin.
-    let pending = null;   // a one-question follow-up: {kind:'modify', query} | {kind:'sensor'}
+    let pending = null;   // a one-question follow-up: {kind:'modify', query} | {kind:'sensor'} | {kind:'swap', old} | {kind:'where', text}
     let lastScan = null;   // {id, spec, cut, at}: "it's actually a Galaxy S24 Ultra" corrects this one
     const interiors = new Map();   // scan name (lower case) -> researched interior, for the build-combo analysis
     const research = (id, spec, cut, opts = {}) => {
@@ -529,6 +543,11 @@ const agent = defineAgent({
       const hit = p.query === '__it' ? (focusPart || edits.at(-1)?.target) : matchPart(p.query, parts);
       if (!hit) return false;   // not a part on the stage: an ordinary turn answers it
       if (stageScope === 'circuit' && partFromWords(p.rest)) return false;   // "swap the sensor for a servo": a real circuit change
+      // Digital by default: "swap the LED for a distance sensor" is a circuit change (remove, add, rewire), never a reshape
+      // of the LED. A swap goes to the circuit builder when the replacement is a library part (on a scanned object, only
+      // when the target is also in the circuit), or when the target is a circuit component.
+      const sw = parseSwap(heard), inCircuit = sw && circuit.components.length && findComponent(circuit, sw.old);
+      if (sw && ((sw.part && (stageScope !== 'scan' || inCircuit)) || (inCircuit && sw.generic))) return false;
       console.log(`[heard] ${heard} (modify ${hit.name}: ${p.rest})`); live.send({ type: 'heard', text: heard });
       if (editBusy) { say('One change at a time. Say it again in a moment.', 0); return true; }
       if (edits.length >= EDIT.maxMods) { say("That's a lot of changes. Undo one first.", 0); return true; }
@@ -682,18 +701,31 @@ const agent = defineAgent({
         if (budget()) await modelFix(fix);
         return;
       }
-      if (CIRCUIT_ON && circuit.components.length && isShowHow(heard)) {
-        console.log(`[heard] ${heard} (show the current step)`); live.send({ type: 'heard', text: heard });
-        await showNext({ speak: true }); return;
-      }
       heard = heard.replace(/\bcensor(s?)\b/gi, 'sensor$1');   // speech-to-text's favourite mishearing
       // Half-finished commands get one short question, and the answer completes them:
       // "change the tip" -> "To what?" -> "a brush"; "add a sensor" -> "Which one?" -> "distance".
       if (pending && Date.now() - pending.at < 30_000 && heard.split(/\s+/).length <= 8 && !isScanIntent(heard)) {
         const p = pending; pending = null;
         const ans = heard.replace(/[.!?]+$/, '').replace(/^(um+|uh+|a|an|the|make it|to|into)\s+/i, '').trim();
-        if (ans) heard = p.kind === 'modify' ? `change the ${p.query} to ${ans}` : `add a ${ans} ${/sensor/i.test(ans) ? '' : 'sensor'}`.trim();
+        if (p.kind === 'where') {   // "On the model or your real board?" -> remembered for the rest of the call
+          const w = /\b(?:model|digital|laptop|screen|virtual|hologram|3d|twin|just the model)\b/i.test(ans) ? 'model'
+            : /\b(?:real|actual|physical|board|breadboard|both|irl|arduino)\b/i.test(ans) ? 'real' : null;
+          if (w) { where = w; heard = p.text; }
+        } else if (ans) {
+          const sensor = `${ans} ${/sensor/i.test(ans) ? '' : 'sensor'}`.trim();
+          heard = p.kind === 'modify' ? `change the ${p.query} to ${ans}` : p.kind === 'swap' ? `swap the ${p.old} for a ${sensor}` : `add a ${sensor}`;
+        }
       } else pending = null;
+      // The real-board walk-through, only on request: "walk me through it", "how do I wire this", "on the real board",
+      // "physically", "next wire", "what's the next step" (and "what's next" before it started; once started, "done",
+      // "next" and "what's next" step it in circuitTurn, as before).
+      const phys = physicalIntent(heard);
+      if (CIRCUIT_ON && circuit.components.length && (isShowHow(heard) || phys === 'walk' || (!guiding && /^\W*(?:ok(?:ay)?[\s,]*)?(?:what'?s|what\s+is)\s+next\W*$/i.test(heard)))
+        && !(guiding && DONE_RE.test(heard))) {
+        console.log(`[heard] ${heard} (walk-through: show the current step)`); live.send({ type: 'heard', text: heard });
+        guiding = true;
+        await showNext({ speak: true }); return;
+      }
       const half = heard.replace(/[.!?]+$/, '').trim();
       let hm = half.match(/^(?:can you\s+|please\s+|let'?s\s+)?(?:change|swap|replace|modify|edit|redo)\s+(?:the|its|that|this|my)\s+([a-z][a-z -]{1,30})$/i);
       if (hm && !/\b(subject|topic|plan|idea|mind)\b/i.test(hm[1]) && !/\b(to|into|with|for|from)\b/i.test(hm[1]) && hm[1].trim().split(/\s+/).length <= 3) {
@@ -701,17 +733,27 @@ const agent = defineAgent({
         console.log(`[heard] ${heard} (edit: asking what to change it to)`); live.send({ type: 'heard', text: heard });
         say(`Change the ${hm[1].trim()} to what? For example, a different shape, size, color or material.`, 0); return;
       }
+      const gsw = CIRCUIT_ON ? parseSwap(half) : null;   // "swap the LED for a sensor": which one?
+      if (gsw?.generic && (stageScope !== 'scan' || (circuit.components.length && findComponent(circuit, gsw.old)))) {
+        pending = { kind: 'swap', old: gsw.old, at: Date.now() };
+        console.log(`[heard] ${heard} (circuit: asking which sensor to swap in)`); live.send({ type: 'heard', text: heard });
+        say('Which sensor? Distance, temperature, or motion?', 0); return;
+      }
       if (/^(?:can you\s+|please\s+)?add\s+(?:a|an|one|another)\s+(?:sensor|censor|senser|module)$/i.test(half)) {
         pending = { kind: 'sensor', at: Date.now() };
         console.log(`[heard] ${heard} (circuit: asking which sensor)`); live.send({ type: 'heard', text: heard });
         say('Which sensor? Distance, temperature, or motion?', 0); return;
       }
-      if (revertTurn(heard)) return;              // "undo that" / "put the tip back" after a voice edit
-      if (checklistOpTurn(heard)) return;         // "I have the buzzer" / "what do I still need?"
-      if (twinTurn(heard)) return;
-      if (await modifyTurn(heard)) return;        // "change the tip to a brush": one structured brain call
-      if (await checklistAddTurn(heard)) return;  // "add a buzzer": a part the library can't model -> the parts list
-      if (CIRCUIT_ON && !isScanIntent(heard) && await circuitTurn(heard)) return;
+      // "On my real board, where does the red wire go?": about the physical object, so an ordinary turn answers it from
+      // the camera; none of the model's routes (edits, circuit, 3D stage) run.
+      if (phys !== 'physical') {
+        if (revertTurn(heard)) return;              // "undo that" / "put the tip back" after a voice edit
+        if (checklistOpTurn(heard)) return;         // "I have the buzzer" / "what do I still need?"
+        if (twinTurn(heard)) return;
+        if (await modifyTurn(heard)) return;        // "change the tip to a brush": one structured brain call
+        if (await checklistAddTurn(heard)) return;  // "add a buzzer": a part the library can't model -> the parts list
+        if (CIRCUIT_ON && !isScanIntent(heard) && await circuitTurn(heard)) return;
+      }
       if (ACKS.test(heard.trim())) { console.log(`[heard] ${heard} (acknowledgement, no brain call)`); live.send({ type: 'heard', text: heard }); return; }
       if (last && REPLAY.test(heard.trim())) {
         console.log(`[heard] ${heard} (replay, no brain call)`); live.send({ type: 'heard', text: heard });

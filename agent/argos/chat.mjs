@@ -6,12 +6,13 @@
 //   3. "walk me through it" / "what's the next wire?"                     -> the next physical step, only when asked
 //   4. anything else                                                       -> one model call: an answer, and optionally a
 //                                                                             refinement of the selected design to start
-import { circuitEvent, circuitIntent, createProject, describe, handleUtterance, nextStep, markDone } from '../circuit.mjs';
+import { circuitEvent, circuitIntent, createProject, describe, handleUtterance, modelLine, nextStep, markDone, physicalIntent } from '../circuit.mjs';
 import { matchPart, parseTwin } from '../twin-voice.mjs';
 import { complete } from './providers.mjs';
 
 const cap = (s, n) => String(s ?? '').replace(/[\u0000-\u001f\u007f<>]/g, ' ').replace(/\s+/g, ' ').trim().slice(0, n);
-export const PHYSICAL = /\b(walk me through|guide me|on (?:the|my) real (?:board|one|arduino)|physically|in real life|irl|next (?:wire|step|jumper)|how do i (?:wire|build|connect) (?:it|this))\b/i;
+// Digital by default, the same rules as the call (circuit.mjs physicalIntent): the real board only when asked.
+export const PHYSICAL = { test: t => physicalIntent(t) === 'walk' };
 const DONE = /^(?:done|did it|ok(?:ay)? done|next|got it)\.?$/i;
 
 const CHAT_SCHEMA = { type: 'object', additionalProperties: false, required: ['reply', 'refine'],
@@ -39,6 +40,7 @@ export const argosBrain = provider => ({
 export function createChat({ send, startRefine }) {
   let parts = [];                        // the page's latest 3D stage parts (from its 'parts' message)
   let circuit = createProject({ board: 'arduino-uno' });
+  let guiding = false;                   // the real-board walk-through started ("walk me through it"); "done" steps it
   const history = [];                    // last few turns, for follow-ups
 
   const reply = (text, extra = {}) => { const e = { type: 'argos', kind: 'reply', text: cap(text, 600), at: Date.now(), ...extra }; send(e); return e; };
@@ -70,22 +72,24 @@ export function createChat({ send, startRefine }) {
       }
 
       // 3. physical guidance, only when asked
-      if (PHYSICAL.test(text) || (DONE.test(text) && circuit.components?.length)) {
-        if (DONE.test(text)) circuit = markDone(circuit);
+      if (PHYSICAL.test(text) || (guiding && DONE.test(text) && circuit.components?.length)) {
+        if (guiding && DONE.test(text)) circuit = markDone(circuit);
+        guiding = true;
         const n = nextStep(circuit);
         send(circuitEvent(circuit, { say: n?.say || '' }));
         return reply(n ? `Step ${n.index} of ${n.total}: ${n.say} Say "done" for the next one.` : circuit.components?.length ? 'That was the last wire. The real circuit matches the model.' : 'There is no circuit on the model yet. Try "add a distance sensor".', { route: 'physical' });
       }
 
       // 2. circuit changes (digital)
-      if (circuitIntent(text)) {
+      if (circuitIntent(text) && physicalIntent(text) !== 'physical') {
         try {
           const r = await handleUtterance(argosBrain(provider), circuit, text.replace(/\bcensor(s?)\b/gi, 'sensor$1'));
           circuit = r.state;
           send(circuitEvent(circuit, { ...r, say: r.say }));
-          const line = r.say || describe(circuit);
+          if (r.changed) guiding = false;   // a change ends a walk-through; the model is the default
+          const line = (r.changed ? modelLine(r) : r.say) || describe(circuit);
           history.push(`Argos: ${line}`);
-          return reply(`${line}${r.applied?.length ? ' (on the model; say "walk me through it" to wire the real board)' : ''}`, { route: 'circuit' });
+          return reply(`${line}${r.changed ? ' Say "walk me through it" to wire the real board.' : ''}`, { route: 'circuit' });
         } catch (e) {
           return reply(e?.code === 'NO_KEY' ? e.message : 'I couldn\'t change the circuit. Try simply: "add a distance sensor".', { route: 'circuit', error: true });
         }
