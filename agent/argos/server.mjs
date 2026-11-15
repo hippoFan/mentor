@@ -111,7 +111,15 @@ export function createArgos({ send, callLive = () => false }) {
     return { jobId };
   }
 
-  const chat = createChat({ send, startRefine });
+  /** The one way designs are deleted (The Forge's Delete button and Argos's chat): forge.mjs deleteDesign (ids checked
+   *  against its pattern, inside the designs folder only), then one design-removed event so every page updates live. */
+  async function removeDesigns(ids) {
+    const gone = [];
+    for (const id of [...new Set((ids || []).map(String))]) if (await deleteDesign(id)) gone.push(id);
+    if (gone.length) send({ type: 'argos', kind: 'design-removed', ids: gone, at: Date.now() });
+    return gone;
+  }
+  const chat = createChat({ send, startRefine, designs: () => listDesigns(), remove: removeDesigns });
 
   // POST /argos/designs/<id>/schematic: on demand only. The same circuit again returns the saved run at once.
   // One run at a time (tscircuit routes on this process's thread, ~1-2 s): requests queue, so a second click on the same
@@ -199,7 +207,7 @@ export function createArgos({ send, callLive = () => false }) {
         catch (e) { return json(res, e?.status || 400, { error: cap(e?.message || 'failed', 300), ...(e?.netlist ? { netlist: e.netlist } : {}) }); }
       }
       m = p.match(/^\/argos\/designs\/([a-z0-9-]{8,40})$/);
-      if (method === 'DELETE' && m) return json(res, (await deleteDesign(m[1])) ? 200 : 404, {});
+      if (method === 'DELETE' && m) return json(res, (await removeDesigns([m[1]])).length ? 200 : 404, {});
       m = p.match(/^\/argos\/designs\/([a-z0-9-]{8,40})\/compile$/);
       if (method === 'POST' && m) {   // (re)build an STL from a design's OpenSCAD source, e.g. a scan before any refinement
         const src = (await designFile(m[1], 'source.scad'))?.toString('utf8');

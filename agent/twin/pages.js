@@ -8,7 +8,7 @@ import { selectDesign } from './argos.js';
 
 const ORDER = ['argo', 'main', 'forge'];                 // the swipe / ← → order
 const PAGES = [...ORDER, 'profile', 'settings'];          // Profile and Settings open from the avatar menu
-const NAMES = { argo: 'Argo', main: 'Home', forge: 'The Forge', profile: 'Profile', settings: 'Settings' };
+const NAMES = { argo: 'Argo Simulation', main: 'Home', forge: 'The Forge', profile: 'Profile', settings: 'Settings' };
 const root = document.documentElement;
 const $ = id => document.getElementById(id);
 const reduce = matchMedia('(prefers-reduced-motion: reduce)');

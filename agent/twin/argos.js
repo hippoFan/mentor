@@ -379,7 +379,7 @@ window.argosDog = { state: () => (thinking ? 'think' : dogState), ready: () => d
 const jobMsg = new Map();
 subscribe(e => {
   if (e.type !== 'argos') return;
-  if (e.kind === 'design') void loadDesigns();
+  if (e.kind === 'design' || e.kind === 'design-removed') void loadDesigns();
   if (e.kind !== 'refine') return;
   if (e.state === 'started') { dogThink(true); jobMsg.set(e.jobId, say('dog', `${e.mode === 'multicode' ? 'Multicode team' : 'Refining'}: ${e.instruction}`)); }
   if (e.state === 'step' && e.step) say('step', `${e.step.role}: ${e.step.text}`, e.step.state === 'failed' ? 'failed' : '');

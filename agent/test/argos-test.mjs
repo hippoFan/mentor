@@ -206,6 +206,65 @@ try {
   // designs list
   r = await fetch(`${base}/argos/designs`); const list = (await r.json()).designs;
   assert.ok(list.length >= 3 && list[0].at >= list.at(-1).at); pass(`Forge lists ${list.length} designs, newest first`);
+  // ---- deleting designs from the chat: intent parsing, fuzzy name match, confirm first (unit, fake io, no model) ----
+  {
+    const { createChat, deleteIntent, matchDesigns, CONFIRM_MS } = await import('../argos/chat.mjs');
+    assert.equal(deleteIntent('make a phone stand'), null);
+    assert.equal(deleteIntent('delete the phone stand').keys.join(' '), 'phone stand');
+    assert.ok(deleteIntent('Delete all bagel scans').all && deleteIntent('Delete all bagel scans').scansOnly);
+    assert.ok(deleteIntent('remove that design').pronoun && deleteIntent('remove that design').designWord);
+    pass('delete intent: verb + names, "all", scans, "that design"');
+    const D = [
+      { id: '2026-11-15-refined-aaaa0001', name: 'Phone Stand 80mm', kind: 'refined', at: 5 },
+      { id: '2026-11-15-scan-bbbb0001', name: 'Bagel', kind: 'scan', at: 4 },
+      { id: '2026-11-15-scan-bbbb0002', name: 'bagel (sesame)', kind: 'scan', at: 3 },
+      { id: '2026-11-15-scan-cccc0001', name: 'Arduino UNO R3', kind: 'scan', at: 2 },
+      { id: '2026-11-15-imported-dddd0001', name: 'Bagel holder', kind: 'imported', at: 1 },
+    ];
+    assert.deepEqual(matchDesigns(deleteIntent('delete the phone stand'), D).map(d => d.name), ['Phone Stand 80mm']);
+    assert.deepEqual(matchDesigns(deleteIntent('delete the phone stnd'), D).map(d => d.name), ['Phone Stand 80mm'], 'one typo still matches');
+    assert.deepEqual(matchDesigns(deleteIntent('delete all bagel scans'), D).map(d => d.name), ['Bagel', 'bagel (sesame)'], 'scans only, not the imported holder');
+    assert.deepEqual(matchDesigns(deleteIntent('remove that design'), D, D[3].id).map(d => d.id), [D[3].id]);
+    assert.deepEqual(matchDesigns(deleteIntent('delete the toaster'), D), []);
+    pass('delete match: fuzzy, case-insensitive, "all … scans", "that" = the selected design, no match = nothing');
+
+    let t = 1000; const removed = [], sent = [];
+    const io = { send: e => sent.push(e), startRefine: async () => { throw new Error('no model in this test'); }, designs: async () => D.filter(d => !removed.includes(d.id)),
+      remove: async ids => { const g = ids.filter(id => D.some(d => d.id === id) && !removed.includes(id)); removed.push(...g); sent.push({ type: 'argos', kind: 'design-removed', ids: g }); return g; }, now: () => t };
+    const c = createChat(io);
+    let a = await c.say('delete the phone stand');
+    assert.equal(a.route, 'delete'); assert.equal(a.text, "Delete 'Phone Stand 80mm'? Say yes to confirm."); assert.equal(removed.length, 0, 'never deletes without a yes');
+    a = await c.say('yes'); assert.deepEqual(removed, [D[0].id]); assert.match(a.text, /Deleted 'Phone Stand 80mm'/); assert.ok(sent.some(e => e.kind === 'design-removed' && e.ids[0] === D[0].id));
+    pass('delete confirm: asks first, "yes" deletes through the remove path and publishes design-removed');
+    a = await c.say('delete all bagel scans'); assert.match(a.text, /Delete these 2 designs: 'Bagel', 'bagel \(sesame\)'\? Say yes to confirm\./);
+    a = await c.say('no'); assert.ok(a.cancelled); assert.equal(removed.length, 1);
+    a = await c.say('delete all bagel scans'); t += CONFIRM_MS + 1; a = await c.say('yes'); assert.ok(a.expired); assert.equal(removed.length, 1, 'a late yes deletes nothing');
+    a = await c.say('delete all bagel scans'); await c.say('what is a resistor?').catch(() => null); a = await c.say('yes'); assert.equal(removed.length, 1, 'another message in between drops the request');
+    a = await c.say('remove that design'); assert.match(a.text, /Which design/); a = await c.say('yes'); assert.equal(removed.length, 1);
+    a = await c.say('delete the toaster design'); assert.match(a.text, /couldn't find a design called "the toaster design"/);
+    pass('delete confirm: "no" keeps them, a yes after 60 s or after another message deletes nothing, no selection = asks which');
+    c.setParts([{ id: 'reset', name: 'Reset button' }]);
+    a = await c.say('remove the reset button'); assert.equal(a.route, 'twin', 'a stage part stays a twin command');
+    const many = Array.from({ length: 25 }, (_, i) => ({ id: `2026-11-15-scan-eeee${String(i).padStart(4, '0')}`, name: `Bolt ${i}`, kind: 'scan', at: i }));
+    const c2 = createChat({ ...io, designs: async () => many, remove: async ids => ids });
+    a = await c2.say('delete all bolt scans'); assert.equal(a.matched.length, 20); assert.match(a.text, /these 20 designs.*5 more match/);
+    pass('delete: stage parts stay twin commands; plural deletes list names, capped at 20');
+  }
+  // the real route: chat "delete …" then "yes" removes the folder through forge.mjs and publishes design-removed
+  {
+    const all = (await (await fetch(`${base}/argos/designs`)).json()).designs;
+    const victim = all.find(d => d.kind === 'refined') || all[0];
+    let r = await (await post('/argos/chat', { text: `delete ${victim.name}` })).json();
+    assert.equal(r.route, 'delete'); assert.ok(r.confirm);
+    assert.ok((await (await fetch(`${base}/argos/designs`)).json()).designs.some(d => d.id === victim.id), 'still there before the yes');
+    const n0 = events.length;
+    r = await (await post('/argos/chat', { text: 'yes' })).json();
+    assert.ok(r.deleted?.length >= 1, JSON.stringify(r));
+    for (const id of r.deleted) assert.ok(!(await (await fetch(`${base}/argos/designs`)).json()).designs.some(d => d.id === id));
+    assert.ok(events.slice(n0).some(e => e.kind === 'design-removed' && e.ids.includes(r.deleted[0])));
+    r = await fetch(`${base}/argos/designs/${r.deleted[0]}`, { method: 'DELETE', headers: origin }); assert.equal(r.status, 404, 'the Forge route agrees it is gone');
+    pass(`chat delete via the real route: confirmed, "${victim.name}" removed, design-removed published`);
+  }
   console.log(`\n${ok} Argos tests passed`);
 } finally {
   await live.close(); model.close(); await rm(dir, { recursive: true, force: true });

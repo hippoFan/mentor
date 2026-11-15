@@ -713,6 +713,12 @@ export function mountForge(rootEl, { subscribe, openRefine } = {}) {
     } else if (e.type === 'argos' && e.kind === 'design' && e.design) {
       const isNew = !byId(e.design.id); upsert(e.design, { fresh: isNew }); renderGallery();
       if (isNew && e.design.source === 'call') toast(`New scan from the call: “${e.design.name}”.`);
+    } else if (e.type === 'argos' && e.kind === 'design-removed' && Array.isArray(e.ids)) {   // deleted here, in Argos's chat, or on another page
+      const gone = new Set(e.ids.map(String)); if (!S.designs.some(x => gone.has(x.id))) return;
+      if (S.open && gone.has(S.open)) close();
+      S.designs = S.designs.filter(x => !gone.has(x.id));
+      for (const id of gone) { thumbs.delete(id); for (const k of [...bufCache.keys()]) if (k.startsWith(`${id}/`)) bufCache.delete(k); }
+      renderGallery();
     } else if (e.type === 'argos' && e.kind === 'refine' && e.state === 'done' && e.design) {
       upsert(e.design, { fresh: !byId(e.design.id) }); renderGallery();
     }

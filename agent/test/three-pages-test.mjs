@@ -78,7 +78,7 @@ try {
     assert.equal(await evalJs('window.odyPages.page()'), 'main');
     assert.equal(await evalJs('document.querySelector(".pager [aria-current=page]").dataset.go'), 'main');
     assert.deepEqual(await evalJs('[...document.querySelectorAll(".pager a")].map(a => a.dataset.go)'), ['argo', 'main', 'forge']);
-    assert.deepEqual(await evalJs('[...document.querySelectorAll(".pager a")].map(a => a.textContent.trim() || a.getAttribute("aria-label"))'), ['Argo', 'Home', 'Forge']);
+    assert.deepEqual(await evalJs('[...document.querySelectorAll(".pager a")].map(a => a.textContent.trim() || a.getAttribute("aria-label"))'), ['Argo Simulation', 'Home', 'Forge']);
     assert.ok(await visible('.pager .nav-logo[aria-current=page] svg.logo'), 'the Ody wordmark is Home, highlighted');
     assert.ok(await visible('#profile-btn'), 'avatar in the app bar');
     assert.deepEqual(await evalJs('[...document.querySelectorAll("#page-main .home-rip, #page-main .home-column")].map(t => [t.dataset.go, t.getAttribute("aria-label")])'), [['argo', 'Go to Argo'], ['forge', 'Go to The Forge']]);

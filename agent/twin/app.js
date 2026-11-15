@@ -352,6 +352,7 @@ function buildLayerTags() {
   }
 }
 function setExplode(on) {
+  if (on && stageEmpty()) { S.explodeTo = 0; $('t-explode').setAttribute('aria-pressed', 'false'); toast('Nothing to explode yet. Hold a board up to the camera, or say “scan this”.'); return; }
   S.explodeTo = on ? 1 : 0; $('t-explode').setAttribute('aria-pressed', String(on));
   requestAnimationFrame(renderPartsPanel);
   if (S.view === 'scan') { flyScan(1.1, on ? 1.45 : 1); return; }
@@ -803,10 +804,34 @@ function queueParts(force = false) {
 subscribe(e => { if (e.type === '_sock' && e.open) { P.sent = ''; queueParts(true); } });
 
 // rail: the parts list, the removed tray, Combine, and the analysis
+/** Nothing on the stage yet (no board, scan or circuit): Explode and Hands wait, with a hint, until something arrives. */
+function stageEmpty() { return S.view === 'board' && !S.uno; }
+const EMPTY_HINT = 'Works once Ody sees a board or scans something';
+function emptyStage() {
+  const empty = stageEmpty();
+  document.body.classList.toggle('stage-empty', empty);
+  for (const id of ['t-explode', 't-hands']) {
+    const b = $(id); if (!b) continue;
+    const off = empty && !(id === 't-hands' && b.getAttribute('aria-pressed') === 'true');   // a running hand session can always be stopped
+    if (b.disabled === off) continue;
+    b.disabled = off;
+    if (off) { b.dataset.titleWas = b.getAttribute('title') || ''; b.title = EMPTY_HINT; }
+    else if (b.title === EMPTY_HINT) { if (b.dataset.titleWas) b.title = b.dataset.titleWas; else b.removeAttribute('title'); delete b.dataset.titleWas; }
+  }
+}
 function renderPartsPanel() {
   const list = stageParts(), box = $('partsbox');
-  box.hidden = !list.length;
-  if (!list.length) return;
+  emptyStage();
+  if (!list.length) {   // a friendly empty state instead of a missing section
+    const empty = stageEmpty();
+    box.hidden = !empty;
+    if (!empty) return;
+    $('partsCount').textContent = ''; $('partsList').replaceChildren(); $('trayBox').hidden = true; $('partRemove').hidden = true;
+    $('partsHint').textContent = 'No parts yet. When Ody sees a board, or you say “scan this”, its parts show here to pick, move and remove.';
+    $('combine').hidden = true; $('combine').disabled = true;
+    return;
+  }
+  box.hidden = false; $('combine').hidden = false;
   $('partsCount').textContent = String(list.length);
   $('partsHint').textContent = partsActive() ? 'Pick a part here or in 3D, drag it, press Delete to remove it. Combine puts the rest back together.' : scopeNow() === 'scan' && S.scan?.I ? 'Explode (E) or X-ray (Y) first, then pick a part.' : 'Explode (E) first, then pick a part and drag it.';
   const ul = $('partsList'); ul.replaceChildren();
@@ -1179,7 +1204,7 @@ async function toggleHands() {
 }
 function stopHands() {
   hands?.stop(); hands = null; gestureOut = null; spin.stop();
-  $('t-hands').setAttribute('aria-pressed', 'false'); handUI.stop(); dropHandDrag(true);
+  $('t-hands').setAttribute('aria-pressed', 'false'); handUI.stop(); dropHandDrag(true); emptyStage();
   if (handTip) { showTip(null); handTip = false; } handHover = null;
   $('announce').textContent = 'Hand control off.';
 }
@@ -1608,13 +1633,16 @@ function stageFor(action, target) {
   if (here && target) stay = !!findPart(target);
   else if (here === 'scan') stay = true;
   else if (here === 'circuit' && (action === 'restore' || action === 'combine')) stay = changed(stageParts());
-  if (!stay) { if (!S.model) setPart('uno-r3'); if (S.view !== 'board') showBoard(); }
+  if (!stay) { if (!S.model) return false; if (S.view !== 'board') showBoard(); }   // no board yet: nothing to act on
   if (!S.holo) setHolo(true);
+  return true;
 }
 /** The agent's voice commands for the view ("Ody, explode it"). Unknown actions are ignored. */
 function voice(action, target) {
   const say = m => toast(`Ody: ${m}`, { voice: true });
-  try { stageFor(action, target); } catch (e) { console.warn('[twin] voice stage', e); }
+  let ready = true;
+  try { ready = stageFor(action, target) !== false; } catch (e) { console.warn('[twin] voice stage', e); }
+  if (!ready) { say('no board on the stage yet. Hold one up to the camera first'); return; }
   switch (action) {
     case 'explode': setExplode(true); say('exploded'); break;
     case 'assemble': setExplode(false); say('assembled'); break;
@@ -1830,7 +1858,8 @@ function declutter() {
     if (r.ok) { const b = await r.json(); if (b?.parts && typeof b.parts === 'object') { S.parts = b.parts; S.lookup = b.lookup || {}; } }
   } catch (e) { console.warn('[twin] parts', e); }
   S.bb = buildBreadboard(); S.bb.group.position.copy(BB_POS); S.bb.group.visible = false; decorate(S.bb.group); twin.add(S.bb.group); applyLook(S.bb.group);
-  showModel('uno-r3');
+  // the stage starts empty (grid and rings only): a board is built when a real part / scan / circuit event names one
+  renderPartsPanel();   // also syncs Explode / Hands (disabled with a hint) and the parts rail's empty state
   resize(); setCam(homeView());
   requestAnimationFrame(frame);
   subscribe(handle);   // the shell's one socket; replays the last hello and everything since
