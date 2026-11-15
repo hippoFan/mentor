@@ -207,6 +207,31 @@ try {
     await key('t', 'KeyT', 84);
     assert.equal(await evalJs('document.getElementById("panel").hidden'), before);
   });
+  // the agent's view commands must land in the hologram the caller sees: Argo, the Board mode, the hologram look
+  const { createProject, apply, fastPlan, circuitEvent } = await import('../circuit.mjs');
+  await test('on Home, a twin explode → Argo, Board mode, hologram, exploded', async () => {
+    live.send({ type: 'part', model: 'uno-r4-wifi', label: 'Arduino UNO R4 WiFi' });
+    await sleep(400);
+    await evalJs('window.mentorTwin.setLook(false)');
+    await evalJs('window.odyPages.goTo("main")'); await sleep(600);
+    assert.equal(await evalJs('window.odyPages.page()'), 'main');
+    live.send({ type: 'twin', action: 'explode' });
+    assert.ok(await until('window.odyPages.page() === "argo" && window.mentorTwin.scanState().view === "board" && window.mentorTwin.state().holo && window.mentorTwin.state().explode > 0.95', 60), JSON.stringify(await evalJs('({ page: window.odyPages.page(), view: window.mentorTwin.scanState().view, ...window.mentorTwin.state() })')));
+    assert.ok(await until('!document.getElementById("page-argo").classList.contains("off")'));
+    return `explode ${(await evalJs('window.mentorTwin.state().explode')).toFixed(2)}`;
+  });
+  await test('after a circuit event (Argo shows Circuit), a twin remove of the ESP32 module → Board mode, part in the tray', async () => {
+    live.send({ type: 'twin', action: 'assemble' }); await sleep(300);
+    await evalJs('window.odyPages.goTo("forge")'); await sleep(600);
+    let st = createProject({ board: 'uno-r4-wifi' }); const r = apply(st, fastPlan(st, 'add a distance sensor').actions); st = r.state;
+    live.send({ ...circuitEvent(st, r) });
+    assert.ok(await until('window.odyPages.page() === "argo" && window.mentorTwin.scanState().view === "circuit"', 60), 'circuit shown on Argo');
+    live.send({ type: 'twin', action: 'remove', target: 'ESP32 module' });
+    assert.ok(await until('window.mentorTwin.scanState().view === "board" && window.mentorTwin.partsState().scope === "board" && window.mentorTwin.partsState().parts.some(p => p.id === "esp32" && p.removed)', 60), JSON.stringify(await evalJs('window.mentorTwin.partsState()')));
+    assert.ok(await until('!document.getElementById("trayBox").hidden && /ESP32/.test(document.getElementById("tray").textContent)'), 'in the tray');
+    assert.ok(await evalJs('window.mentorTwin.state().holo'));
+    live.send({ type: 'twin', action: 'restore' }); await sleep(400);
+  });
   await test('reduced motion: no animations at all, instant page cuts', async () => {
     await cdp('Emulation.setEmulatedMedia', { features: [{ name: 'prefers-reduced-motion', value: 'reduce' }] });
     await evalJs(`window.odyPages.goTo("main")`); await sleep(300);

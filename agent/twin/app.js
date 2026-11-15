@@ -1329,7 +1329,7 @@ function showBoard({ fly = true } = {}) {
   marksGroup.visible = wiresGroup.visible = S.explode < 0.02;
   controls.maxDistance = 520;
   document.body.classList.toggle('has-part', !!S.model);
-  boardPanel(); updatePartTags(); renderScans(); renderPins(); pointing(); interiorPanel(); partsChanged();
+  boardPanel(); updatePartTags(); renderScans(); renderPins(); pointing(); interiorPanel(); partsChanged(); queueParts(true);   // a fresh parts list on every mode switch
   if (fly && !S.replaying) flyHome(1.3);
 }
 // ---------- the voice circuit builder (twin/circuit3d.js): parts on the breadboard, jumpers to exact pins ----------
@@ -1370,7 +1370,7 @@ function onCircuit(ev, { replay = false } = {}) {
   C.ev = ev;
   try { view.setState(ev); } catch (e) { console.warn('[twin] circuit', e); }
   const changed = !replay && Array.isArray(ev.change?.applied) && ev.change.applied.length;
-  if (S.view !== 'circuit' && (changed || replay || !C.shown)) { C.shown = true; setMode('circuit'); }
+  if (S.view !== 'circuit' && (changed || replay || !C.shown)) { C.shown = true; setMode('circuit'); if (changed && !S.holo) setHolo(true); }
   else if (S.view === 'circuit' && changed && !S.replaying) setTimeout(() => flyHome(1.2), 250);   // new parts: re-frame once they are placed
   markNext(); renderProject(); if (S.view === 'circuit') { renderPartsPanel(); queueParts(); } guideSync(); placeholders();
 }
@@ -1567,7 +1567,7 @@ function setMode(name) {
   marksGroup.visible = wiresGroup.visible = false;
   S.view = name; clearKeyTip(); updatePartTags(); renderPins(); pointing(); renderScans();
   try { m.enter?.(); } catch (e) { console.warn('[twin] mode enter', e); }
-  partsChanged();
+  partsChanged(); queueParts(true);
   flyHome(1.2);
 }
 function renderModes() {
@@ -1597,9 +1597,24 @@ function resetCall() {
   clearGroup(marksGroup); clearGroup(wiresGroup); renderLists(); setStep(''); pointing();
   resetCircuit();
 }
+// the part actions land on the board hologram: off the circuit (or an empty) stage, switch to Board first, so
+// "explode" / "remove the Wi-Fi module" always act on the board twin. A scan stays when the action fits it
+// (no target, or a target that names one of its parts); a circuit stays only for one of its own parts.
+const BOARD_ACTS = new Set(['explode', 'assemble', 'remove', 'restore', 'combine', 'select']);
+function stageFor(action, target) {
+  if (!BOARD_ACTS.has(action)) return;
+  const here = S.view === 'scan' && S.scan ? 'scan' : S.view === 'circuit' ? 'circuit' : null;
+  let stay = false;
+  if (here && target) stay = !!findPart(target);
+  else if (here === 'scan') stay = true;
+  else if (here === 'circuit' && (action === 'restore' || action === 'combine')) stay = changed(stageParts());
+  if (!stay) { if (!S.model) setPart('uno-r3'); if (S.view !== 'board') showBoard(); }
+  if (!S.holo) setHolo(true);
+}
 /** The agent's voice commands for the view ("Ody, explode it"). Unknown actions are ignored. */
 function voice(action, target) {
   const say = m => toast(`Ody: ${m}`, { voice: true });
+  try { stageFor(action, target); } catch (e) { console.warn('[twin] voice stage', e); }
   switch (action) {
     case 'explode': setExplode(true); say('exploded'); break;
     case 'assemble': setExplode(false); say('assembled'); break;

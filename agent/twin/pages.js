@@ -239,5 +239,16 @@ function init() {
 
 if (v2) init();
 
+// the agent's view commands and circuit changes from the call ({type:'twin'|'circuit'|'circuit-step'}) must land in the
+// hologram the caller can see: off Argo, go there (the normal transition) and bring the stage into view. Live events
+// only: the shell replays its history to a new subscriber synchronously, before primed is set.
+let primed = false;
+subscribe(e => {
+  if (!primed || !e || (e.type !== 'twin' && e.type !== 'circuit' && e.type !== 'circuit-step')) return;
+  if (v2 && current !== 'argo') goTo('argo');
+  try { $('stage')?.scrollIntoView({ block: 'nearest', behavior: reduced() ? 'auto' : 'smooth' }); } catch { /* no stage */ }
+});
+primed = true;
+
 // for tests
 window.odyPages = { page, goTo: id => goTo(id), openRefine, v2 };
