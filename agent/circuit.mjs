@@ -480,6 +480,7 @@ export function circuitIntent(text) {
   if (NEGATED.test(s) || NOT_CIRCUIT.test(s)) return null;
   if (QUESTION.test(s) && !/^\s*(?:can|could|would|will)\s+you\b/i.test(s)) return null;
   if (/\b(?:i|we)\s+(?:just\s+)?(?:added|connected|plugged|moved|removed|wired)\b/i.test(s)) return null;   // a report, not a request
+  if (parseSwap(s)?.part) return 'change';   // "change the LED to a distance sensor": a swap to a library part
   return VERB.test(s) && OBJECT.test(s) ? 'change' : null;
 }
 export const isCircuitIntent = text => circuitIntent(text) !== null;
@@ -523,6 +524,15 @@ const FILLER = new Set(('please can could would you ody hey ok okay now and then
 export function fastPlan(state, utterance) {
   const raw = String(utterance || '').toLowerCase().replace(/[’']/g, "'").replace(/[^a-z0-9'+.\s-]/g, ' ').replace(/\s+/g, ' ').trim();
   if (!raw) return null;
+  // "swap the LED for a distance sensor" / "replace the button with a servo": remove the old part (when the project has
+  // it), add the library part, rewired to valid pins by apply(). The words decide it, so no brain call.
+  const sw = parseSwap(raw);
+  if (sw?.part) {
+    const c = findComponent(state, sw.old);
+    const color = sw.new.match(/\b(red|green|blue|yellow|white|orange)\b/)?.[1] || '';
+    const mode = /\b(fade|fades|fading|dim|dims)\b/.test(sw.new) ? 'fade' : /\b(blink|blinks|blinking|flash\w*)\b/.test(sw.new) ? 'blink' : '';
+    return { actions: [...(c ? [{ op: 'remove', id: c.id }] : []), { op: 'add', part: sw.part, color, mode, pins: '' }], say: '', swap: !!c };
+  }
   const words = raw.replace(/\b(a[0-7]|d\d{1,2})\b/g, ' ').split(/[\s.-]+/).filter(w => w && !/^\d+$/.test(w));
   if (words.some(w => !FILLER.has(w))) return null;
   const part = partFromWords(raw);
@@ -581,6 +591,66 @@ export function describe(state) {
     return `${labelOf(c)} on ${sig.map(w => pinSay(t, endPin(w.from)).replace('pin ', '')).join(' and ') || 'power'}`;
   });
   return `${cap(parts.join(', '))}. Every part gets power and ground from the breadboard rails.`;
+}
+
+// ---------- digital by default: changes go to the model; the real board only when the caller asks ----------
+// (teammate-notes/01-digital-by-default.md) Shared by the call (agent.mjs) and Argos on the laptop (argos/chat.mjs).
+const SWAP_RE = /^(?:(?:ok(?:ay)?|so|now|and|please|can you|could you|would you|let'?s|i want to|i'?d like to)[\s,]+)*(?:swap|replace|exchange|trade|change|turn|switch|convert)\s+(?:out\s+)?(?:the|my|that|this|its|our)\s+([a-z0-9][a-z0-9' -]{0,40}?)\s+(?:out\s+)?(?:for|with|to|into|in\s?to|by)\s+(?:a|an|the|another|one|some)?\s*([a-z0-9][a-z0-9' -]{0,40}?)(?:\s+instead)?(?:\s+please)?\W*$/i;
+/**
+ * "swap the LED for a distance sensor" / "replace the button with a servo" / "change the LED to a sensor".
+ * @returns {{old: string, new: string, part: string | null, generic: boolean} | null} part: the library part the
+ *   replacement names; generic: just "a sensor" (ask which one)
+ */
+export function parseSwap(text) {
+  const m = String(text || '').replace(/[’]/g, "'").trim().match(SWAP_RE);
+  if (!m || /\b(?:pin|d|gpio)\s*\d|\b(?:5v|3\.3v|gnd|ground)\b/i.test(m[2])) return null;   // "change the trigger to pin 7" is a move
+  const part = partFromWords(m[2]);
+  return { old: m[1].trim(), new: m[2].trim(), part, generic: !part && /^(?:sensors?|modules?)$/i.test(m[2].trim()) };
+}
+
+// The caller asks to be talked through the REAL board (the existing step guide: nextStep / markDone / rings on video).
+const WALK = /\b(?:walk\s+(?:me|us)\s+through|guide\s+me|step\s+by\s+step|how\s+do\s+(?:i|we)\s+(?:wire|build|connect|hook)(?:\s+(?:it|this|that|them|everything|the\s+circuit|it\s+all))?(?:\s+up)?\s*\W*$|(?:what'?s|what\s+is)\s+the\s+(?:next|first)\s+(?:step|wire|jumper)|next\s+(?:wire|step|jumper))\b/i;
+// The request is about the physical object: "on my real board, ...", "on the actual Arduino", "physically".
+const PHYSICAL_CUE = /\b(?:on|in|with|for|to)\s+(?:my|the|your|our|this)\s+(?:real|actual|physical)\s+(?:board|arduino|one|circuit|breadboard|project|thing|build|uno)\b|\b(?:in\s+real\s+life|irl|physically|for\s+real)\b/gi;
+const CUE_FILLER = /\b(?:ok(?:ay)?|so|now|and|then|please|let'?s|lets|let\s+us|do|it|this|that|go|show|me|us|on|with|the|a|time|start|try|wire|build|now)\b/gi;
+/**
+ * 'walk' = talk the caller through the real board (only when asked); 'physical' = a question about the real object,
+ * answered from the camera like any ordinary turn; null = everything else (digital by default).
+ */
+export function physicalIntent(text) {
+  const s = String(text || '').replace(/[’]/g, "'").trim();
+  if (!s) return null;
+  if (WALK.test(s)) return 'walk';
+  PHYSICAL_CUE.lastIndex = 0;
+  if (!PHYSICAL_CUE.test(s)) return null;
+  const rest = s.replace(PHYSICAL_CUE, ' ').replace(CUE_FILLER, ' ').replace(/[^a-z0-9]+/gi, ' ').trim();
+  return rest ? 'physical' : 'walk';   // "let's do it on the real board" = walk; "on my real board, where does ... go" = a question
+}
+
+const brief = (st, c) => {
+  const t = boardPins(st.board), prof = PROFILES[c.part];
+  const sig = st.connections.filter(w => endId(w.to) === c.id && SIGNAL_ROLES.has(prof.pins[endPin(w.to)].role));
+  if (!sig.length) return `the ${labelOf(c)} is on power only`;
+  if (sig.length === 1) return `the ${labelOf(c)} is on ${pinSay(t, endPin(sig[0].from))}`;
+  return `the ${labelOf(c)}'s ${sig.map(w => `${pinWords(endPin(w.to), c.part)} is on ${pinSay(t, endPin(w.from))}`).join(', ').replace(/ is on (?=[^,]*$)/, ' on ').replace(/, ([^,]*)$/, ' and $1')}`;
+};
+/**
+ * ONE short line confirming a change on the MODEL (no "pull its wires", no next jumper): "Swapped it on the model:
+ * the distance sensor's trigger is on pin 9 and echo on pin 10." Rejections keep their spoken reason.
+ * @param {ReturnType<typeof apply>} r
+ */
+export function modelLine(r) {
+  if (!r?.changed) return r?.say || 'Nothing to change.';
+  const st = r.state, comp = id => st.components.find(c => c.id === id);
+  const adds = r.applied.filter(a => a.op === 'add' && comp(a.id)), removes = r.applied.filter(a => a.op === 'remove');
+  const why = r.rejected?.length ? ` ${r.rejected[0].reason}` : '';
+  const cap1 = x => x.charAt(0).toUpperCase() + x.slice(1);
+  if (adds.length && removes.length) return `Swapped it on the model: ${brief(st, comp(adds[0].id))}.${why}`;
+  if (adds.length) return `Added it on the model: ${adds.slice(0, 2).map(a => brief(st, comp(a.id))).join('; ')}.${why}`;
+  if (removes.length) return `Removed the ${removes.map(a => a.say.match(/^Removed the (.+?)\./)?.[1] || 'part').join(' and the ')} from the model.${why}`;
+  const moved = r.applied.find(a => a.from !== undefined);
+  const c = moved && comp(String(moved.id).split('.')[0]);
+  return c ? `Moved it on the model: ${brief(st, c)}.${why}` : `${cap1(r.say)}`;
 }
 
 // ---------- the brain, for free-form requests ----------
