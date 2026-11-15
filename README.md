@@ -65,6 +65,9 @@ Ody is that person, on a FaceTime call:
 | **3D hologram on your laptop** | The board Ody recognises appears at `localhost:8790/twin` as an Iron Man-style hologram: Ody's rings and holographic jumpers in 3D between the exact holes, explode view (E), hover any pin for its name and function, export the scene as `.glb`. Hand control: pinch to rotate and fist to grab, tracked on the laptop with MediaPipe, and the video never leaves it. |
 | **Scan anything** | "Scan this" turns whatever is on camera into an approximate 3D model (an AI-built shape assembly with your photo wrapped on), shown in the hologram and exportable. Known boards use their exact model. Labelled as an AI estimate from one view. |
 | **Parts library** | 18 boards and modules with exact pin maps (Arduino UNO, Mega, Nano; ESP32; Raspberry Pi 4 and Pico; NodeMCU; breadboard; HC-SR04, DHT22, SG90, MPU6050…), imported from Wokwi and Fritzing by `tools/import-parts.mjs`. |
+| **Any board, even custom** | Library boards (UNO, Mega, Nano, ESP32, Raspberry Pi 3/4/5, Pico, NodeMCU) get pin-exact wires. On a custom PCB, Ody reads each header (2.54 mm grid + silkscreen labels), snaps every hole to the real one, and wires to it. |
+| **Voice controls the hologram** | "Explode it", "put it back together", "rotate it", "reset the view", "make it look real", "export the model": instant, with no model call. |
+| **Always-on laptop page** | `hub.mjs` keeps `localhost:8790` up between calls; each call streams into it live (token-gated, local only). |
 | **Clean view by default** | Your phone shows just your camera. Ody draws only when you ask where, what, or how to connect something, and marks fade after about 10 s. Safety warnings always show. |
 | **Stop signs** | It circles a short, a missing resistor or reversed polarity in red and says "Stop," before you power on. |
 | **Knows your exact board** | It identifies the part first (UNO R3 USB-B vs UNO R4 USB-C) and points at *that* board's layout. |
