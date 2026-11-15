@@ -234,7 +234,25 @@ const agent = defineAgent({
         if (!ended) say("The scan didn't work. Hold it closer, in good light, and say scan again.");
       } finally { scanning = false; }
     };
+    // Voice control of the laptop's 3D twin: instant, no brain call. The twin page acts on {type:'twin', action}.
+    const TWIN_CMDS = [
+      [/\b(un-?explode|put it (back )?together|collapse|assemble)\b/i, 'assemble', 'Put it back together on your laptop.'],
+      [/\b(explode|exploded view|take it apart|break it apart|pull it apart)\b/i, 'explode', 'Exploded it on your laptop.'],
+      [/\b(rotate|spin) (it|that|the model|the hologram)\b|\bturn it around\b/i, 'rotate', 'Spinning it on your laptop.'],
+      [/\b(stop (spinning|rotating))\b/i, 'stop', 'Stopped.'],
+      [/\b(reset|recenter|re-center) (the )?(view|model|hologram|camera)\b/i, 'reset', 'Reset the view.'],
+      [/\b(realistic|real (view|look|mode)|make it look real)\b/i, 'realistic', 'Switched to the realistic look.'],
+      [/\b(hologram (view|mode|look)|holographic)\b/i, 'hologram', 'Back to the hologram.'],
+      [/\b(export|download|save) (it|the model|the 3d|a 3d file|the hologram)\b/i, 'export', 'Exported the 3D file on your laptop.'],
+    ];
+    // Only short, direct commands ("Ody, explode it"), so a sentence that merely mentions a word isn't hijacked.
+    const twinCommand = text => text.trim().split(/\s+/).length <= 7 && TWIN_CMDS.find(([re]) => re.test(text));
     const onTurn = async heard => {
+      const cmd = !isScanIntent(heard) && twinCommand(heard);
+      if (cmd) {
+        console.log(`[heard] ${heard} (twin: ${cmd[1]}, no brain call)`); live.send({ type: 'heard', text: heard });
+        live.send({ type: 'twin', action: cmd[1] }); say(cmd[2], 0); return;
+      }
       if (ACKS.test(heard.trim())) { console.log(`[heard] ${heard} (acknowledgement, no brain call)`); live.send({ type: 'heard', text: heard }); return; }
       if (last && REPLAY.test(heard.trim())) {
         console.log(`[heard] ${heard} (replay, no brain call)`); live.send({ type: 'heard', text: heard });
