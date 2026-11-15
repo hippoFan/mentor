@@ -31,8 +31,28 @@ function emit(e) {
 const S = {
   sock: false, everConnected: false, retryAt: 0, call: null, since: 0, brain: '', step: '', done: false,
   steps: [], turns: [], mood: 'listening', moodTimer: 0, frames: [], inputs: [], lastFrame: 0, input: null,
-  lines: [], expanded: false,
+  lines: [], expanded: false, replay: null, consent: null,
 };
+let sock = null;
+/** Page -> server (same socket): {type:'parts'|'analyze', ...}. Dropped while disconnected; the server validates. */
+export function send(obj) {
+  try { if (sock && sock.readyState === 1) { sock.send(JSON.stringify(obj)); return true; } } catch { /* closed */ }
+  return false;
+}
+const CONSENT = { asked: 'Waiting for the caller to agree', given: 'Caller agreed', declined: 'Caller declined, nothing processed', 'no-recording': 'Not recording snapshots' };
+function consentUi() {
+  const c = S.call === 'live' ? S.consent : null, pill = $('consent');
+  pill.hidden = !c || !CONSENT[c];
+  if (!pill.hidden) { pill.textContent = CONSENT[c]; pill.dataset.state = c; }
+  $('consentCard').hidden = c !== 'asked';
+  document.body.classList.toggle('consent-asked', c === 'asked');
+}
+function replayUi() {
+  const on = S.call === 'live' && !!S.replay;
+  document.body.toggleAttribute('data-replay', on);
+  $('replayBadge').hidden = !on;
+  $('replayBadge').textContent = on ? (typeof S.replay === 'string' ? S.replay.slice(0, 70) : 'Replay of a real call') : '';   // one line: the event's label, or the plain fact
+}
 
 /** waiting | connecting | live | reconnecting | ended */
 export function phase() {
@@ -50,7 +70,7 @@ function status() {
   let t;
   if (p === 'reconnecting') { const s = Math.max(0, Math.ceil((S.retryAt - now) / 1000)); t = s ? `Reconnecting in ${s} s` : 'Reconnecting…'; }
   else if (p === 'connecting') t = 'Connecting…';
-  else if (p === 'live') { const s = Math.max(0, Math.floor((now - S.since) / 1000)); t = `Live ${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`; }
+  else if (p === 'live') { const s = Math.max(0, Math.floor((now - S.since) / 1000)); t = `${S.replay ? '' : 'Live '}${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`; }   // a replay's badge already says so
   else if (p === 'ended') t = 'Call ended, recap saved';
   else t = 'Waiting for a call';
   $('status').textContent = t;
@@ -247,10 +267,12 @@ function resetCall() {
 function hideFrame() { document.body.classList.remove('has-frame'); $('phoneimg').hidden = true; }
 function onCall(e) {
   if (e.state === 'live') {
-    if (S.call !== 'live' || S.since !== (e.since || S.since)) resetCall();
+    if (S.call !== 'live' || S.since !== (e.since || S.since)) { resetCall(); S.consent = null; }
     S.call = 'live'; S.since = Number(e.since) || Date.now(); mood('listening');
-  } else if (e.state === 'ended') { S.call = 'ended'; mood('listening'); hideFrame(); }
-  else { S.call = null; hideFrame(); }
+    S.replay = e.replay ? (typeof e.label === 'string' && e.label.trim() ? e.label.trim() : true) : null;
+  } else if (e.state === 'ended') { S.call = 'ended'; S.replay = null; mood('listening'); hideFrame(); }
+  else { S.call = null; S.replay = null; hideFrame(); }
+  replayUi(); consentUi();
   renderSteps(); status(); nowBox();
 }
 const isB64 = s => typeof s === 'string' && s.length < 4_000_000 && /^[A-Za-z0-9+/=]+$/.test(s);
@@ -260,6 +282,7 @@ function handle(e) {
       S.call = null; resetCall();
       if (e.brain) S.brain = String(e.brain);
       if (e.call) onCall(e.call);
+      { const c = typeof e.consent === 'string' ? e.consent : e.consent?.state; if (CONSENT[c]) { S.consent = c; consentUi(); } }
       (Array.isArray(e.turns) ? e.turns : []).forEach(t => { S.turns.push({ ...t, _at: Date.now() }); addStep(t.step); if (t.done) S.done = true; });
       if (e.step) { S.step = String(e.step); addStep(S.step); }
       S.lines = (Array.isArray(e.transcript) ? e.transcript : []).slice(-60);
@@ -267,6 +290,7 @@ function handle(e) {
       break;
     case 'call': onCall(e); break;
     case 'brain': S.brain = String(e.brain || ''); status(); break;
+    case 'consent': if (CONSENT[e.state]) { S.consent = e.state; consentUi(); } break;
     case 'frame':
       if (!isB64(e.jpeg) || S.call === 'ended') break;
       $('phoneimg').src = 'data:image/jpeg;base64,' + e.jpeg; $('phoneimg').hidden = false;
@@ -303,6 +327,7 @@ let delay = 600;
 function connect() {
   let ws;
   try { ws = new WebSocket(`ws://${location.host}`); } catch { retry(); return; }
+  sock = ws;
   ws.onopen = () => { S.sock = true; S.everConnected = true; delay = 600; status(); nowBox(); emit({ type: '_sock', open: true }); };
   ws.onmessage = m => {
     let e; try { e = JSON.parse(m.data); } catch { return; }

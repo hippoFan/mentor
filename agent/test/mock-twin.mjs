@@ -10,6 +10,8 @@
 //   --end        ends the call after the last beat (the "call ended, recap ready" state)
 //   --circuit    a voice circuit build through circuit.mjs (no brain): UNO -> "add a distance sensor" -> "add an LED on
 //                pin 6" -> "add a servo" -> "remove the LED", one {type:'circuit'} event per change, as agent.mjs sends them
+//   --parts      UNO R4 WiFi, then voice: explode, select "the wifi module", remove it, combine, and a mock analysis
+//                (the real one comes from the agent after the page's {type:'analyze'}); --board uno-r3 for the R3
 //   --interior [dir]  "scan this" for each <name>.case.json in dir (default: the research test's output), then the
 //                researched interior for it a moment later ({type:'interior', id, interior}), as agent.mjs sends them
 const args = process.argv.slice(2);
@@ -64,7 +66,13 @@ const turn = (marks, step, say, extra = {}) => {
 };
 const mk = (label, kind, pin = '', pin2 = '', x = 0.5, y = 0.5, x2 = -1, y2 = -1) => ({ label, kind, x, y, x2, y2, pin, pin2 });
 const twin = async (action, ms = 2600) => { live.send({ type: 'heard', text: `Ody, ${action} it.` }); live.send({ type: 'twin', action }); console.log(`[mock] voice: ${action}`); await sleep(ms); };
-const start = () => { inCall = true; live.send({ type: 'call', state: 'live', since: Date.now() }); live.send({ type: 'brain', brain: 'gemini' }); };
+// --replay: the call is a recorded session being replayed; --consent: the caller is asked to agree first (stays 'asked')
+const start = () => {
+  inCall = true;
+  live.send({ type: 'call', state: 'live', since: Date.now(), ...(has('--replay') ? { replay: true, label: 'Replay of a real Ody call' } : {}) });
+  live.send({ type: 'brain', brain: 'gemini' });
+  if (has('--consent')) live.send({ type: 'consent', state: 'asked' });
+};
 const end = () => { inCall = false; live.send({ type: 'call', state: 'ended' }); console.log('[mock] call ended'); };
 
 async function scanDemo() {
@@ -146,7 +154,29 @@ async function partCall(id) {
 console.log(`[mock] Ody app on http://localhost:${PORT}/ (and /twin)`);
 console.log(`[mock] twin on http://localhost:${PORT}/twin`);   // twin-parts-test.mjs waits for this line
 const scanAt = args.indexOf('--scan');
-if (has('--circuit')) {
+if (has('--parts')) {
+  const model = opt('--board', 'uno-r4-wifi');
+  await sleep(Number(process.env.MOCK_START_MS || 1500));
+  start();
+  live.send({ type: 'part', model, label: model === 'uno-r3' ? 'Arduino UNO R3' : 'Arduino UNO R4 WiFi' });
+  live.send({ type: 'say', text: 'That is your board. Want to take it apart?' });
+  const voice = async (heard, action, target, ms = gap) => { await sleep(ms); live.send({ type: 'heard', text: heard }); live.send({ type: 'twin', action, ...(target ? { target } : {}) }); console.log(`[mock] twin ${action} ${target || ''}`); };
+  const wifi = model === 'uno-r3' ? 'the usb chip' : 'the wifi module';
+  await voice('Ody, take it apart.', 'explode');
+  await voice(`Show me ${wifi}.`, 'select', wifi);
+  await voice('Remove it.', 'remove', wifi);
+  await voice('Put it back together.', 'combine');
+  await sleep(2500);
+  live.send(model === 'uno-r3'
+    ? { type: 'analysis', id: 1, scope: 'board', board: model, kept: [], removed: [{ id: 'usbchip', name: 'ATmega16U2 USB chip' }], title: 'UNO R3 without its USB chip', works: false,
+        summary: 'The ATmega328P still runs a sketch, but nothing on the board can talk USB any more.', pros: ['The main chip and its 16 MHz clock are intact'], cons: ['No USB upload or serial monitor'],
+        needs: ['A USB-serial adapter on pins 0 and 1, or an ICSP programmer'], verdict: 'It runs, but you can no longer program it over USB.' }
+    : { type: 'analysis', id: 1, scope: 'board', board: model, kept: [], removed: [{ id: 'esp32', name: 'ESP32-S3 Wi-Fi module' }], title: 'UNO R4 without Wi-Fi', works: true,
+        summary: 'The RA4M1 runs your sketches on its own; the ESP32-S3 only adds Wi-Fi, Bluetooth and the USB bridge on this board.',
+        pros: ['Sketches, pins and the LED matrix still work', 'Draws less power'], cons: ['No Wi-Fi or Bluetooth', 'USB-C upload goes through the RA4M1 bootloader only'],
+        needs: ['Upload with the RA4M1’s native USB (double-tap reset)'], verdict: 'It still works as an UNO; it just loses its radio.' });
+  console.log('[mock] analysis sent; holding the last state');
+} else if (has('--circuit')) {
   const { createProject, apply, fastPlan, circuitEvent, steps, markDone } = await import('../circuit.mjs');
   await sleep(Number(process.env.MOCK_START_MS || 1500));
   start();
@@ -162,6 +192,10 @@ if (has('--circuit')) {
     live.send({ type: 'say', text: r.say, ms: 900 });
     console.log(`[mock] circuit: ${heard}`);
   }
+  await sleep(gap);   // the voice "next" walks the connection guide: step 2
+  const all = steps(st), wires = all.filter(x => /^wire:/.test(x.id));
+  const pick = wires[1] || wires[0];
+  if (pick) { live.send({ type: 'heard', text: 'Ody, next.' }); live.send({ type: 'circuit-step', index: all.indexOf(pick) + 1, total: all.length, step: pick }); console.log(`[mock] circuit-step: ${pick.id}`); }
   console.log('[mock] holding the last state');
 } else if (has('--interior')) {
   const { readdir, readFile } = await import('node:fs/promises');

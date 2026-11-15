@@ -54,9 +54,26 @@
   body[data-phase="reconnecting"] .status { border-color: color-mix(in srgb, var(--amber) 55%, transparent); color: var(--amber); }
   body[data-phase="reconnecting"] .status .dot { background: var(--amber); }
   body[data-phase="ended"] .status .dot { background: var(--wine); }
+  /* replays and consent are first-class states, never mistaken for a live call */
+  .replay { display: inline-flex; align-items: center; gap: 8px; margin-left: auto; padding: 7px 13px; border-radius: 99px; font-size: 13.5px;
+    background: color-mix(in srgb, var(--wine) 18%, transparent); border: 1px solid color-mix(in srgb, var(--wine) 60%, transparent); color: var(--wine); font-weight: 700; white-space: nowrap; max-width: 40vw; overflow: hidden; text-overflow: ellipsis; }
+    .replay[hidden] { display: none; }
+  .replay:not([hidden]) + .status { margin-left: 0; }
+  body[data-replay] .status .dot { background: var(--wine); box-shadow: none; }
+  .consent { font-size: 13px; font-weight: 600; padding: 7px 12px; border-radius: 99px; border: 1px solid var(--line); background: var(--deck); color: var(--muted); white-space: nowrap; }
+  .consent[data-state="given"] { color: #8FEFC5; }
+  .consent[data-state="declined"] { color: var(--amber); }
+  .consent[hidden] { display: none; }
+  .consent-card { position: absolute; left: 50%; top: 42%; transform: translate(-50%, -50%); z-index: 6; display: grid; justify-items: center; gap: 10px; text-align: center;
+    padding: 24px 28px; border-radius: 20px; background: rgba(18,14,28,.9); border: 1px solid var(--line); max-width: min(420px, calc(100% - 32px)); }
+  .consent-card p { margin: 0; font: 400 26px/1.15 var(--display); }
+  .consent-card a { color: var(--athena); font-weight: 600; }
+  .consent-card[hidden] { display: none; }
+  body.consent-asked .waiting { opacity: 0; }
   .btn-top { display: inline-flex; align-items: center; gap: 8px; padding: 7px 10px 7px 12px; border-radius: 10px; border: 1px solid var(--line);
     background: transparent; font-weight: 500; font-size: 14px; cursor: pointer; white-space: nowrap; }
   .btn-top:hover { background: var(--deck); }
+  a.btn-top { text-decoration: none; color: var(--ink); }
   .btn-top[aria-expanded="true"] { background: var(--ink); color: var(--sea); border-color: var(--ink); }
 
   /* ---------- the app: theatre (hologram + phone) and the rail ---------- */
@@ -321,6 +338,47 @@
   .sketch pre { margin: 8px 0; max-height: 260px; overflow: auto; padding: 10px 12px; border-radius: 10px; background: #0B0912; border: 1px solid var(--line);
     font: 12px/1.5 ui-monospace, "JetBrains Mono", Menlo, monospace; color: #D9D4E6; white-space: pre; }
   .sketch-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  /* parts: pick, remove, restore, combine */
+  .parts-list { max-height: 300px; overflow-y: auto; }
+  ul.list li button[aria-pressed="true"] { background: rgba(255,200,69,.12); box-shadow: inset 2px 0 0 var(--athena); }
+  .parts-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 10px; }
+  .parts-actions .primary { grid-column: auto; }
+  .parts-actions #partRemove[hidden] + .primary { grid-column: 1 / -1; }
+  .tray { margin-top: 12px; padding: 10px 12px; border: 1px dashed var(--quiet); border-radius: 12px; }
+  .tray h4, .guide h4 { margin: 0 0 6px; font-size: 12.5px; color: var(--muted); font-weight: 600; }
+  .tray ul { list-style: none; margin: 0 0 8px; padding: 0; display: grid; gap: 4px; }
+  .tray li { display: grid; grid-template-columns: 16px minmax(0, 1fr) auto; align-items: center; gap: 8px; font-size: 13.5px; }
+  .tray .what { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .ghost-ico { width: 12px; height: 12px; border: 1.5px dashed var(--muted); border-radius: 3px; }
+  .tray .restore { border: 1px solid var(--line); background: var(--deck); border-radius: 8px; padding: 5px 10px; font-size: 12.5px; font-weight: 600; cursor: pointer; min-height: 32px; }
+  .btn.quiet { background: transparent; }
+  .btn:disabled { opacity: .5; cursor: default; }
+  /* the answer: does it still work without what was removed */
+  .an-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 10px; }
+  .an-head h4 { margin: 0; font: 400 22px/1.15 var(--display); overflow-wrap: anywhere; }
+  .an-badge { flex: none; font-size: 12.5px; font-weight: 700; padding: 4px 10px; border-radius: 99px; }
+  .an-badge.ok { background: rgba(59,216,255,.16); color: #9FEFFF; border: 1px solid rgba(59,216,255,.45); }
+  .an-badge.no { background: rgba(255,69,58,.14); color: #FF8A82; border: 1px solid rgba(255,69,58,.5); }
+  .an-body p, .an-body li { overflow-wrap: anywhere; }
+  .an-sum { margin: 8px 0 0; font-size: 14px; }
+  .an-body h5 { margin: 10px 0 4px; font-size: 12.5px; color: var(--muted); font-weight: 600; }
+  .an-body ul { margin: 0; padding-left: 18px; font-size: 13.5px; display: grid; gap: 3px; }
+  .an-cons li::marker { color: #FF8A82; } .an-pros li::marker { color: #9FEFFF; }
+  .an-verdict { margin: 10px 0 0; font-weight: 600; font-size: 14px; border-left: 3px solid var(--athena); padding-left: 10px; }
+  .an-wait { margin: 0; color: var(--muted); font-size: 14px; }
+  .analysis[hidden], .analysis-card[hidden], .guide[hidden], .tray[hidden], #partsbox[hidden] { display: none; }
+  .analysis-card { position: absolute; right: 16px; bottom: 84px; z-index: 6; width: min(360px, calc(100% - 32px)); max-height: calc(100% - 200px); overflow-y: auto;
+    padding: 16px 18px; border-radius: 18px; background: rgba(18,14,28,.94); border: 1px solid var(--line); box-shadow: 0 20px 50px rgba(0,0,0,.5); }
+  .an-close { position: absolute; top: 8px; right: 8px; width: 32px; height: 32px; border-radius: 10px; border: 0; background: transparent; color: var(--muted); font-size: 20px; cursor: pointer; }
+  .analysis-card .an-head { padding-right: 28px; }
+  body.swapped .analysis-card { display: none; }
+  /* connection guide */
+  .guide { margin: 12px 0; padding: 12px; border-radius: 12px; border: 1px solid var(--line); background: rgba(255,255,255,.02); }
+  .guide-step { margin: 0; color: var(--athena); font-weight: 600; font-size: 12.5px; }
+  .guide-text { margin: 2px 0 10px; font-weight: 600; font-size: 14.5px; overflow-wrap: anywhere; }
+  .guide-actions { display: flex; flex-wrap: wrap; gap: 8px; }
+  .guide-actions .btn { flex: 1 1 auto; min-height: 40px; padding: 8px 12px; }
+  .guide-actions [hidden] { display: none; }
   .actions { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
   .btn { padding: 11px 12px; border-radius: 12px; border: 1px solid var(--line); background: var(--deck); font-weight: 600; font-size: 14px; cursor: pointer; min-height: 44px; }
   .btn:hover { border-color: var(--quiet); }
@@ -387,6 +445,7 @@
     .tool kbd { display: none; }
     .modes { top: auto; right: auto; left: 8px; bottom: 66px; }
     .handview { right: 8px; bottom: 70px; }
+    .analysis-card { left: 8px; right: 8px; width: auto; bottom: 70px; max-height: 60%; }
     body.swapped .stage { width: 46%; right: 8px; bottom: 8px; }
     aside.rail { overflow: visible; padding: 8px 0 0; }
     .keys { display: none; }
@@ -400,7 +459,10 @@
   <span class="mark" aria-hidden="true"></span>
   <span class="wordmark">Ody</span>
   <span class="tagline">A Mentor for builders: call it, show it your board, follow the light.</span>
+  <span class="replay" id="replayBadge" role="status" hidden></span>
   <div class="status" role="status"><span class="dot" aria-hidden="true"></span><span id="status">Connecting…</span><span class="brain" id="brain"></span></div>
+  <span class="consent" id="consent" role="status" hidden></span>
+  <a class="btn-top" href="/privacy">Privacy</a>
   <button class="btn-top" id="t-tester" type="button" aria-expanded="false" aria-controls="panel">Tester <kbd>T</kbd></button>
 </header>
 <main>
@@ -420,6 +482,15 @@
         <button type="button" role="tab" id="mode-board" data-mode="board" aria-selected="true">Board</button>
         <button type="button" role="tab" id="mode-scan" data-mode="scan" aria-selected="false" hidden>Scan</button>
         <button type="button" role="tab" id="mode-circuit" data-mode="circuit" aria-selected="false" hidden>Circuit</button>
+      </div>
+      <div class="consent-card" id="consentCard" hidden>
+        <span class="mark" aria-hidden="true"></span>
+        <p>Ody asks before it sees anything.</p>
+        <a href="/privacy">Privacy notice →</a>
+      </div>
+      <div class="analysis-card" id="analysisCard" role="region" aria-label="Will it still work?" hidden>
+        <button class="an-close" id="analysisClose" type="button" aria-label="Close the analysis">×</button>
+        <div class="an-body"></div>
       </div>
       <div class="waiting" id="waiting"><h2 id="waitTitle">Every Telemachus deserves a Mentor.</h2><p id="waitSub">FaceTime Ody, then hold your board up to the camera.</p></div>
       <div class="tooltip" id="tip" role="tooltip" hidden><strong></strong><span></span></div>
@@ -463,12 +534,41 @@
     <section id="project" aria-labelledby="projectTitle" hidden>
       <h3 id="projectTitle">Project <span class="count">built by voice</span></h3>
       <div id="project-parts"></div>
+      <div class="guide" id="guide" hidden>
+        <h4>Connection guide</h4>
+        <p class="guide-step" id="guideStep"></p>
+        <p class="guide-text" id="guideText" aria-live="polite"></p>
+        <div class="guide-actions">
+          <button class="btn" id="guideStart" type="button">Guide me, wire by wire</button>
+          <button class="btn" id="guidePrev" type="button" hidden>← Previous</button>
+          <button class="btn" id="guideNext" type="button" hidden>Next →</button>
+          <button class="btn quiet" id="guideStop" type="button" hidden>Show all wires</button>
+        </div>
+      </div>
       <div id="project-code"></div>
     </section>
     <section aria-labelledby="talkTitle">
       <h3 id="talkTitle">What Ody heard and said</h3>
       <div class="log" id="log" role="log" aria-live="polite" tabindex="-1"></div>
       <button class="more" id="logmore" type="button" aria-controls="log" aria-expanded="false" hidden>Show all</button>
+    </section>
+    <section class="analysis" id="analysis" aria-labelledby="analysisTitle" aria-live="polite" hidden>
+      <h3 id="analysisTitle">Will it still work?</h3>
+      <div class="an-body"></div>
+    </section>
+    <section id="partsbox" aria-labelledby="partsTitle" hidden>
+      <h3 id="partsTitle">Parts <span class="count" id="partsCount"></span></h3>
+      <p class="pins-hint" id="partsHint"></p>
+      <ul class="list parts-list" id="partsList"></ul>
+      <div class="parts-actions">
+        <button class="btn" id="partRemove" type="button" hidden>Remove</button>
+        <button class="btn primary" id="combine" type="button">Combine</button>
+      </div>
+      <div class="tray" id="trayBox" hidden>
+        <h4>Removed</h4>
+        <ul id="tray"></ul>
+        <button class="btn quiet" id="restoreAll" type="button">Restore all (back to stock)</button>
+      </div>
     </section>
     <section aria-labelledby="marksTitle">
       <h3 id="marksTitle">Marked this call</h3>

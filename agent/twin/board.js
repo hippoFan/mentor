@@ -137,10 +137,15 @@ export function buildUno(table, model) {
   const layers = {};
   for (const name of ['pcb', 'parts', 'leds', 'chip', 'ports', 'headers']) { const l = new THREE.Group(); l.name = name; layers[name] = l; group.add(l); }
   const L = (u, h, v) => new THREE.Vector3(u - BOARD_W / 2, PCB_T + h, BOARD_H / 2 - v);
+  // every mesh belongs to one real component (partId), so the twin can take the board apart part by part
+  const parts = {};
+  let PID = null;
+  const as = (id, name) => { PID = id; parts[id] = name; };
   const add = (layer, geom, mat, holo, u, h, v, name) => {
     const m = new THREE.Mesh(geom, mat); m.position.copy(L(u, h, v)); m.castShadow = true; m.receiveShadow = true;
-    m.userData.holo = holo; if (name) m.name = name; layers[layer].add(m); return m;
+    m.userData.holo = holo; m.userData.partId = PID; if (name) m.name = name; layers[layer].add(m); return m;
   };
+  const own = (obj, layer) => { obj.userData.partId = PID; layers[layer].add(obj); };
 
   // PCB
   const pcbGeom = new THREE.ExtrudeGeometry(outline(), { depth: PCB_T, bevelEnabled: false, curveSegments: 16 });
@@ -155,7 +160,7 @@ export function buildUno(table, model) {
   ]);
   pcb.name = 'PCB'; pcb.receiveShadow = true; pcb.castShadow = true;
   pcb.userData.holo = 'pcb'; pcb.userData.holoMap = silkscreen(table, model, true);
-  layers.pcb.add(pcb);
+  as('pcb', 'Circuit board (PCB)'); own(pcb, 'pcb');
 
   // female headers, at the table's real hole positions
   const P = table.pins;
@@ -168,6 +173,7 @@ export function buildUno(table, model) {
   strips.forEach((pins, i) => {
     if (pins.some(p => !p)) return;
     const n = pins.length, cu = pins.reduce((s, p) => s + p.u, 0) / n, cv = pins[0].v;
+    as(['header-digital-high', 'header-digital-low', 'header-power', 'header-analog'][i], ['Digital header 8–13, SDA, SCL', 'Digital header 0–7', 'Power header', 'Analog header A0–A5'][i]);
     const geom = new THREE.BoxGeometry(n * PITCH, HEADER_H, PITCH);
     const top = new THREE.MeshStandardMaterial({ map: holeTexture(n, false), roughness: 0.55 });
     const m = add('headers', geom, [M.black, M.black, top, M.black, M.black, M.black], 'body', cu, HEADER_H / 2, cv, `Header ${['digital 8–SCL', 'digital 0–7', 'power', 'analog'][i]}`);
@@ -177,6 +183,7 @@ export function buildUno(table, model) {
   // ICSP (2x3 male) near the far edge
   {
     const f = FEATURES[model].icsp;
+    as('icsp', 'ICSP header');
     add('headers', new THREE.BoxGeometry(2 * PITCH, 2.5, 3 * PITCH), M.black, 'body', f.u, 1.25, f.v, 'ICSP header');
     const pg = new THREE.BoxGeometry(0.64, 6, 0.64);
     for (let a = 0; a < 2; a++) for (let b = 0; b < 3; b++) add('headers', pg, M.gold, 'metal', f.u + (a - 0.5) * PITCH, 3, f.v + (b - 1) * PITCH);
@@ -185,15 +192,18 @@ export function buildUno(table, model) {
   // ports
   const F = FEATURES[model];
   if (model === 'uno-r4-wifi') {
+    as('usb', 'USB-C port');
     const usb = add('ports', new RoundedBoxGeometry(7.35, 3.26, 8.94, 3, 1.4), M.metal, 'metal', 2.35, 1.63, F.usb.v, 'USB-C port');
     const slot = new THREE.Mesh(new RoundedBoxGeometry(0.6, 1.9, 7.4, 2, 0.9), M.dark); slot.position.set(-3.5, 0, 0); slot.userData.holo = 'dark'; usb.add(slot);
     const tongue = new THREE.Mesh(new THREE.BoxGeometry(0.7, 0.55, 5.6), M.black); tongue.position.set(-3.4, 0, 0); tongue.userData.holo = 'body'; usb.add(tongue);
   } else {
+    as('usb', 'USB-B port');
     const usb = add('ports', new THREE.BoxGeometry(16.25, 10.9, 12.05), M.metal, 'metal', 1.775, 5.45, F.usb.v, 'USB-B port');
     const hole = new THREE.Mesh(new THREE.BoxGeometry(0.4, 7.7, 8.4), M.dark); hole.position.set(-8.0, 0, 0); hole.userData.holo = 'dark'; usb.add(hole);
     const tongue = new THREE.Mesh(new THREE.BoxGeometry(0.6, 3.2, 5.2), M.cream); tongue.position.set(-7.9, -0.6, 0); tongue.userData.holo = 'body'; usb.add(tongue);
   }
   {
+    as('jack', 'Barrel jack');
     const jack = add('ports', new THREE.BoxGeometry(14.2, 11, 8.9), M.black, 'body', 5.2, 5.5, F.jack.v, 'Barrel jack');
     const hole = new THREE.Mesh(new THREE.CylinderGeometry(3.1, 3.1, 0.6, 28), M.dark); hole.rotation.z = Math.PI / 2; hole.position.set(-7.0, 0.6, 0); hole.userData.holo = 'dark'; jack.add(hole);
     const pin = new THREE.Mesh(new THREE.CylinderGeometry(1.0, 1.0, 1.0, 16), M.metal); pin.rotation.z = Math.PI / 2; pin.position.set(-7.0, 0.6, 0); pin.userData.holo = 'metal'; jack.add(pin);
@@ -202,6 +212,7 @@ export function buildUno(table, model) {
   // main chip
   if (model === 'uno-r4-wifi') {
     const f = F.chip;
+    as('mcu', 'RA4M1 microcontroller');
     const chip = add('chip', new THREE.BoxGeometry(10, 1.4, 10), [M.black, M.black, new THREE.MeshStandardMaterial({ map: textTexture(['RENESAS', 'R7FA4M1AB'], 256, 256, { size: 30 }), roughness: 0.45 }), M.black, M.black, M.black], 'body', f.u, 0.75, f.v, 'RA4M1 microcontroller');
     chip.userData.label = 'RA4M1';
     const legs = new THREE.InstancedMesh(new THREE.BoxGeometry(0.22, 0.15, 1.1), M.metal, 64); legs.userData.holo = 'metal';
@@ -210,12 +221,14 @@ export function buildUno(table, model) {
       const t = (k - 7.5) * 0.5, a = side * Math.PI / 2;
       o.position.set(Math.cos(a) * 5.45 - Math.sin(a) * t, 0.1, Math.sin(a) * 5.45 + Math.cos(a) * t); o.rotation.y = -a + Math.PI / 2; o.updateMatrix(); legs.setMatrixAt(i++, o.matrix);
     }
-    legs.position.copy(L(f.u, 0, f.v)); layers.chip.add(legs);
+    legs.position.copy(L(f.u, 0, f.v)); legs.name = 'RA4M1 pins'; own(legs, 'chip');
     // ESP32-S3 module: metal can on a small PCB, antenna toward the edge
     const e = F.esp;
+    as('esp32', 'ESP32-S3 Wi-Fi module');
     add('chip', new THREE.BoxGeometry(15.4, 0.8, 15.4), new THREE.MeshStandardMaterial({ color: 0x1b1b1e, roughness: 0.6 }), 'body', e.u, 0.4, e.v, 'ESP32-S3 module');
     add('chip', new RoundedBoxGeometry(12.5, 2.2, 11.5, 2, 0.4), M.tin, 'metal', e.u + 1.2, 1.9, e.v, 'ESP32-S3 shield').userData.label = 'ESP32-S3';
     // 12 x 8 LED matrix, a heart lit
+    as('matrix', '12 × 8 LED matrix');
     const m = F.matrix, heart = ['000110011000', '001111111100', '001111111100', '000111111000', '000011110000', '000001100000', '000000000000', '000000000000'];
     const leds = new THREE.InstancedMesh(new THREE.BoxGeometry(0.9, 0.5, 0.6), new THREE.MeshBasicMaterial(), 96);
     leds.userData.holo = 'led'; leds.name = 'LED matrix';
@@ -224,28 +237,36 @@ export function buildUno(table, model) {
       o.position.set((c2 - 5.5) * 1.75, 0.25, (r - 3.5) * 1.6); o.rotation.set(0, 0, 0); o.updateMatrix(); leds.setMatrixAt(n, o.matrix);
       leds.setColorAt(n++, col.set(heart[r][c2] === '1' ? 0xff4a2e : 0x3a2622));
     }
-    leds.position.copy(L(m.u, 0, m.v)); layers.leds.add(leds);
+    leds.position.copy(L(m.u, 0, m.v)); own(leds, 'leds');
+    as('qwiic', 'Qwiic connector');
     add('parts', new THREE.BoxGeometry(4.3, 3, 6), M.white, 'body', F.qwiic.u, 1.5, F.qwiic.v, 'Qwiic connector');
   } else {
     const f = F.chip;
+    as('socket', 'DIP socket');
     add('chip', new THREE.BoxGeometry(37.6, 1.6, 10.2), M.socket, 'body', f.u, 0.8, f.v, 'DIP socket');
+    as('mcu', 'ATmega328P microcontroller');
     const chip = add('chip', new THREE.BoxGeometry(35.3, 3.3, 7.4), [M.black, M.black, new THREE.MeshStandardMaterial({ map: textTexture(['ATMEGA328P-PU', 'ATMEL'], 1024, 214, { size: 64 }), roughness: 0.45 }), M.black, M.black, M.black], 'body', f.u, 3.25, f.v, 'ATmega328P');
     chip.userData.label = 'ATmega328P';
     const legs = new THREE.InstancedMesh(new THREE.BoxGeometry(0.5, 3.2, 0.3), M.tin, 28); legs.userData.holo = 'metal';
     const o = new THREE.Object3D();
     for (let i = 0; i < 28; i++) { const side = i < 14 ? 1 : -1, k = i % 14; o.position.set((k - 6.5) * PITCH, 2.6, side * 3.85); o.updateMatrix(); legs.setMatrixAt(i, o.matrix); }
-    legs.position.copy(L(f.u, 0, f.v)); layers.chip.add(legs);
+    legs.position.copy(L(f.u, 0, f.v)); legs.name = 'ATmega328P pins'; own(legs, 'chip');
+    as('usbchip', 'ATmega16U2 USB chip');
     add('chip', new THREE.BoxGeometry(5, 0.9, 5), M.black, 'body', F.usbchip.u, 0.45, F.usbchip.v, 'ATmega16U2');
+    as('crystal', '16 MHz crystal');
     add('parts', new RoundedBoxGeometry(11, 3.6, 4.6, 2, 1.7), M.tin, 'metal', F.crystal.u, 1.8, F.crystal.v, '16 MHz crystal');
   }
 
   // regulator, capacitors, reset button
+  as('regulator', '5 V regulator');
   add('parts', new THREE.BoxGeometry(6.5, 1.8, 3.5), M.black, 'body', F.reg.u, 0.9, F.reg.v, '5 V regulator');
   add('parts', new THREE.BoxGeometry(3.0, 0.3, 3.5), M.tin, 'metal', F.reg.u, 0.15, F.reg.v + 3.4);
   for (const v of [5, 11.6]) {
+    as(v < 8 ? 'cap1' : 'cap2', `Capacitor 47 µF (${v < 8 ? 'by the jack' : 'by the regulator'})`);
     add('parts', new THREE.BoxGeometry(6.6, 1, 6.6), M.black, 'body', 16.6, 0.5, v);
     add('parts', new THREE.CylinderGeometry(3.15, 3.15, 5.2, 28), M.tin, 'metal', 16.6, 3.4, v, 'Capacitor 47 µF');
   }
+  as('reset', 'Reset button');
   add('parts', new THREE.BoxGeometry(6, 2, 6), M.tin, 'metal', F.reset.u, 1, F.reset.v, 'Reset button');
   add('parts', new THREE.CylinderGeometry(1.75, 1.75, 1.6, 24), model === 'uno-r4-wifi' ? M.black : M.black, 'body', F.reset.u, 2.6, F.reset.v);
 
@@ -254,6 +275,7 @@ export function buildUno(table, model) {
   const LED = { led_l: 0xffb000, led_tx: 0xffd257, led_rx: 0xffd257, led_on: 0x39ff6a };
   for (const [k, c] of Object.entries(LED)) {
     const f = F[k];
+    as(k.replace('_', '-'), f.name);
     const m = add('leds', new THREE.BoxGeometry(1.6, 0.6, 0.8), ledMat(c), 'led', f.u, 0.3, f.v, f.name);
     if (k === 'led_on') { m.material.emissiveIntensity = 1.6; m.userData.lit = true; }
     if (k === 'led_l') m.userData.blink = true;
@@ -268,7 +290,7 @@ export function buildUno(table, model) {
   layers.headers.add(pick);
 
   return {
-    group, layers, model, pick, pickKeys,
+    group, layers, model, pick, pickKeys, partNames: parts,
     /** top of a header hole (group-local); the hole's layer is 'headers' */
     pinPos: k => (P[k] ? L(P[k].u, HEADER_H, P[k].v) : null),
     featurePos: k => (F[k] ? L(F[k].u, F[k].h, F[k].v) : null),

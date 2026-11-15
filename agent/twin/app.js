@@ -17,9 +17,9 @@ import { buildPart, PART_MODELS } from './parts3d.js';
 import { clock, COLORS, holoMaterial, edgeMaterial, makeRing, makeArrow, makeWire, makeProjectorFloor, easeInOut } from './holo.js';
 import { createGestures, applyToCamera } from './gestures.js';
 import { buildScan, explodeScan, disposeScan } from './scan.js';
-import { subscribe, swapped } from './shell.js';
+import { subscribe, swapped, send as sendUp } from './shell.js';
 import { customPart, customKey } from './custom.js';
-import { createCircuitView, legendHex } from './circuit3d.js';
+import { createCircuitView, legendHex, makeJumper } from './circuit3d.js';
 import { buildInterior, explodeInterior, setInteriorXray, setInteriorLook, pickInterior, partInfo, highlightInterior, interiorItems, interiorBox, disposeInterior } from './interior.js';
 
 const $ = id => document.getElementById(id);
@@ -159,8 +159,9 @@ function showModel(model) {
   S.uno.group.visible = S.view === 'board';
   twin.add(S.uno.group);
   applyLook(S.uno.group);
-  buildLayerTags(); updatePartTags(); renderPins();
+  buildLayerTags(); updatePartTags(); renderPins(); partsChanged();
 }
+function partsChanged() { if (P.sel) selectPart(null, { quiet: true }); P.anim = []; renderPartsPanel(); queueParts(); }
 
 /** A `part` event for a board described by its headers: (re)builds the 'custom' model when the spec changes. */
 function registerCustom(ev) {
@@ -330,7 +331,9 @@ function updatePartTags() {
   }
   const keys = S.model === 'uno-r4-wifi' ? ['usb', 'esp', 'matrix', 'chip', 'jack'] : ['usb', 'chip', 'jack', 'reset'];
   const F = { usb: 'USB-C', esp: 'ESP32-S3 Wi-Fi', matrix: 'LED matrix', chip: S.model === 'uno-r4-wifi' ? 'RA4M1' : 'ATmega328P', jack: 'Power jack', reset: 'Reset' };
-  for (const k of keys) { const p = S.uno.featurePos(k); if (!p) continue; const t = tag(k === 'usb' && S.model === 'uno-r3' ? 'USB-B' : F[k], 'part'); t.position.copy(p.add(S.pos)); partTags.add(t); }
+  const gone = new Set((P.cache.get(S.uno) || []).filter(q => q.removed).map(q => q.id));
+  const FEAT_PART = { usb: 'usb', esp: 'esp32', matrix: 'matrix', chip: 'mcu', jack: 'jack', reset: 'reset' };
+  for (const k of keys) { if (gone.has(FEAT_PART[k])) continue; const p = S.uno.featurePos(k); if (!p) continue; const t = tag(k === 'usb' && S.model === 'uno-r3' ? 'USB-B' : F[k], 'part'); t.position.copy(p.add(S.pos)); partTags.add(t); }
   const d = S.uno.pinPos('13'); if (d) { const t = tag('Digital pins', 'part'); t.position.copy(S.uno.pinPos('7').add(S.pos)); partTags.add(t); }
   const p = S.uno.pinPos('A2'); if (p) { const t = tag('Analog in', 'part'); t.position.copy(p.add(S.pos)); partTags.add(t); }
 }
@@ -347,6 +350,7 @@ function buildLayerTags() {
 }
 function setExplode(on) {
   S.explodeTo = on ? 1 : 0; $('t-explode').setAttribute('aria-pressed', String(on));
+  requestAnimationFrame(renderPartsPanel);
   if (S.view === 'scan') { flyScan(1.1, on ? 1.45 : 1); return; }
   if (!builtIn(S.view)) { if (on && S.view === 'circuit') { S.explodeTo = 0; $('t-explode').setAttribute('aria-pressed', 'false'); toast('Explode works on the Board and Scan views'); } return; }
   if (on && S.uno?.box) {   // frame the whole stack: layers rise up to ~60 mm, their name tags sit to the right
@@ -359,6 +363,7 @@ function stepExplode(dt) {
   const before = S.explode;
   S.explode += Math.sign(S.explodeTo - S.explode) * Math.min(Math.abs(S.explodeTo - S.explode), dt / (REDUCED ? 0.01 : 0.9));
   const e = easeInOut(S.explode);
+  if ((before < 0.5) !== (S.explode < 0.5)) renderPartsPanel();
   if (!builtIn(S.view)) { if (before !== S.explode) { try { MODES.get(S.view)?.explode?.(e); } catch (err) { console.warn('[twin] mode explode', err); } } return; }
   if (S.view === 'scan') {
     if (S.scan && before !== S.explode) { if (S.scan.I) explodeInterior(S.scan.I, e); else explodeScan(S.scan.built, e); }
@@ -492,6 +497,7 @@ function pickAt(x, y) {   // x, y in stage pixels
   const r = stage.getBoundingClientRect();
   ndc.set((x / r.width) * 2 - 1, -(y / r.height) * 2 + 1);
   ray.setFromCamera(ndc, camera);
+  if (partsActive()) { const h = pickPart(); if (h) return partTip(h); }
   if (S.view === 'scan' && S.scan?.I) { const p = pickInterior(S.scan.I, ray); highlightInterior(S.scan.I, p?.mesh || null); return p; }
   if (!boardShown()) return null;
   const objs = [S.uno?.pick, S.bb?.group.visible && S.bbIn >= 1 ? S.bb.pick : null].filter(Boolean);
@@ -509,6 +515,7 @@ function pickAt(x, y) {   // x, y in stage pixels
   return { pos, title: info.name, body: info.fn, said: said ? `Ody: ${said.label}` : '' };
 }
 function showTip(p, x, y) {
+  hoverBox.visible = !!p?.part && p.part !== P.sel; if (hoverBox.visible) hoverBox.setFromObject(p.part.objs[0]);
   if (!p) { tipEl.hidden = true; hover.visible = false; return; }
   tipEl.hidden = false;
   tipEl.querySelector('strong').textContent = p.title;
@@ -517,7 +524,7 @@ function showTip(p, x, y) {
   said.textContent = p.said; said.hidden = !p.said;
   const r = stage.getBoundingClientRect();
   tipEl.style.left = `${Math.min(x, r.width - 280)}px`; tipEl.style.top = `${Math.max(40, y)}px`;
-  hover.position.copy(p.pos).add(new THREE.Vector3(0, 0.2, 0)); hover.visible = true;
+  hover.position.copy(p.pos).add(new THREE.Vector3(0, 0.2, 0)); hover.visible = !p.part;
 }
 // ---------- pins from the keyboard: the rail's listbox, and [ / ] anywhere ----------
 function pinTip(k) {
@@ -591,11 +598,296 @@ canvas.addEventListener('pointerup', e => {
   const p = pickAt(x, y); S.tipPinned = p ? { p, x, y } : null; showTip(p, x, y);
 });
 
+// ---------- movable parts: take the twin apart, move, remove, combine, and ask Ody whether it still works ----------
+// A part = one real component (board.js partId, an interior part, a circuit component). After Explode, a part is picked
+// by click / tap / hand pinch, dragged on a plane facing the camera (Shift: toward / away), removed to the rail's tray
+// (Delete, button or voice) and restored. Combine snaps the kept parts back to where they sit on the real thing, shows
+// ghost outlines where removed ones were, sends {type:'analyze'} and shows the {type:'analysis'} answer.
+const P = { cache: new WeakMap(), owner: new WeakMap(), sel: null, drag: null, handDrag: null, anim: [], analysis: null, waiting: false, sent: '', sendTimer: 0 };
+const selBox = new THREE.BoxHelper(undefined, COLORS.mentor); selBox.visible = false; selBox.userData.noExport = true; scene.add(selBox);
+const hoverBox = new THREE.BoxHelper(undefined, 0xffffff); hoverBox.visible = false; hoverBox.userData.noExport = true;
+hoverBox.material.transparent = true; hoverBox.material.opacity = 0.45; scene.add(hoverBox);
+const ghostMat = new THREE.LineDashedMaterial({ color: 0xff9f0a, dashSize: 1.2, gapSize: 0.9, transparent: true, opacity: 0.9, depthWrite: false });   // a gap: amber dashes
+const scopeNow = () => (S.view === 'board' || S.view === 'scan' || S.view === 'circuit' ? S.view : null);
+const normName = s => String(s || '').toLowerCase().replace(/µ/g, 'u').replace(/[^a-z0-9]+/g, ' ').trim();
+function record(id, name, objs, extra = {}) {
+  const p = { id, name, objs, home: objs.map(o => o.position.clone()), scale: objs.map(o => o.scale.clone()), removed: false, moved: false, ghost: null, ...extra };
+  for (const o of objs) P.owner.set(o, p);
+  return p;
+}
+function boardPartsOf(u) {
+  const byId = new Map();
+  for (const layer of Object.values(u.layers)) {
+    const groups = new Map();
+    for (const c of [...layer.children]) {
+      const id = c.userData.partId; if (!id) continue;
+      let g = groups.get(id);
+      if (!g) { g = new THREE.Group(); g.name = u.partNames[id] || id; layer.add(g); groups.set(id, g); }
+      g.add(c);   // the group sits at the layer's origin, so the mesh keeps its place
+    }
+    for (const [id, g] of groups) { const p = byId.get(id); if (p) { p.objs.push(g); p.home.push(g.position.clone()); p.scale.push(g.scale.clone()); P.owner.set(g, p); } else byId.set(id, record(id, u.partNames[id] || id, [g])); }
+  }
+  return [...byId.values()];
+}
+function scanPartsOf(e) {
+  if (e.I) return interiorItems(e.I).map((it, i) => record(`part-${i}`, it.name || `Part ${i + 1}`, [it.mesh], { layer: it.layer, note: it.note }));
+  return e.built.meshes.map((m, i) => record(`part-${i}`, m.name || e.spec.parts[i]?.name || `Part ${i + 1}`, [m], { home0: true }));
+}
+function circuitPartsOf() {
+  const holder = C.view?.group.getObjectByName('Circuit parts'); if (!holder) return [];
+  const ids = new Set((C.ev?.layout?.components || []).map(c => c.id));
+  return holder.children.filter(w => ids.has(w.children[0]?.userData.circuitId)).map(w => record(w.children[0].userData.circuitId, w.name, [w]));
+}
+/** The parts on stage now (cached per built model, so removed / moved state survives switching views). */
+function stageParts() {
+  const scope = scopeNow();
+  if (scope === 'board' && S.uno?.partNames) { let r = P.cache.get(S.uno); if (!r) { r = boardPartsOf(S.uno); P.cache.set(S.uno, r); } return r; }
+  if (scope === 'scan' && S.scan?.built) { const key = S.scan.I || S.scan.built; let r = P.cache.get(key); if (!r) { r = scanPartsOf(S.scan); P.cache.set(key, r); } return r; }
+  if (scope === 'circuit' && C.view) {
+    const sig = (C.ev?.layout?.components || []).map(c => c.id).join('|');
+    let r = P.cache.get(C.view);
+    if (!r || r.sig !== sig) { const old = r?.list || []; const list = circuitPartsOf(); for (const p of list) { const o = old.find(q => q.id === p.id); if (o?.removed) { p.removed = true; hidePart(p, true); } } r = { sig, list }; P.cache.set(C.view, r); }
+    return r.list;
+  }
+  return [];
+}
+const changed = list => list.some(p => p.removed || p.moved);
+/** Parts can be picked and dragged: once the board is exploded (or already changed), any scan, any circuit. */
+function partsActive() {
+  const s = scopeNow(), list = stageParts(); if (!list.length) return false;
+  if (s === 'board') return S.explode > 0.5 || changed(list);
+  if (s === 'scan') return !S.scan?.I || S.explode > 0.5 || !!xray?.on || changed(list);
+  return s === 'circuit';
+}
+function pickPart() {   // uses the ray pickAt just set
+  const list = stageParts().filter(p => !p.removed); if (!list.length) return null;
+  const hits = ray.intersectObjects(list.flatMap(p => p.objs), true);
+  for (const h of hits) {
+    if (h.object.userData.pick || h.object.isLine || !h.object.visible) continue;
+    let o = h.object; while (o && !P.owner.has(o)) o = o.parent;
+    if (o) return { part: P.owner.get(o), point: h.point };
+  }
+  return null;
+}
+const partCenter = p => new THREE.Box3().setFromObject(p.objs[0]).getCenter(new THREE.Vector3());
+function partTip(h) {
+  const p = h.part;
+  return { pos: h.point, title: p.name, body: p.note || (P.sel === p ? 'Drag to move it. Shift-drag moves it toward you. Delete removes it.' : 'Click to pick it up.'), said: p.layer ? `Layer: ${p.layer}` : '', part: p };
+}
+function selectPart(p, { fly = false, quiet = false } = {}) {
+  P.sel = p || null;
+  selBox.visible = !!p; if (p) { selBox.setFromObject(p.objs[0]); if (!quiet) $('announce').textContent = `${p.name} selected. Delete removes it.`; }
+  if (p && fly) flyTo([partCenter(p)], { radius: 240 });
+  renderPartsPanel();
+}
+function movePart(p, dWorld) {
+  for (const o of p.objs) {
+    const w = o.getWorldPosition(new THREE.Vector3());
+    const a = o.parent.worldToLocal(w.clone()), b = o.parent.worldToLocal(w.clone().add(dWorld));
+    o.position.add(b.sub(a));
+  }
+  p.moved = true;
+}
+function hidePart(p, on) {   // scale, not visibility: modules (circuit) set .visible every frame
+  p.objs.forEach((o, i) => { if (on) o.scale.setScalar(1e-4); else o.scale.copy(p.scale[i]); });
+}
+/** Faint outline where a removed part sits on the real thing. */
+function ghostOf(p) {
+  if (p.ghost) return p.ghost;
+  const g = [];   // one outline holder per mesh, each living in the part's own parent (so it explodes with it)
+  p.objs.forEach((o, i) => {
+    const s = o.scale.clone(); o.scale.copy(p.scale[i]); o.updateMatrixWorld(true);
+    const inv = o.matrixWorld.clone().invert();
+    o.traverse(m => {
+      if (!m.isMesh || m.isInstancedMesh || !m.geometry || m.userData.pick) return;
+      const l = new THREE.LineSegments(new THREE.EdgesGeometry(m.geometry, 30), ghostMat);
+      l.computeLineDistances(); l.matrixAutoUpdate = false; l.matrix.copy(inv.clone().multiply(m.matrixWorld)); l.raycast = () => {};
+      const holder = new THREE.Group(); holder.name = `Gap: ${p.name}`; holder.userData.noExport = true; holder.position.copy(p.home[i]); holder.add(l); o.parent.add(holder); g.push(holder);
+    });
+    o.scale.copy(s);
+  });
+  p.ghost = g; return g;
+}
+function showGhost(p, on) {
+  if (!on && !p.ghost) return;
+  const g = ghostOf(p);
+  for (const h of g) h.visible = on;
+}
+function removePart(p, { voice = false } = {}) {
+  if (!p || p.removed) return;
+  p.removed = true; hidePart(p, true); showGhost(p, true);
+  if (P.sel === p) selectPart(null);
+  hoverBox.visible = false; showTip(null);
+  toast(`${voice ? 'Ody: removed' : 'Removed'} ${p.name}`, { voice }); updatePartTags();
+  clearAnalysis(); renderPartsPanel(); queueParts();
+}
+function restorePart(p, { voice = false, quiet = false } = {}) {
+  if (!p) return;
+  if (p.removed) { p.removed = false; hidePart(p, false); showGhost(p, false); }
+  p.objs.forEach((o, i) => animateTo(o, p.home[i]));
+  p.moved = false;
+  if (!quiet) toast(`${voice ? 'Ody: restored' : 'Restored'} ${p.name}`, { voice });
+  updatePartTags();
+  clearAnalysis(); renderPartsPanel(); queueParts();
+}
+function restoreAll({ voice = false } = {}) {
+  const list = stageParts(); for (const p of list) restorePart(p, { quiet: true });
+  toast(voice ? 'Ody: back to stock' : 'Back to stock', { voice });
+}
+function animateTo(o, to, dur = 0.85) { P.anim = P.anim.filter(a => a.o !== o); P.anim.push({ o, from: o.position.clone(), to: to.clone(), t: 0, dur: REDUCED ? 0.01 : dur }); }
+function stepParts(dt) {
+  for (let i = P.anim.length - 1; i >= 0; i--) {
+    const a = P.anim[i]; a.t = Math.min(1, a.t + dt / a.dur);
+    a.o.position.lerpVectors(a.from, a.to, easeInOut(a.t));
+    if (a.t >= 1) P.anim.splice(i, 1);
+  }
+  if (selBox.visible && P.sel) selBox.setFromObject(P.sel.objs[0]);
+}
+/** Combine: kept parts snap back together, gaps stay as ghosts; then Ody judges whether it still works. */
+function combine({ voice = false } = {}) {
+  const list = stageParts(); if (!list.length) return;
+  for (const p of list) { if (!p.removed) p.objs.forEach((o, i) => animateTo(o, p.home[i], 1.1)); p.moved = false; showGhost(p, p.removed); }
+  if (S.explodeTo > 0) setExplode(false);
+  if (scopeNow() === 'scan' && S.scan?.I && list.some(p => p.removed)) setXray(true);   // show the assembled inside, with its gaps
+  selectPart(null);
+  const kept = list.filter(p => !p.removed).map(p => ({ id: p.id, name: p.name })), removed = list.filter(p => p.removed).map(p => ({ id: p.id, name: p.name }));
+  toast(voice ? 'Ody: combined' : 'Combined', { voice });
+  if (!removed.length) { clearAnalysis(); renderPartsPanel(); return; }
+  const msg = { type: 'analyze', scope: scopeNow(), board: scopeBoard(), kept, removed };
+  P.waiting = sendUp(msg); P.analysis = null; P.asked = msg; P.noAnswer = !P.waiting;
+  clearTimeout(P.waitTimer);
+  if (P.waiting) P.waitTimer = setTimeout(() => { if (P.waiting) { P.waiting = false; P.noAnswer = true; renderAnalysis(); } }, 25000);
+  renderAnalysis();
+}
+const scopeBoard = () => (scopeNow() === 'scan' ? S.scan?.spec?.name || 'scan' : S.model || 'uno-r3');
+function clearAnalysis() { P.analysis = null; P.waiting = false; P.noAnswer = false; clearTimeout(P.waitTimer); renderAnalysis(); }
+/** "the ESP32", "wifi module", "esp32" -> the part, by id, whole name, or the best word overlap. */
+function findPart(target) {
+  const list = stageParts(); const t = normName(target); if (!t) return null;
+  const exact = list.find(p => normName(p.id) === t || normName(p.name) === t); if (exact) return exact;
+  const inName = list.filter(p => normName(p.name).includes(t) || t.includes(normName(p.id).replace(/ /g, '')));
+  if (inName.length) return inName.sort((a, b) => a.name.length - b.name.length)[0];
+  const words = t.split(' ').filter(w => w.length > 1 && !['the', 'a', 'an', 'part', 'chip', 'module'].includes(w));
+  let best = null, score = 0;
+  for (const p of list) {
+    const n = normName(p.name).split(' '), s = words.reduce((k, w) => k + (n.some(x => x === w) ? 2 : n.some(x => x.startsWith(w) || w.startsWith(x)) ? 1 : 0), 0);
+    if (s > score) { score = s; best = p; }
+  }
+  return score ? best : null;
+}
+/** {type:'parts'} upstream whenever the stage's part set changes, so voice can name parts. */
+function queueParts(force = false) {
+  clearTimeout(P.sendTimer);
+  P.sendTimer = setTimeout(() => {
+    const scope = scopeNow(), list = scope ? stageParts() : [];
+    const msg = { type: 'parts', scope: scope || 'board', board: scopeBoard(), parts: list.map(p => ({ id: p.id, name: p.name, ...(p.removed ? { removed: true } : {}) })) };
+    const key = JSON.stringify(msg);
+    if (force || key !== P.sent) { if (sendUp(msg)) P.sent = key; }
+  }, 250);
+}
+subscribe(e => { if (e.type === '_sock' && e.open) { P.sent = ''; queueParts(true); } });
+
+// rail: the parts list, the removed tray, Combine, and the analysis
+function renderPartsPanel() {
+  const list = stageParts(), box = $('partsbox');
+  box.hidden = !list.length;
+  if (!list.length) return;
+  $('partsCount').textContent = String(list.length);
+  $('partsHint').textContent = partsActive() ? 'Pick a part here or in 3D, drag it, press Delete to remove it. Combine puts the rest back together.' : scopeNow() === 'scan' && S.scan?.I ? 'Explode (E) or X-ray (Y) first, then pick a part.' : 'Explode (E) first, then pick a part and drag it.';
+  const ul = $('partsList'); ul.replaceChildren();
+  for (const p of list.filter(q => !q.removed)) {
+    const li = pEl('li'), b = pEl('button'); b.type = 'button'; b.setAttribute('aria-pressed', String(P.sel === p));
+    b.append(pEl('span', 'ico part'), pEl('span', 'what', p.name), pEl('span', 'where', p.moved ? 'moved' : p.layer || ''));
+    b.addEventListener('click', () => { if (scopeNow() === 'board' && S.explodeTo < 1 && !changed(list)) setExplode(true); selectPart(P.sel === p ? null : p); });
+    li.append(b); ul.append(li);
+  }
+  $('partRemove').hidden = !P.sel; $('partRemove').textContent = P.sel ? `Remove ${P.sel.name}` : 'Remove';
+  const tray = $('tray'); tray.replaceChildren();
+  const gone = list.filter(p => p.removed);
+  $('trayBox').hidden = !gone.length;
+  for (const p of gone) {
+    const li = pEl('li'), b = pEl('button', 'restore'); b.type = 'button'; b.textContent = 'Restore'; b.setAttribute('aria-label', `Restore ${p.name}`);
+    b.addEventListener('click', () => restorePart(p));
+    li.append(pEl('span', 'ghost-ico'), pEl('span', 'what', p.name), b); tray.append(li);
+  }
+  $('combine').disabled = false;
+}
+function renderAnalysis() {
+  const a = P.analysis, card = $('analysis'), over = $('analysisCard');
+  for (const root of [card, over]) {
+    root.hidden = !a && !P.waiting && !P.noAnswer;
+    const body = root.querySelector('.an-body'); body.replaceChildren();
+    if (!a) {
+      if (P.waiting) body.append(pEl('p', 'an-wait', 'Ody is checking whether it still works…'));
+      else if (P.noAnswer) body.append(pEl('p', 'an-wait', 'No answer from Ody: the call isn’t connected. Combine again once it is.'));
+      continue;
+    }
+    const head = pEl('div', 'an-head');
+    head.append(pEl('h4', '', a.title || 'What happens now'), pEl('span', 'an-badge ' + (a.works ? 'ok' : 'no'), a.works ? 'Works' : 'Won’t work'));
+    body.append(head);
+    if (a.summary) body.append(pEl('p', 'an-sum', a.summary));
+    for (const [k, label] of [['pros', 'Good'], ['cons', 'Lost'], ['needs', 'It needs']]) {
+      const items = Array.isArray(a[k]) ? a[k].filter(x => typeof x === 'string' && x.trim()).slice(0, 6) : [];
+      if (!items.length || (root === over && k === 'needs')) continue;
+      const ul = pEl('ul', 'an-' + k); for (const t of items) ul.append(pEl('li', '', t.slice(0, 200)));
+      body.append(pEl('h5', '', label), ul);
+    }
+    if (a.verdict) body.append(pEl('p', 'an-verdict', a.verdict));
+  }
+}
+function onAnalysis(ev) {
+  const s = v => (typeof v === 'string' ? v.slice(0, 400) : '');
+  P.analysis = { title: s(ev.title).slice(0, 100), works: ev.works === true, summary: s(ev.summary), pros: ev.pros, cons: ev.cons, needs: ev.needs, verdict: s(ev.verdict) };
+  P.waiting = false; P.noAnswer = false; clearTimeout(P.waitTimer); renderAnalysis();
+  $('analysisCard').hidden = false;
+}
+$('partRemove').addEventListener('click', () => removePart(P.sel));
+$('combine').addEventListener('click', () => combine());
+$('restoreAll').addEventListener('click', () => restoreAll());
+$('analysisClose').addEventListener('click', () => { $('analysisCard').hidden = true; });
+
+// pointer: pick + drag a part (capture phase on the stage, so OrbitControls never starts a turn under it)
+const dragPlane = new THREE.Plane();
+function rayAt(x, y) { const r = stage.getBoundingClientRect(); ndc.set((x / r.width) * 2 - 1, -(y / r.height) * 2 + 1); ray.setFromCamera(ndc, camera); }
+stage.addEventListener('pointerdown', e => {
+  if (e.button !== 0 || e.target !== canvas || !partsActive()) return;
+  const r = stage.getBoundingClientRect(); rayAt(e.clientX - r.left, e.clientY - r.top);
+  const h = pickPart(); if (!h) return;
+  selectPart(h.part);
+  dragPlane.setFromNormalAndCoplanarPoint(camera.getWorldDirection(new THREE.Vector3()), h.point);
+  P.drag = { part: h.part, last: h.point.clone(), y: e.clientY, id: e.pointerId, moved: false };
+  try { canvas.setPointerCapture(e.pointerId); } catch { /* synthetic */ }
+  controls.enabled = false; S.fly = null; controls.autoRotate = false;
+  e.stopPropagation();
+}, true);
+stage.addEventListener('pointermove', e => {
+  if (!P.drag) return;
+  const r = stage.getBoundingClientRect();
+  if (e.shiftKey) {   // depth: along the view direction
+    const d = camera.getWorldDirection(new THREE.Vector3()).multiplyScalar((e.clientY - P.drag.y) * camState().radius * 0.0035);
+    movePart(P.drag.part, d); P.drag.last.add(d); dragPlane.setFromNormalAndCoplanarPoint(camera.getWorldDirection(new THREE.Vector3()), P.drag.last);
+  } else {
+    rayAt(e.clientX - r.left, e.clientY - r.top);
+    const hit = ray.ray.intersectPlane(dragPlane, new THREE.Vector3());
+    if (hit) { movePart(P.drag.part, hit.clone().sub(P.drag.last)); P.drag.last.copy(hit); }
+  }
+  P.drag.y = e.clientY; P.drag.moved = true; showTip(null);
+  e.stopPropagation();
+}, true);
+function endDrag(e) {
+  if (!P.drag) return;
+  const moved = P.drag.moved; P.drag = null; controls.enabled = true;
+  if (moved) { clearAnalysis(); renderPartsPanel(); }
+  e?.stopPropagation();
+}
+stage.addEventListener('pointerup', endDrag, true);
+stage.addEventListener('pointercancel', endDrag, true);
+
 // ---------- export ----------
 async function exportGlb() {
   const swapped = [];
   twin.traverse(o => {
-    if (o.userData.noExport || o.isLine || o.userData.glowShell || o.isCSS2DObject) { swapped.push([o, 'visible', o.visible]); o.visible = false; return; }
+    if (o.userData.noExport || o.isLine || o.userData.glowShell || o.isCSS2DObject || P.owner.get(o)?.removed) { swapped.push([o, 'visible', o.visible]); o.visible = false; return; }
     if (o.userData.real && o.material !== o.userData.real) { swapped.push([o, 'material', o.material]); o.material = o.userData.real; }
     else if (o.isMesh && o.material?.isShaderMaterial) {
       swapped.push([o, 'material', o.material]);
@@ -697,6 +989,20 @@ function stepHands() {
   $('handmode').textContent = { none: g.hands ? 'Hand seen' : 'Show a hand', rotate: 'Turning', zoom: 'Zooming', grab: 'Moving', palm: 'Hold to reset', point: 'Pointing' }[g.mode] || 'Hand seen';
   if (g.cursor) { cur.hidden = false; cur.style.left = `${g.cursor.x * r.width}px`; cur.style.top = `${g.cursor.y * r.height}px`; cur.style.setProperty('--d', (g.mode === 'point' || g.mode === 'palm') ? g.dwell.toFixed(2) : 0); }
   else cur.hidden = true;
+  // pinch on a part (taken apart) grabs it; moving the pinch carries it; letting go drops it
+  if (g.mode === 'rotate' && g.cursor && partsActive()) {
+    const x = g.cursor.x * r.width, y = g.cursor.y * r.height;
+    rayAt(x, y);
+    if (!P.handDrag) {
+      const h = pickPart();
+      if (h) { selectPart(h.part); dragPlane.setFromNormalAndCoplanarPoint(camera.getWorldDirection(new THREE.Vector3()), h.point); P.handDrag = { part: h.part, last: h.point.clone() }; $('handmode').textContent = `Holding ${h.part.name}`; }
+    } else {
+      const hit = ray.ray.intersectPlane(dragPlane, new THREE.Vector3());
+      if (hit) { movePart(P.handDrag.part, hit.clone().sub(P.handDrag.last)); P.handDrag.last.copy(hit); }
+      $('handmode').textContent = `Holding ${P.handDrag.part.name}`;
+    }
+    if (P.handDrag) { g.rotate = [0, 0]; }
+  } else if (P.handDrag) { P.handDrag = null; clearAnalysis(); renderPartsPanel(); }
   if (g.rotate[0] || g.rotate[1] || g.pan[0] || g.pan[1] || g.zoom !== 1 || g.reset) {
     S.fly = null; controls.autoRotate = false;
     const home = homeView();
@@ -752,7 +1058,7 @@ function showScan(entry) {
   $('scanphoto').hidden = !entry.photo; if (entry.photo) $('scanphoto').src = entry.photo;
   $('scanconf').textContent = `${Math.round(s.confidence * 100)}% sure`;
   $('scanparts').textContent = `${s.parts.length} part${s.parts.length === 1 ? '' : 's'}${entry.built.scale < 1 ? `, shown at ${Math.round(entry.built.scale * 100)}%` : ''}`;
-  updatePartTags(); renderScans(); renderPins(); clearKeyTip(); pointing();
+  updatePartTags(); renderScans(); renderPins(); clearKeyTip(); pointing(); partsChanged();
   if (!S.replaying) flyScan(1.5);
 }
 function showBoard({ fly = true } = {}) {
@@ -765,7 +1071,7 @@ function showBoard({ fly = true } = {}) {
   marksGroup.visible = wiresGroup.visible = S.explode < 0.02;
   controls.maxDistance = 520;
   document.body.classList.toggle('has-part', !!S.model);
-  boardPanel(); updatePartTags(); renderScans(); renderPins(); pointing(); interiorPanel();
+  boardPanel(); updatePartTags(); renderScans(); renderPins(); pointing(); interiorPanel(); partsChanged();
   if (fly && !S.replaying) flyHome(1.3);
 }
 // ---------- the voice circuit builder (twin/circuit3d.js): parts on the breadboard, jumpers to exact pins ----------
@@ -783,7 +1089,7 @@ function circuitView() {
   twin.add(C.view.group);
   MODES.set('circuit', {
     enter() { if (S.uno) S.uno.group.visible = true; S.bbIn = Math.max(S.bbIn, 0.0001); C.view.group.visible = true; renderProject(); },
-    exit() { C.view.group.visible = false; },
+    exit() { C.view.group.visible = false; if (G.on) guideStop(); },
     box() { const b = boardBox(); const c = C.view.box(); if (!c.isEmpty()) b.union(c); return b; },
   });
   renderModes();
@@ -791,7 +1097,7 @@ function circuitView() {
 }
 function resetCircuit() {
   if (!C.view) return;
-  C.ev = null; C.view.setState({ layout: { components: [], jumpers: [] } }); clearGroup(C.nextFx);
+  C.ev = null; C.view.setState({ layout: { components: [], jumpers: [] } }); clearGroup(C.nextFx); G.on = false; clearGroup(G.fx); renderGuide();
   if (S.view === 'circuit') showBoard({ fly: false });
   MODES.delete('circuit'); renderModes(); renderProject();
 }
@@ -808,8 +1114,66 @@ function onCircuit(ev, { replay = false } = {}) {
   const changed = !replay && Array.isArray(ev.change?.applied) && ev.change.applied.length;
   if (S.view !== 'circuit' && (changed || replay || !C.shown)) { C.shown = true; setMode('circuit'); }
   else if (S.view === 'circuit' && changed && !S.replaying) setTimeout(() => flyHome(1.2), 250);   // new parts: re-frame once they are placed
-  markNext(); renderProject();
+  markNext(); renderProject(); if (S.view === 'circuit') { renderPartsPanel(); queueParts(); } guideSync();
 }
+// ---------- connection guide: one jumper at a time, drawn from the board pin to its breadboard hole ----------
+const G = { on: false, i: 0, list: [], fx: new THREE.Group(), say: '' };
+G.fx.name = 'Connection guide'; G.fx.userData.noExport = true;
+const endName = e => (e?.board ? `${String(e.board).replace(/\.\d+$/, '')} pin` : e?.rail ? `${e.rail === '+' ? '+' : e.rail === '-' ? '−' : e.rail} rail` : e?.hole ? `hole ${e.hole}` : e?.lead ? `${e.lead} ${e.pin || ''}`.trim() : '?');
+function guideList() { return (C.ev?.layout?.jumpers || []).filter(j => j && j.from && j.to); }
+function guideShow(i, { fly = true, say = '' } = {}) {
+  G.list = guideList(); if (!G.list.length || !C.view) { guideStop(); return; }
+  G.on = true; G.i = (i + G.list.length) % G.list.length; G.say = say;
+  if (S.view !== 'circuit') setMode('circuit');
+  const j = G.list[G.i], wires = C.view.group.getObjectByName('Circuit wires');
+  for (const w of wires?.children || []) w.userData.fade = w.name === `Jumper ${j.id}` ? 0.08 : 0.22;   // the step's own wire is redrawn on top
+  clearGroup(G.fx); clearGroup(C.nextFx);
+  if (!G.fx.parent) C.view.group.add(G.fx);
+  const real = wires?.getObjectByName(`Jumper ${j.id}`);
+  const a = real?.userData.curve ? real.userData.curve.v0.clone().add(new THREE.Vector3(0, -11, 0)) : null, b = real?.userData.curve ? real.userData.curve.v3.clone().add(new THREE.Vector3(0, -11, 0)) : null;
+  if (a && b) {
+    const w = makeJumper(a, b, j.color || 'yellow', { delay: 0.25, name: `Guide ${j.id}` }); w.userData.noExport = true;
+    applyLookTo(w); G.fx.add(w);
+    for (const [p, text] of [[a, endName(j.from)], [b, endName(j.to)]]) {
+      const ring = makeRing(COLORS.mentor, { radius: 2.4 }); ring.position.copy(p).add(new THREE.Vector3(0, 0.25, 0)); G.fx.add(ring);
+      const t = tag(text, 'mentor'); t.position.copy(p); G.fx.add(t);
+    }
+    if (fly) flyTo([a, b, real.userData.curve.getPoint(0.5)]);
+  }
+  renderGuide();
+}
+function applyLookTo(root) { root.traverse(o => { if (o.userData.real && o.userData.holoMat) o.material = S.holo ? o.userData.holoMat : o.userData.real; }); }
+function guideStop() {
+  G.on = false; clearGroup(G.fx);
+  for (const w of C.view?.group.getObjectByName('Circuit wires')?.children || []) w.userData.fade = 0.999;   // < 1 so the module re-applies full opacity
+  markNext(); renderGuide();
+}
+function guideSync() { if (G.on) guideShow(Math.min(G.i, guideList().length - 1), { fly: false }); else renderGuide(); }
+/** {type:'circuit-step', index, total, step}: the voice "next" / "done" / "show me" moves the guide. */
+function onCircuitStep(ev) {
+  const step = ev?.step || {}, id = String(step.id || '').replace(/^wire:/, '');
+  const list = guideList(), k = list.findIndex(j => j.id === id);
+  const say = typeof step.say === 'string' ? step.say.slice(0, 200) : '';
+  if (k >= 0) guideShow(k, { say });
+  else { G.say = say; G.on = G.on && list.length > 0; renderGuide(); if (say) toast(`Ody: ${say}`, { voice: true, ms: 4000 }); }
+  if (Number.isFinite(ev.index) && Number.isFinite(ev.total)) G.stepOf = `Step ${ev.index} of ${ev.total}`;
+  renderGuide();
+}
+function renderGuide() {
+  const box = $('guide'); if (!box) return;
+  const list = guideList();
+  box.hidden = !C.ev || !list.length;
+  if (box.hidden) return;
+  const j = G.on ? list[G.i] : null;
+  $('guideStep').textContent = G.on ? `Wire ${G.i + 1} of ${list.length}` : `${list.length} wire${list.length === 1 ? '' : 's'} to connect`;
+  $('guideText').textContent = G.on ? (G.say || `${endName(j.from)} → ${endName(j.to)}${j.color ? `, ${j.color} jumper` : ''}`) : 'Walk through them one at a time: the camera flies to each pin and the wire draws itself.';
+  $('guideStart').hidden = G.on; $('guidePrev').hidden = $('guideNext').hidden = $('guideStop').hidden = !G.on;
+}
+$('guideStart').addEventListener('click', () => guideShow(0));
+$('guidePrev').addEventListener('click', () => guideShow(G.i - 1));
+$('guideNext').addEventListener('click', () => guideShow(G.i + 1));
+$('guideStop').addEventListener('click', () => { guideStop(); $('guideStart').focus(); });
+
 /** The next step, highlighted in 3D: a gold ring at each end of its jumper (or over its part) and a "Next" tag. */
 function markNext() {
   clearGroup(C.nextFx);
@@ -945,6 +1309,7 @@ function setMode(name) {
   marksGroup.visible = wiresGroup.visible = false;
   S.view = name; clearKeyTip(); updatePartTags(); renderPins(); pointing(); renderScans();
   try { m.enter?.(); } catch (e) { console.warn('[twin] mode enter', e); }
+  partsChanged();
   flyHome(1.2);
 }
 function renderModes() {
@@ -975,7 +1340,7 @@ function resetCall() {
   resetCircuit();
 }
 /** The agent's voice commands for the view ("Ody, explode it"). Unknown actions are ignored. */
-function voice(action) {
+function voice(action, target) {
   const say = m => toast(`Ody: ${m}`, { voice: true });
   switch (action) {
     case 'explode': setExplode(true); say('exploded'); break;
@@ -986,6 +1351,10 @@ function voice(action) {
     case 'realistic': setHolo(false); say('realistic look'); break;
     case 'hologram': setHolo(true); say('hologram'); break;
     case 'export': voiceExport(); break;
+    case 'select': { const p = findPart(target); if (!p) { say(`couldn’t find “${String(target || '').slice(0, 40)}”`); break; } if (scopeNow() === 'board' && S.explodeTo < 1) setExplode(true); selectPart(p, { fly: true }); say(`picked the ${p.name}`); break; }
+    case 'remove': { const p = target ? findPart(target) : P.sel; if (!p) { say(target ? `couldn’t find “${String(target).slice(0, 40)}”` : 'pick a part first'); break; } if (scopeNow() === 'board' && S.explodeTo < 1) setExplode(true); removePart(p, { voice: true }); break; }
+    case 'restore': { if (!target) { restoreAll({ voice: true }); break; } const p = findPart(target); if (p) restorePart(p, { voice: true }); else say(`couldn’t find “${String(target).slice(0, 40)}”`); break; }
+    case 'combine': combine({ voice: true }); break;
     default: break;
   }
 }
@@ -1016,7 +1385,9 @@ function handle(ev) {
     case 'interior': onInterior(ev); break;
     case 'circuit': onCircuit(ev); break;
     case 'step': setStep(ev.text); if (ev.done) S.done = true; break;
-    case 'twin': if (typeof ev.action === 'string') voice(ev.action); break;
+    case 'twin': if (typeof ev.action === 'string') voice(ev.action, typeof ev.target === 'string' ? ev.target.slice(0, 80) : ''); break;
+    case 'analysis': onAnalysis(ev); break;
+    case 'circuit-step': onCircuitStep(ev); break;
     default: break;
   }
 }
@@ -1044,13 +1415,15 @@ addEventListener('keydown', e => {
   else if (k === 'y' && xray && !$('t-xray').hidden) setXray(!xray.on);
   else if (k === 'f') { fpsEl.hidden = !fpsEl.hidden; showFps = !fpsEl.hidden; }
   else if (k === ']' || k === '[') selectPin(S.pinIdx < 0 ? (k === ']' ? 0 : -1) : S.pinIdx + (k === ']' ? 1 : -1));
+  else if (G.on && S.view === 'circuit' && (k === 'arrowleft' || k === 'arrowright') && (onStage || e.target.closest?.('#guide'))) guideShow(G.i + (k === 'arrowright' ? 1 : -1));
   else if (onStage && k === 'arrowleft') nudge({ dTheta: -0.14 });
   else if (onStage && k === 'arrowright') nudge({ dTheta: 0.14 });
   else if (onStage && k === 'arrowup') nudge({ dPhi: -0.09 });
   else if (onStage && k === 'arrowdown') nudge({ dPhi: 0.09 });
   else if (onStage && (k === '+' || k === '=')) nudge({ zoom: 0.86 });
   else if (onStage && (k === '-' || k === '_')) nudge({ zoom: 1.16 });
-  else if (k === 'escape' && (S.tipPinned || S.tipKey || !tipEl.hidden)) { S.tipPinned = null; clearKeyTip(); }
+  else if ((k === 'delete' || k === 'backspace') && P.sel) removePart(P.sel);
+  else if (k === 'escape' && (S.tipPinned || S.tipKey || !tipEl.hidden || P.sel)) { S.tipPinned = null; clearKeyTip(); selectPart(null); }
   else return;
   e.preventDefault();
 });
@@ -1075,7 +1448,7 @@ function frame(now) {
   requestAnimationFrame(frame);
   const raw = (now - last) / 1000, dt = Math.min(0.05, raw); last = now;
   clock.value += dt;
-  stepFly(Math.min(0.25, raw)); stepExplode(Math.min(0.25, raw)); stepHands();   // camera moves and explode keep wall-clock time on a slow GPU
+  stepFly(Math.min(0.25, raw)); stepExplode(Math.min(0.25, raw)); stepHands(); stepParts(Math.min(0.25, raw));   // camera moves and explode keep wall-clock time on a slow GPU
   if (S.bb && S.bbIn > 0 && S.bbIn < 1) { S.bbIn = Math.min(1, S.bbIn + dt / 0.9); }
   if (S.bb) { const e = easeInOut(Math.min(1, S.bbIn)); S.bb.group.scale.set(1, Math.max(0.001, e), 1); S.bb.group.visible = S.bbIn > 0 && S.explode < 0.02 && boardShown(); }
   controls.update(dt);
@@ -1172,7 +1545,10 @@ window.mentorTwin = {
   scanState: () => ({ view: S.view, scans: S.scans.map(e => ({ name: e.spec.name, known: e.known, parts: e.spec.parts.length })), current: S.scan?.spec.name || null,
     flying: !!S.fly, meshes: S.scan?.built.meshes.length || 0, photoLoaded: !!S.scan?.built.atlas.userData.photo, explode: S.explode, fps: stats.fps }),
   home: () => { const v = homeView(); return { radius: v.radius, off: v.off, rects: freeRects(), box: boardBox().toArray?.() ?? [boardBox().min.toArray(), boardBox().max.toArray()] }; },
-  voice: a => voice(a), fitted: () => ({ off: { ...S.off }, ...(c => ({ radius: c.radius, phi: c.phi, theta: c.theta }))(camState()) }),
+  voice: (a, t) => voice(a, t), inject: ev => handle(ev),
+  partsState: () => ({ scope: scopeNow(), active: partsActive(), sel: P.sel?.id || null, parts: stageParts().map(p => ({ id: p.id, name: p.name, removed: p.removed, moved: p.moved })), analysis: P.analysis, waiting: P.waiting, guide: G.on ? { i: G.i, n: G.list.length } : null }),
+  partScreen: id => { const p = stageParts().find(q => q.id === id); if (!p) return null; const v = partCenter(p).project(camera), r = stage.getBoundingClientRect(); return [r.left + (v.x + 1) / 2 * r.width, r.top + (1 - v.y) / 2 * r.height]; },
+  fitted: () => ({ off: { ...S.off }, ...(c => ({ radius: c.radius, phi: c.phi, theta: c.theta }))(camState()) }),
   labelBoxes: () => [...$('labels').querySelectorAll('.tag:not(.layer)')].filter(t => t.style.display !== 'none').map(t => { const r = t.querySelector('span').getBoundingClientRect(); return [r.left, r.top, r.width, r.height, t.className]; }),
   state: () => ({ model: S.model, holo: S.holo, explode: S.explode, autoRotate: controls.autoRotate, wires: [...S.wires.keys()], marks: S.current.map(c => ({ label: c.label, kind: c.kind, from: c.from, to: c.to })), fps: stats.fps, ms: stats.ms, step: S.step }),
   pinWorld: k => S.uno?.pinPos(k)?.add(S.pos).toArray(),
