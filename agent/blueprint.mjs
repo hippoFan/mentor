@@ -45,12 +45,25 @@ export function circuitKey(state) {
 
 const HEADER = { 'hc-sr04': 'Distance sensor', dht22: 'Temperature sensor', 'servo-sg90': 'Servo', mpu6050: 'Motion sensor', potentiometer: 'Knob', 'pushbutton-12mm': 'Button', 'pushbutton-6mm': 'Button' };
 const ref = id => id.toUpperCase().replace(/[^A-Z0-9]/g, '');
-const lbl = s => String(s).replace(/[^A-Za-z0-9_]/g, '_').replace(/^(\d)/, 'P$1');
 const keyOf = w => w.from.slice(w.from.indexOf('.') + 1);
+/** A board pin as students read it on the board: D9 (Arduino digital pin 9), A0, 5V, 3V3, GND (every ground). */
+function pinName(t, k) {
+  const p = t.pins[k];
+  if (!p) return k;
+  if (p.caps.has('gnd')) return 'GND';
+  if (t.arduino && /^\d+$/.test(k)) return `D${k}`;
+  return String(p.name).replace(/^3\.3V$/, '3V3');
+}
+/** The same name as a tscircuit label / net id (letters first, A-Z 0-9 _ only): 5V -> VCC_5V, 3V3 -> VCC_3V3, V+ -> VPLUS. */
+const lbl = s => {
+  const v = String(s).replace(/\+/g, 'PLUS').replace(/[^A-Za-z0-9_]/g, '_');
+  return /^\d+V\d*$/.test(v) ? `VCC_${v}` : v.replace(/^(\d)/, 'P$1');
+};
 
 /**
  * The nets: every board pin with what it feeds (an LED through its resistor). Needs no tscircuit.
- * @returns {{name: string, nodes: {ref: string, pin: string}[]}[]}  ref 'BOARD' is the dev board, 'R_<id>' an LED's resistor
+ * @returns {{name: string, nodes: {ref: string, pin: string}[]}[]}  name: the board pin as printed for students (D9, A0,
+ *   5V, GND) or <id>_<pin> between a resistor and its LED; ref 'BOARD' is the dev board, 'R_<id>' an LED's resistor
  */
 export function netlist(state) {
   const t = boardPins(state.board);
@@ -58,46 +71,56 @@ export function netlist(state) {
   const add = (name, node) => { if (!nets.has(name)) nets.set(name, []); nets.get(name).push(node); };
   for (const w of state.connections || []) {
     const k = keyOf(w), comp = w.to.slice(0, w.to.indexOf('.')), pin = w.to.slice(w.to.indexOf('.') + 1);
-    const name = t.pins[k]?.caps.has('gnd') ? 'GND' : t.pins[k]?.name || k;
-    if (w.via) { const r = `R_${comp}`; add(name, { ref: 'BOARD', pin: t.pins[k]?.name || k }); add(name, { ref: r, pin: '1' }); add(`${comp}_${pin}`, { ref: r, pin: '2' }); add(`${comp}_${pin}`, { ref: comp, pin }); }
-    else { add(name, { ref: 'BOARD', pin: t.pins[k]?.name || k }); add(name, { ref: comp, pin }); }
+    const name = pinName(t, k);
+    if (w.via) { const r = `R_${comp}`; add(name, { ref: 'BOARD', pin: name }); add(name, { ref: r, pin: '1' }); add(`${comp}_${pin}`, { ref: r, pin: '2' }); add(`${comp}_${pin}`, { ref: comp, pin }); }
+    else { add(name, { ref: 'BOARD', pin: name }); add(name, { ref: comp, pin }); }
   }
   const dedupe = a => a.filter((x, i) => a.findIndex(y => y.ref === x.ref && y.pin === x.pin) === i);
   return [...nets].map(([name, nodes]) => ({ name, nodes: dedupe(nodes) }));
 }
 
-/** The tscircuit element tree for this project (h = React.createElement), or null when there's nothing to draw. */
+/**
+ * The tscircuit element tree for this project (h = React.createElement), or null when there's nothing to draw.
+ * Every board pin is a named net (net.D9, net.GND, net.VCC_5V), so the schematic labels read like the board. The PCB is
+ * packed: the board header on the left, module headers in a row at the top, each LED's resistor + LED in a column below,
+ * and the outline fitted to the parts with a 4 mm margin (25 x 20 mm at least).
+ */
 export function circuitTree(state, h) {
   const t = boardPins(state.board);
   if (!t || !state.components?.length) return null;
-  const used = [...new Set(state.connections.map(keyOf))];
-  const boardNames = [...new Set(used.map(k => (t.pins[k]?.caps.has('gnd') ? 'GND' : t.pins[k]?.name || k)))];
-  const pinLabels = Object.fromEntries(boardNames.map((n, i) => [`pin${i + 1}`, lbl(n)]));
-  const kids = [h('chip', { name: 'J1', footprint: `pinrow${boardNames.length}`, pinLabels, pcbX: -14, pcbY: 0, pcbRotation: 90, schX: -6, schY: 0 })];
+  const boardNames = [...new Set(state.connections.map(w => pinName(t, keyOf(w))))];
+  const P = 2.54, n = boardNames.length;
+  const place = [];   // [element props without pcbX/pcbY, x, y, halfW, halfH]
   const traces = [];
-  const net = k => `.J1 > .${lbl(t.pins[k]?.caps.has('gnd') ? 'GND' : t.pins[k]?.name || k)}`;
-  let x = -4;
+  place.push([{ type: 'chip', name: 'J1', footprint: `pinrow${n}`, pinLabels: Object.fromEntries(boardNames.map((nm, i) => [`pin${i + 1}`, lbl(nm)])),
+    pcbRotation: 90, schX: -6, schY: 0 }, 0, 0, 1.3, ((n - 1) * P) / 2 + 1.3]);
+  for (const nm of boardNames) traces.push([`.J1 > .${lbl(nm)}`, `net.${lbl(nm)}`]);
+  const net = w => `net.${lbl(pinName(t, keyOf(w)))}`;
+  let xTop = 4.5, xBot = 4.5;
   state.components.forEach((c, i) => {
     const prof = PROFILES[c.part], R = ref(c.id);
     if (!prof) return;
+    const wires = state.connections.filter(w => w.to.startsWith(`${c.id}.`));
     if (c.part === 'led-5mm') {
-      kids.push(h('resistor', { name: `R${R}`, resistance: '220', footprint: '0805', pcbX: x, pcbY: 6, schX: 0, schY: 3 - i * 2.2 }));
-      kids.push(h('led', { name: R, color: c.color || 'red', footprint: '0805', pcbX: x, pcbY: -2, schX: 3, schY: 3 - i * 2.2 }));
+      const x = xBot + 1.6;
+      place.push([{ type: 'resistor', name: `R${R}`, resistance: '220', footprint: '0805', schX: 0, schY: 3 - i * 2.2 }, x, -3, 1.6, 0.9]);
+      place.push([{ type: 'led', name: R, color: c.color || 'red', footprint: '0805', schX: 3, schY: 3 - i * 2.2 }, x, -7, 1.6, 0.9]);
       traces.push([`.R${R} > .pin2`, `.${R} > .anode`]);
-      for (const w of state.connections.filter(w => w.to.startsWith(`${c.id}.`))) {
-        const pin = w.to.slice(w.to.indexOf('.') + 1);
-        traces.push(pin === 'A' ? [net(keyOf(w)), `.R${R} > .pin1`] : [net(keyOf(w)), `.${R} > .cathode`]);
-      }
-      x += 6;
+      for (const w of wires) traces.push([net(w), w.to.endsWith('.A') ? `.R${R} > .pin1` : `.${R} > .cathode`]);
+      xBot += 5.5;
       return;
     }
-    const pins = prof.order;
-    kids.push(h('chip', { name: R, footprint: `pinrow${pins.length}`, pinLabels: Object.fromEntries(pins.map((p, j) => [`pin${j + 1}`, lbl(p)])),
-      pcbX: x + 3, pcbY: 10, schX: 4, schY: 3 - i * 2.2, manufacturerPartNumber: HEADER[c.part] || prof.label }));
-    for (const w of state.connections.filter(w => w.to.startsWith(`${c.id}.`))) traces.push([net(keyOf(w)), `.${R} > .${lbl(w.to.slice(w.to.indexOf('.') + 1))}`]);
-    x += Math.max(6, pins.length * 2.54 + 3);
+    const pins = prof.order, half = ((pins.length - 1) * P) / 2 + 1.3;
+    place.push([{ type: 'chip', name: R, footprint: `pinrow${pins.length}`, pinLabels: Object.fromEntries(pins.map((p, j) => [`pin${j + 1}`, lbl(p)])),
+      schX: 4, schY: 3 - i * 2.2, manufacturerPartNumber: HEADER[c.part] || prof.label }, xTop + half, 5, half, 1.3]);
+    for (const w of wires) traces.push([net(w), `.${R} > .${lbl(w.to.slice(w.to.indexOf('.') + 1))}`]);
+    xTop += 2 * half + 3;
   });
-  const width = Math.max(40, Math.ceil(x + 24)), height = 34;
+  const minX = Math.min(...place.map(([, x, , hw]) => x - hw)), maxX = Math.max(...place.map(([, x, , hw]) => x + hw));
+  const minY = Math.min(...place.map(([, , y, , hh]) => y - hh)), maxY = Math.max(...place.map(([, , y, , hh]) => y + hh));
+  const cx = (minX + maxX) / 2, cy = (minY + maxY) / 2, M = 4;
+  const width = Math.max(25, Math.ceil(maxX - minX + 2 * M)), height = Math.max(20, Math.ceil(maxY - minY + 2 * M));
+  const kids = place.map(([{ type, ...props }, x, y]) => h(type, { ...props, pcbX: +(x - cx).toFixed(2), pcbY: +(y - cy).toFixed(2) }));
   return h('board', { width: `${width}mm`, height: `${height}mm` }, ...kids, ...traces.map(([from, to]) => h('trace', { from, to })));
 }
 
