@@ -14,7 +14,7 @@ const flag = f => args.includes(f);
 const portAt = args.indexOf('--port');
 const PORT = portAt >= 0 ? Number(args[portAt + 1]) : 8799;
 process.env.MENTOR_MONITOR_PORT = String(PORT);
-const { startLive } = await import('../live.mjs');
+const { createLiveServer: startLive } = await import('../live.mjs');   // never publish to the live hub
 const { render, outJpeg, frameJpeg } = await import('../overlay.mjs');
 
 const here = p => fileURLToPath(new URL(p, import.meta.url));

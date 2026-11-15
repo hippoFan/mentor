@@ -9,7 +9,7 @@ const FONT = 'Inter, "Inter Variable", ui-sans-serif, system-ui, sans-serif';
 const S = 24;   // silkscreen px per mm
 
 // ---------- shared materials (realistic look) ----------
-const M = {
+export const M = {
   metal: new THREE.MeshStandardMaterial({ color: 0xcfd3d8, metalness: 1, roughness: 0.28 }),
   gold: new THREE.MeshStandardMaterial({ color: 0xd8b25a, metalness: 1, roughness: 0.3 }),
   black: new THREE.MeshStandardMaterial({ color: 0x151517, metalness: 0, roughness: 0.55 }),
@@ -20,14 +20,14 @@ const M = {
   tin: new THREE.MeshStandardMaterial({ color: 0xb3b7bb, metalness: 0.85, roughness: 0.5 }),
 };
 
-function canvas(w, h) { const c = document.createElement('canvas'); c.width = w; c.height = h; return c; }
-function tex(c, { repeat } = {}) {
+export function canvas(w, h) { const c = document.createElement('canvas'); c.width = w; c.height = h; return c; }
+export function tex(c, { repeat } = {}) {
   const t = new THREE.CanvasTexture(c);
   t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = 8;
   if (repeat) { t.wrapS = THREE.RepeatWrapping; t.repeat.set(repeat, 1); }
   return t;
 }
-function seeded(seed) { let s = seed >>> 0; return () => ((s = (s * 1664525 + 1013904223) >>> 0) / 4294967296); }
+export function seeded(seed) { let s = seed >>> 0; return () => ((s = (s * 1664525 + 1013904223) >>> 0) / 4294967296); }
 
 /** Female header top: black plastic with a square funnel per pin; `holo` draws bright hole outlines on black. */
 const holeCache = {};
@@ -49,7 +49,7 @@ function holeTexture(n, holo) {
   const t = tex(c, { repeat: n }); holeCache[key] = t; return t;
 }
 
-function textTexture(lines, w, h, { bg = '#18181a', color = '#9a9aa0', size = 22 } = {}) {
+export function textTexture(lines, w, h, { bg = '#18181a', color = '#9a9aa0', size = 22 } = {}) {
   const c = canvas(w, h), g = c.getContext('2d');
   g.fillStyle = bg; g.fillRect(0, 0, w, h);
   g.fillStyle = color; g.textAlign = 'center'; g.textBaseline = 'middle';

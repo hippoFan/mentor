@@ -11,6 +11,8 @@ import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
 import { GLTFExporter } from 'three/addons/exporters/GLTFExporter.js';
 import { loadPins, pinInfo, bbInfo, inferModel, resolveMarks, targetName, MODEL_NAMES, BB } from './pins.js';
 import { buildUno, buildBreadboard } from './board.js';
+import { partTable, normAlias, UNO_MODELS } from './partpins.js';
+import { buildPart, PART_MODELS } from './parts3d.js';
 import { clock, COLORS, holoMaterial, edgeMaterial, makeRing, makeArrow, makeWire, makeProjectorFloor, easeInOut } from './holo.js';
 import { createGestures, applyToCamera } from './gestures.js';
 import { buildScan, explodeScan, disposeScan } from './scan.js';
@@ -80,7 +82,19 @@ const S = {
   table: null, model: null, uno: null, unos: {}, bb: null, holo: true, explode: 0, explodeTo: 0,
   turns: [], callMarks: [], wires: new Map(), current: [], step: '', done: false, bbIn: 0, fly: null, tipPinned: null,
   scans: [], scan: null, view: 'board',   // "scan anything": every object scanned this call; view = what the stage shows
+  parts: {}, tables: {}, lookup: {}, pos: UNO_POS.clone(),   // library boards (twin/parts.json) and where the board sits
 };
+// ---------- which board: the UNO (pins.js + board.js) or a library board (partpins.js + parts3d.js) ----------
+const isPart = m => PART_MODELS.includes(m) && !!S.parts[m];
+const isBoard = m => UNO_MODELS.includes(m) || isPart(m);
+function tableFor(m) {
+  if (!isPart(m)) return S.table;
+  if (!S.tables[m]) { const p = S.parts[m]; S.tables[m] = partTable(p, p.orientation); }
+  return S.tables[m];
+}
+const T = () => tableFor(S.model);
+const nameOf = m => MODEL_NAMES[m] || S.parts[m]?.name || 'Board';
+const infoFor = k => (S.uno?.pinInfo ? S.uno.pinInfo(k) : pinInfo(k, S.model || 'uno-r3'));
 const scanGroup = new THREE.Group(); scanGroup.name = 'Scanned object'; twin.add(scanGroup);
 
 function decorate(root) {   // remember both looks per mesh, and give each an edge outline for the hologram
@@ -122,8 +136,17 @@ function showModel(model) {
   const want = model || 'uno-r3';
   if (S.uno?.model === want) return;
   if (S.uno) twin.remove(S.uno.group);
-  if (!S.unos[want]) { const u = buildUno(S.table, want); u.group.position.copy(UNO_POS); decorate(u.group); S.unos[want] = u; }
+  if (!S.unos[want]) {
+    let u;
+    if (isPart(want)) {
+      const t = tableFor(want);
+      u = buildPart(t, want); t.features = u.features;   // marks name features ("USB-C power") through the table
+      u.group.position.set(Math.min(UNO_POS.x, -6 - u.W / 2), 0, 0);   // keep clear of the breadboard on the right
+    } else { u = buildUno(S.table, want); u.group.position.copy(UNO_POS); }
+    decorate(u.group); S.unos[want] = u;
+  }
   S.uno = S.unos[want];
+  S.pos.copy(S.uno.group.position);
   S.uno.group.visible = S.view === 'board';
   twin.add(S.uno.group);
   applyLook(S.uno.group);
@@ -131,13 +154,13 @@ function showModel(model) {
 }
 
 function boardPanel() {
-  $('part').textContent = S.model ? MODEL_NAMES[S.model] : 'No board yet';
-  $('partsub').textContent = S.model === 'uno-r4-wifi' ? 'USB-C, 12 × 8 LED matrix, Wi-Fi' : S.model ? 'USB-B, ATmega328P' : 'Ody names the board as soon as it sees it.';
+  $('part').textContent = S.model ? nameOf(S.model) : 'No board yet';
+  $('partsub').textContent = isPart(S.model) ? (S.uno?.sub || '') : S.model === 'uno-r4-wifi' ? 'USB-C, 12 × 8 LED matrix, Wi-Fi' : S.model ? 'USB-B, ATmega328P' : 'Ody names the board as soon as it sees it.';
   $('scaninfo').hidden = true;
 }
 function setPart(model, label) {
-  if (model !== 'uno-r3' && model !== 'uno-r4-wifi') {
-    if (model === 'other' && !S.model) { $('part').textContent = String(label || 'A board Ody can’t model yet').slice(0, 60); $('partsub').textContent = 'The twin covers the Arduino UNO R3 and UNO R4 WiFi.'; }
+  if (!isBoard(model)) {
+    if (model === 'other' && !S.model) { $('part').textContent = String(label || 'A board Ody can’t model yet').slice(0, 60); $('partsub').textContent = 'The twin covers Arduino UNO, Nano and Mega, ESP32, NodeMCU, Raspberry Pi and Pico.'; }
     return;
   }
   const first = !S.model, changed = S.model !== model;
@@ -153,10 +176,10 @@ function setPart(model, label) {
 // ---------- Mentor's marks ----------
 const world = t => {
   if (!t || !S.uno) return null;
-  if (t.on === 'pin') return S.uno.pinPos(t.key)?.add(UNO_POS);
+  if (t.on === 'pin') return S.uno.pinPos(t.key)?.add(S.pos);
   if (t.on === 'bb') return new THREE.Vector3(t.hole.x, BB.h, t.hole.z).add(BB_POS);
-  if (t.on === 'feature') return S.uno.featurePos(t.key)?.add(UNO_POS);
-  if (t.on === 'board') return S.uno.uvPos(t.u, t.v).add(UNO_POS);
+  if (t.on === 'feature') return S.uno.featurePos(t.key)?.add(S.pos);
+  if (t.on === 'board') return S.uno.uvPos(t.u, t.v).add(S.pos);
   return null;
 };
 const RING_R = { usb: 7, jack: 6.5, chip: 9, esp: 9, matrix: 12, reset: 4, icsp: 5, crystal: 6, reg: 4.5, board: 30, usbchip: 4, qwiic: 4 };
@@ -177,11 +200,11 @@ function clearGroup(g) {
 
 function applyTurn(turn, { animate = true } = {}) {
   const marks = Array.isArray(turn.marks) ? turn.marks.slice(0, 12) : [];
-  const model = inferModel({ board: turn.board, marks }) || S.model;
+  const model = inferModel({ board: turn.board, marks }, PART_MODELS.filter(isPart), S.model) || S.model;
   if (model && model !== S.model) setPart(model);
   if (turn.board && !Array.isArray(turn.board) && turn.board.model === 'other' && !S.model) setPart('other');
   if (!S.table || !S.uno) return;
-  const resolved = resolveMarks(S.table, S.model || 'uno-r3', marks, turn.board);
+  const resolved = resolveMarks(T(), S.model || 'uno-r3', marks, turn.board);
   S.current = resolved;
   if (S.view === 'scan' && S.model && resolved.some(r => r.from) && !S.replaying) showBoard({ fly: false });
   clearGroup(marksGroup);
@@ -190,13 +213,13 @@ function applyTurn(turn, { animate = true } = {}) {
     const a = world(r.from), b = world(r.to);
     S.callMarks.unshift({ ...r, step: turn.step || '' });
     if ((r.kind === 'wire' || r.kind === 'warn') && a && b) {
-      const id = `${r.kind}:${targetName(S.table, S.model, r.from)}>${targetName(S.table, S.model, r.to)}`;
+      const id = `${r.kind}:${targetName(T(), S.model, r.from)}>${targetName(T(), S.model, r.to)}`;
       const plugA = r.from.on === 'pin' || r.from.on === 'bb', plugB = r.to.on === 'pin' || (r.to.on === 'bb' && r.to.hole.kind !== 'area');
       if (!S.wires.has(id)) {
         const w = makeWire(a, b, { plugA, plugB, warn: r.kind === 'warn' });
         w.userData.id = id; wiresGroup.add(w);
         const mid = w.userData.curve.getPoint(0.5);
-        if (r.kind !== 'warn') { const t = tag(`${targetName(S.table, S.model, r.from)} → ${targetName(S.table, S.model, r.to)}`, 'wire'); t.position.copy(mid); w.add(t); }
+        if (r.kind !== 'warn') { const t = tag(`${targetName(T(), S.model, r.from)} → ${targetName(T(), S.model, r.to)}`, 'wire'); t.position.copy(mid); w.add(t); }
         S.wires.set(id, { ...r, obj: w });
       }
       if (r.kind === 'warn') {
@@ -206,10 +229,10 @@ function applyTurn(turn, { animate = true } = {}) {
       focus.push(a, b);
     } else if (a) {
       const col = r.kind === 'warn' ? COLORS.warn : COLORS.mentor;
-      const rad = r.from.on === 'feature' ? (RING_R[r.from.key] || 3) : 2.0;
+      const rad = r.from.on === 'feature' ? (S.uno.features?.[r.from.key]?.r || RING_R[r.from.key] || 3) : 2.0;
       const ring = r.kind === 'arrow' ? makeArrow(col) : makeRing(col, { radius: rad, warn: r.kind === 'warn' });
       ring.position.copy(a).add(new THREE.Vector3(0, 0.15, 0)); marksGroup.add(ring);
-      const where = r.from.on === 'pin' ? pinInfo(r.from.key, S.model).name : '';
+      const where = r.from.on === 'pin' ? infoFor(r.from.key).name : '';
       const t = tag(r.label || where, r.kind === 'warn' ? 'warn' : 'mentor', where && r.label && !r.label.includes(where.replace(/^D/, '')) ? where : '');
       t.position.copy(a); marksGroup.add(t);
       focus.push(a);
@@ -240,20 +263,20 @@ function renderLists() {
   const cur = new Set(S.current);
   S.callMarks.slice(0, 24).forEach(m => {
     const icon = !m.from ? 'miss' : m.kind === 'warn' ? 'warn' : m.kind === 'wire' ? 'wire' : '';
-    const where = m.to ? `${targetName(S.table, S.model, m.from)} → ${targetName(S.table, S.model, m.to)}` : m.from ? targetName(S.table, S.model, m.from) : 'not on the board';
+    const where = m.to ? `${targetName(T(), S.model, m.from)} → ${targetName(T(), S.model, m.to)}` : m.from ? targetName(T(), S.model, m.from) : 'not on the board';
     ul.append(li(icon, m.label || where, m.to || where === m.label ? '' : where, () => { const p = [world(m.from), world(m.to)].filter(Boolean); if (p.length) flyTo(p); }, ![...cur].some(c => c.label === m.label && c.kind === m.kind)));
   });
   $('marks-empty').hidden = S.callMarks.length > 0;
   const wl = $('wires'); wl.replaceChildren();
   for (const w of S.wires.values()) {
-    wl.append(li(w.kind === 'warn' ? 'warn' : 'wire', `${targetName(S.table, S.model, w.from)} → ${targetName(S.table, S.model, w.to)}`, w.kind === 'warn' ? 'do not connect' : 'jumper',
+    wl.append(li(w.kind === 'warn' ? 'warn' : 'wire', `${targetName(T(), S.model, w.from)} → ${targetName(T(), S.model, w.to)}`, w.kind === 'warn' ? 'do not connect' : 'jumper',
       () => flyTo([world(w.from), world(w.to)].filter(Boolean))));
   }
   $('wires-empty').hidden = S.wires.size > 0;
 }
 function wiringText() {
-  const lines = [...S.wires.values()].map(w => `${targetName(S.table, S.model, w.from)} → ${targetName(S.table, S.model, w.to)} (${w.kind === 'warn' ? 'do not connect: short' : 'jumper'})`);
-  return lines.length ? `${MODEL_NAMES[S.model] || 'Board'} wiring from Ody\n${lines.join('\n')}` : '';
+  const lines = [...S.wires.values()].map(w => `${targetName(T(), S.model, w.from)} → ${targetName(T(), S.model, w.to)} (${w.kind === 'warn' ? 'do not connect: short' : 'jumper'})`);
+  return lines.length ? `${nameOf(S.model)} wiring from Ody\n${lines.join('\n')}` : '';
 }
 
 // ---------- part labels (hologram) and explode ----------
@@ -265,27 +288,31 @@ function updatePartTags() {
     return;
   }
   if (!S.uno || !S.holo || S.explode > 0.01 || S.current.length || !S.model) return;
+  if (S.uno.tags) {   // a library board names its own signature parts
+    for (const [k, text] of S.uno.tags) { const p = S.uno.featurePos(k); if (!p) continue; const t = tag(text, 'part'); t.position.copy(p.add(S.pos)); partTags.add(t); }
+    return;
+  }
   const keys = S.model === 'uno-r4-wifi' ? ['usb', 'esp', 'matrix', 'chip', 'jack'] : ['usb', 'chip', 'jack', 'reset'];
   const F = { usb: 'USB-C', esp: 'ESP32-S3 Wi-Fi', matrix: 'LED matrix', chip: S.model === 'uno-r4-wifi' ? 'RA4M1' : 'ATmega328P', jack: 'Power jack', reset: 'Reset' };
-  for (const k of keys) { const p = S.uno.featurePos(k); if (!p) continue; const t = tag(k === 'usb' && S.model === 'uno-r3' ? 'USB-B' : F[k], 'part'); t.position.copy(p.add(UNO_POS)); partTags.add(t); }
-  const d = S.uno.pinPos('13'); if (d) { const t = tag('Digital pins', 'part'); t.position.copy(S.uno.pinPos('7').add(UNO_POS)); partTags.add(t); }
-  const p = S.uno.pinPos('A2'); if (p) { const t = tag('Analog in', 'part'); t.position.copy(p.add(UNO_POS)); partTags.add(t); }
+  for (const k of keys) { const p = S.uno.featurePos(k); if (!p) continue; const t = tag(k === 'usb' && S.model === 'uno-r3' ? 'USB-B' : F[k], 'part'); t.position.copy(p.add(S.pos)); partTags.add(t); }
+  const d = S.uno.pinPos('13'); if (d) { const t = tag('Digital pins', 'part'); t.position.copy(S.uno.pinPos('7').add(S.pos)); partTags.add(t); }
+  const p = S.uno.pinPos('A2'); if (p) { const t = tag('Analog in', 'part'); t.position.copy(p.add(S.pos)); partTags.add(t); }
 }
 const LAYERS = { pcb: [0, 0], parts: [12, 0], leds: [30, 0], chip: [44, 0], ports: [21, -18], headers: [60, 0] };
 function buildLayerTags() {
   if (!S.uno || S.uno.layerTags) return;
-  const names = S.uno.model === 'uno-r4-wifi'
+  const names = S.uno.layerNames || (S.uno.model === 'uno-r4-wifi'
     ? { pcb: 'Circuit board', parts: 'Regulator, capacitors, reset', leds: 'Status LEDs and 12 × 8 matrix', chip: 'RA4M1 and ESP32-S3', ports: 'USB-C and power jack', headers: 'Headers: digital, power, analog' }
-    : { pcb: 'Circuit board', parts: 'Regulator, capacitors, crystal, reset', leds: 'L, TX, RX and ON LEDs', chip: 'ATmega328P and 16U2', ports: 'USB-B and power jack', headers: 'Headers: digital, power, analog' };
+    : { pcb: 'Circuit board', parts: 'Regulator, capacitors, crystal, reset', leds: 'L, TX, RX and ON LEDs', chip: 'ATmega328P and 16U2', ports: 'USB-B and power jack', headers: 'Headers: digital, power, analog' });
   S.uno.layerTags = [];
   for (const [k, name] of Object.entries(names)) {
-    const t = tag(name, 'layer'); t.position.set(38, 3, 0); t.visible = false; S.uno.layers[k].add(t); S.uno.layerTags.push(t);
+    const t = tag(name, 'layer'); t.position.set(S.uno.W ? S.uno.W / 2 + 4 : 38, 3 + (S.uno.lift || 0), 0); t.visible = false; S.uno.layers[k].add(t); S.uno.layerTags.push(t);
   }
 }
 function setExplode(on) {
   S.explodeTo = on ? 1 : 0; $('t-explode').setAttribute('aria-pressed', String(on));
   if (S.view === 'scan') { flyScan(1.1, on ? 1.45 : 1); return; }
-  if (on) { flyTo([UNO_POS.clone().add(new THREE.Vector3(14, 30, 0))], { radius: 250, phi: 1.22, theta: 0.32 }); }
+  if (on) { flyTo([S.pos.clone().add(new THREE.Vector3(14, 30, 0))], { radius: 250, phi: 1.22, theta: 0.32 }); }
   else flyHome(1.1);
 }
 function stepExplode(dt) {
@@ -309,6 +336,14 @@ function stepExplode(dt) {
 // ---------- camera ----------
 const sph = new THREE.Spherical();
 const HOME = { target: new THREE.Vector3(2, 6, 4), radius: 300, phi: 0.95, theta: 0.18 };
+/** HOME framed for the board in view: the UNO's view, widened for a board that reaches further left (Mega, Pi). */
+function homeView() {
+  const left = S.pos.x - (S.uno?.W ?? 68.58) / 2, extra = Math.max(0, (UNO_POS.x - 68.58 / 2) - left);
+  if (extra) return { ...HOME, target: HOME.target.clone().add(new THREE.Vector3(-extra / 2, 0, 0)), radius: HOME.radius + extra * 1.6 };
+  // a stick-sized board (ESP32, Nano, Pico): come closer, a little toward it
+  if (S.uno?.W && S.uno.W * S.uno.H < 2000) return { ...HOME, target: HOME.target.clone().add(new THREE.Vector3(-14, 4, 0)), radius: 235 };
+  return HOME;
+}
 const WAIT = { target: UNO_POS.clone().add(new THREE.Vector3(0, 4, 0)), radius: 190, phi: 0.95, theta: 0.5 };
 function camState() { sph.setFromVector3(camera.position.clone().sub(controls.target)); return { target: controls.target.clone(), radius: sph.radius, phi: sph.phi, theta: sph.theta }; }
 function setCam(s) { sph.set(s.radius, s.phi, s.theta); camera.position.copy(s.target).add(new THREE.Vector3().setFromSpherical(sph)); controls.target.copy(s.target); camera.lookAt(s.target); }
@@ -320,7 +355,7 @@ function flyTo(points, opts = {}) {
   startFly(now, to, opts.dur ?? 1.3);
 }
 const fit = v => ({ ...v, radius: v.radius * Math.max(1, 1.3 / camera.aspect) });   // portrait screens: step back
-function flyHome(dur = 1.3) { if (S.view === 'scan' && S.scan) { flyScan(dur); return; } startFly(camState(), fit(S.model ? HOME : WAIT), dur); }
+function flyHome(dur = 1.3) { if (S.view === 'scan' && S.scan) { flyScan(dur); return; } startFly(camState(), fit(S.model ? homeView() : WAIT), dur); }
 /** Frames the scanned object: radius from its displayed size and the 30° lens. */
 function flyScan(dur = 1.3, zoom = 1) {
   const b = S.scan.built, sz = b.size.clone().multiplyScalar(b.scale);
@@ -355,7 +390,7 @@ function pickAt(x, y) {   // x, y in stage pixels
   const m = new THREE.Matrix4(); hit.object.getMatrixAt(hit.instanceId, m);
   const pos = new THREE.Vector3().setFromMatrixPosition(m.premultiply(hit.object.matrixWorld));
   if (hit.object.userData.pick === 'pin') {
-    const k = S.uno.pickKeys[hit.instanceId], info = pinInfo(k, S.model || 'uno-r3');
+    const k = S.uno.pickKeys[hit.instanceId], info = infoFor(k);
     const said = S.current.find(c => c.from?.key === k || c.to?.key === k);
     return { pos, title: info.name, body: info.fn, said: said ? `Ody: ${said.label}` : '' };
   }
@@ -446,7 +481,7 @@ function stepHands() {
   else cur.hidden = true;
   if (g.rotate[0] || g.rotate[1] || g.pan[0] || g.pan[1] || g.zoom !== 1 || g.reset) {
     S.fly = null; controls.autoRotate = false;
-    const home = S.model ? HOME : WAIT;
+    const home = S.model ? homeView() : WAIT;
     const now = camState();
     const next = applyToCamera({ ...now, target: now.target.toArray() }, g, { ...home, target: home.target.toArray() });
     if (g.reset) { flyHome(0.9); toast('View reset'); } else setCam({ ...next, target: new THREE.Vector3().fromArray(next.target) });
@@ -461,7 +496,9 @@ function addScan(ev, { show = true } = {}) {
   if (!spec || !Array.isArray(spec.parts) || typeof spec.name !== 'string') return;
   // the photo is our own agent's JPEG; accept only a plain base64 JPEG
   const photo = typeof ev.photo === 'string' && /^[A-Za-z0-9+/=]+$/.test(ev.photo) && ev.photo.length < 3_000_000 ? `data:image/jpeg;base64,${ev.photo}` : '';
-  const known = spec.known_model === 'uno-r3' || spec.known_model === 'uno-r4-wifi' ? spec.known_model : null;
+  // a known board: the scanner's model, or (library boards) the scanned name matched against the part aliases
+  const byName = S.lookup[normAlias(spec.name)];
+  const known = isBoard(spec.known_model) ? spec.known_model : isPart(byName) ? byName : null;
   const entry = { id: S.scans.length + 1, spec, photo, crop: Array.isArray(ev.crop) && ev.crop.length === 4 ? ev.crop.map(Number) : null, known, built: null, at: ev.at || Date.now() };
   S.scans.push(entry);
   if (S.scans.length > 12) { const old = S.scans.shift(); if (old.built) { if (S.scan === old) showBoard({ fly: false }); disposeScan(old.built); } }
@@ -510,7 +547,7 @@ function showBoard({ fly = true } = {}) {
 function renderScans() {
   const ul = $('scans'); ul.replaceChildren();
   const items = [];
-  if (S.model) items.push({ label: MODEL_NAMES[S.model], where: 'board', on: S.view === 'board', go: () => showBoard() });
+  if (S.model) items.push({ label: nameOf(S.model), where: 'board', on: S.view === 'board', go: () => showBoard() });
   for (const e of [...S.scans].reverse()) {
     if (e.known) continue;
     items.push({ label: e.spec.name, where: `${Math.round(e.spec.confidence * 100)}%`, on: S.scan === e, go: () => showScan(e) });
@@ -635,6 +672,10 @@ function frame(now) {
   setHolo(true);
   resize(); setCam(fit(WAIT)); controls.autoRotate = !REDUCED; controls.autoRotateSpeed = 0.8;
   try { S.table = await loadPins(); } catch (e) { toast('Pin table missing: the twin can’t place pins'); console.warn(e); return; }
+  try {   // the other boards (twin/parts.json, generated from data/parts); without it the twin stays UNO-only
+    const r = await fetch('/twin/parts.json');
+    if (r.ok) { const b = await r.json(); if (b?.parts && typeof b.parts === 'object') { S.parts = b.parts; S.lookup = b.lookup || {}; } }
+  } catch (e) { console.warn('[twin] parts', e); }
   S.bb = buildBreadboard(); S.bb.group.position.copy(BB_POS); S.bb.group.visible = false; decorate(S.bb.group); twin.add(S.bb.group); applyLook(S.bb.group);
   showModel('uno-r3');
   resize();
@@ -647,10 +688,13 @@ function frame(now) {
 window.mentorTwin = {
   showScan: i => { const e = S.scans[i]; if (e && !e.known) showScan(e); else showBoard(); },
   setLook: holo => setHolo(!!holo),
+  boardState: () => ({ model: S.model, built: S.uno?.model || null, pins: S.uno?.pickKeys.length || 0, name: S.model ? nameOf(S.model) : '', part: $('part').textContent, sub: $('partsub').textContent,
+    meshes: (() => { let n = 0; S.uno?.group.traverse(o => { if (o.isMesh) n++; }); return n; })(), flying: !!S.fly, explode: S.explode }),
+  pinTip: k => infoFor(k),
   scanState: () => ({ view: S.view, scans: S.scans.map(e => ({ name: e.spec.name, known: e.known, parts: e.spec.parts.length })), current: S.scan?.spec.name || null,
     flying: !!S.fly, meshes: S.scan?.built.meshes.length || 0, photoLoaded: !!S.scan?.built.atlas.userData.photo, explode: S.explode, fps: stats.fps }),
   state: () => ({ model: S.model, holo: S.holo, explode: S.explode, wires: [...S.wires.keys()], marks: S.current.map(c => ({ label: c.label, kind: c.kind, from: c.from, to: c.to })), fps: stats.fps, ms: stats.ms, step: S.step }),
-  pinWorld: k => S.uno?.pinPos(k)?.add(UNO_POS).toArray(),
-  pinScreen: k => { const p = S.uno?.pinPos(k)?.add(UNO_POS).project(camera); const r = stage.getBoundingClientRect(); return p && [r.left + (p.x + 1) / 2 * r.width, r.top + (1 - p.y) / 2 * r.height]; },
+  pinWorld: k => S.uno?.pinPos(k)?.add(S.pos).toArray(),
+  pinScreen: k => { const p = S.uno?.pinPos(k)?.add(S.pos).project(camera); const r = stage.getBoundingClientRect(); return p && [r.left + (p.x + 1) / 2 * r.width, r.top + (1 - p.y) / 2 * r.height]; },
   exportBytes: async () => { const b = new Uint8Array(await exportGlb()); return { magic: String.fromCharCode(...b.slice(0, 4)), length: b.length }; },
 };

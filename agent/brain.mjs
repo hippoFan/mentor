@@ -1,5 +1,6 @@
 // Mentor's brain (Claude version): Claude Fable 5.2 sees the caller's latest camera frame plus what they said, and answers with
 // what to say out loud, where to point on the frame, and the current step. One request per user turn.
+import { readFileSync } from 'node:fs';
 import Anthropic from '@anthropic-ai/sdk';
 import { MARKS_ON_DEMAND, OVERLAY } from './overlay-policy.mjs';
 import { SCAN_SCHEMA, sanitizeScan, scanSystem } from './scan.mjs';
@@ -27,6 +28,29 @@ You are named for Homer's Odyssey. Act like Mentor, whose shape Athena took to g
 guide: calm, encouraging, never doing the work for them. At most one light Odyssey touch in a whole call (for example
 when they finish: "you made it home"), never forced, never in the middle of an instruction.`;
 
+// ---------- boards the brain can name (data/parts) ----------
+const readJson = p => JSON.parse(readFileSync(new URL(p, import.meta.url), 'utf8'));
+const PARTS = readJson('./data/parts/index.json').parts;
+const ORIENT = readJson('./data/parts/orientation.json');
+/** board.model values: the UNO's two variants, every other part id in data/parts, then "other" / "none". */
+export const BOARD_IDS = ['uno-r3', 'uno-r4-wifi', ...Object.keys(PARTS).filter(id => id !== 'arduino-uno')];
+const REGISTRABLE = BOARD_IDS.filter(id => ORIENT[id]?.corners);
+/** One line per registrable board (not the UNO, which has its own full rule): how to recognise it, corners A/B, pin names. */
+export function boardTable() {
+  return REGISTRABLE.filter(id => !id.startsWith('uno-')).map(id => {
+    const o = ORIENT[id];
+    return `- ${id}: ${o.look}. A = ${o.cornerA}; B = ${o.cornerB}. Pins: ${o.pinNames}.`;
+  }).join('\n');
+}
+/** The full corner rule for one board family (all four corners and its edges), or "" (UNO, unknown, none). */
+export function boardNote(model) {
+  const o = ORIENT[model];
+  if (!o?.corners) return '';
+  const e = Object.entries(o.edges || {}).map(([k, v]) => `${k}: ${v}`).join('; ');
+  return `${model} corners: A = ${o.cornerA}; B = ${o.cornerB}; C = ${o.cornerC}; D = ${o.cornerD}. Edges (drawn with A top-left): ${e}. Pins: ${o.pinNames}.`;
+}
+const OTHER_PARTS = BOARD_IDS.filter(id => !id.startsWith('uno-') && !ORIENT[id]?.corners);
+
 /** How marks are expressed differs per model: Claude in image pixels, Gemini in its native 0-1000 grid. */
 export const pointingRules = units => `Pointing: "marks" are drawn on their live video. Use at most 3 for a step, or up to 6
 when they ask what things are or you first see their setup (label every main part you can see: the board, breadboard
@@ -39,19 +63,24 @@ the hole or pin it goes into; Ody draws the wire in place on their video. For no
 First identify the exact board or part from what you see (e.g. Arduino UNO R3 vs UNO R4 WiFi: different USB ports,
 USB-B vs USB-C, and LED positions) and point at that board's real parts, never a generic layout.
 Header pins: you cannot hit a 2.54 mm hole by eye, so Ody places pins itself from the board outline. Whenever a mark
-or wire end is an Arduino UNO header pin, ALWAYS set "pin" (and "pin2" for a wire's x2,y2 end) to its name as printed:
-"13", "12", ..., "0", "GND", "AREF", "SDA", "SCL", "IOREF", "RESET", "3.3V", "5V", "VIN", "A0" ... "A5"; your x,y is
-only a fallback. Use "" for a point that is not a header pin (a breadboard hole, a sensor leg, a resistor lead, a port).
-"board": whenever an Arduino UNO (R3 or R4 WiFi; same outline and headers) is in view, set "model" ("uno-r3" or
-"uno-r4-wifi") and "corners": the 4 corners of the blue PCB itself, each ${units}, as [x, y], in this order:
+or wire end is a header pin of the board you identified, ALWAYS set "pin" (and "pin2" for a wire's x2,y2 end) to its name;
+your x,y is only a fallback. Arduino UNO names as printed: "13", "12", ..., "0", "GND", "AREF", "SDA", "SCL", "IOREF",
+"RESET", "3.3V", "5V", "VIN", "A0" ... "A5"; other boards: see "Pins:" below. Use "" for a point that is not a header pin
+(a breadboard hole, a sensor leg, a resistor lead, a port).
+"board": the main board in view. Set "model" to its id and "corners" to the 4 corners of the PCB itself, each ${units},
+as [x, y]. Arduino UNO (R3 or R4 WiFi; same outline and headers): model "uno-r3" or "uno-r4-wifi", corners in this order:
 A = the corner where the USB-connector edge meets the long edge with the digital header (pins 0-13, GND, AREF);
 B = the other end of that digital-header edge (next to pins 1/TX and 0/RX);
 C = the end of the opposite long edge (the power + analog header) next to A5;
 D = the corner where the USB/barrel-jack edge meets that power-header edge (next to the round barrel jack).
-Find the orientation from features (USB port + barrel jack on one short edge; digital header along one long edge;
-POWER and ANALOG IN header along the other), not from where the board sits in the picture. Give the PCB corner, not the
-tip of the USB connector. If a corner is just outside the picture, estimate where it is. Be precise: Ody maps every pin
-from these 4 points. Use model "other" for any other board and "none" when no board is in view; then "corners" is [].
+Other boards (id: how to recognise it; corners A and B; pin names). C and D continue clockwise as seen from above
+(components up), so C is the corner after B going clockwise:
+${boardTable()}
+Find the orientation from features (ports, headers, antenna), not from where the board sits in the picture. Give the
+PCB corner, not the tip of a connector. If a corner is just outside the picture, estimate where it is. Be precise: Ody
+maps every pin from these 4 points. A part that is not one of these boards (${OTHER_PARTS.join(', ')}) may be "model"
+when it is the main thing in view; then "corners" is []. Use model "other" for any other board and "none" when no board
+is in view; then "corners" is [].
 "step" is a short title for the current step (max 8 words). Set "done" true only when the whole task is finished.
 "note" is one line for the after-call recap (what was done or decided this turn), or empty.${OVERLAY === 'demand' ? `\n${MARKS_ON_DEMAND}` : ''}`;
 
@@ -76,17 +105,17 @@ export const SCHEMA = {
           kind: { type: 'string', enum: ['arrow', 'circle', 'wire', 'warn'] },
           x2: { type: 'integer' },   // wire only: where the wire goes in; -1 otherwise
           y2: { type: 'integer' },
-          pin: { type: 'string' },    // UNO header pin at x,y ("13", "GND", "5V", "A0"...), "" if not a header pin
+          pin: { type: 'string' },    // header pin at x,y ("13", "GND", "GPIO17", "D5"...), "" if not a header pin
           pin2: { type: 'string' },   // wire only: header pin at x2,y2, else ""
         },
       },
     },
-    board: {   // the UNO's 4 PCB corners (A..D, see pointingRules); model "none"/"other" with corners [] otherwise
+    board: {   // the board's id and 4 PCB corners (A..D, see pointingRules); model "none"/"other" with corners [] otherwise
       type: 'object',
       additionalProperties: false,
       required: ['model', 'corners'],
       properties: {
-        model: { type: 'string', enum: ['uno-r3', 'uno-r4-wifi', 'other', 'none'] },
+        model: { type: 'string', enum: [...BOARD_IDS, 'other', 'none'] },
         corners: { type: 'array', items: { type: 'array', items: { type: 'integer' } } },
       },
     },
@@ -177,6 +206,8 @@ export class ClaudeBrain {
     } else {
       content.push({ type: 'text', text: '[no camera frame available]' });
     }
+    const note = boardNote(this.lastBoard);   // the full corner rule for the board seen last turn (the table is in SYSTEM)
+    if (note && image) content.push({ type: 'text', text: `[board seen last turn: ${note}]` });
     content.push({ type: 'text', text: `Caller said: ${heard}` });
     const t0 = Date.now();
     // The user turn is appended only together with a successful answer, so a failed request leaves history valid.
@@ -203,6 +234,7 @@ export class ClaudeBrain {
 
     normalizeReply(out, image?.width || 1, image?.height || 1, Boolean(image));
     sanitizeReply(out);
+    if (out.board.model !== 'none') this.lastBoard = out.board.model;
     out.ms = ms;
     console.log(`[brain] ${ms}ms in=${response.usage?.input_tokens} cached=${response.usage?.cache_read_input_tokens} out=${response.usage?.output_tokens}`);
     return out;

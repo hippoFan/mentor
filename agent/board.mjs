@@ -1,20 +1,23 @@
-// Board registration: turns "pin 13" into the exact header hole on the caller's video.
-// The brain gives the 4 PCB corners of an Arduino UNO (R3 / R4 WiFi share the form factor); a homography maps board
-// millimetres to the image, and a pose recovered from it (assumed phone focal length) lifts points off the board plane:
-// header holes sit on top of 8.5 mm female headers, and wires arc up out of the board.
-// Pin geometry: data/uno-pins.json (from wokwi-elements, MIT; snapped to the official 0.1" grid).
+// Board registration: turns "pin 13" / "GPIO17" / "D5" into the exact header hole or pin on the caller's video.
+// The brain gives the 4 PCB corners of a known board; a homography maps board millimetres to the image, and a pose
+// recovered from it (assumed phone focal length) lifts points off the board plane: UNO / Mega holes sit on top of 8.5 mm
+// female headers, Pi pins stick up 8.5 mm, Nano / ESP32 / Pico pins point down (z ~ 1 mm: the solder joint on top).
+// Pin geometry: data/uno-pins.json (UNO, from wokwi-elements, MIT; snapped to the official 0.1" grid) and
+// data/parts/<id>.json for every other board, with the corner order in data/parts/orientation.json.
 //
-//   const b = createBoard(cornersPx, { w, h });   // null if the quad is not a believable UNO
-//   b.pinPoint('13')  -> [x, y] normalised image point of the D13 hole (top of the header)
-//   resolveMarks(marks, b, { w, h })               // marks with pin/pin2 snapped to their holes
+//   const b = createBoard(cornersPx, { w, h }, 'raspberry-pi-4');   // null if the quad is not a believable board
+//   b.pinPoint('GPIO17') -> [x, y] normalised image point of that pin (top of the header)
+//   resolveMarks(marks, b)                                           // marks with pin/pin2 snapped to their holes
 import { readFileSync } from 'node:fs';
+import { partTable, UNO_MODELS } from './twin/partpins.js';
 
-export const UNO = JSON.parse(readFileSync(new URL('./data/uno-pins.json', import.meta.url), 'utf8'));
-export const BOARD_MODELS = new Set(UNO.models);
-const CORNERS = ['A', 'B', 'C', 'D'].map(k => UNO.corners[k]);
-const BW = UNO.corners.B[0], BH = UNO.corners.A[1];
+const json = p => JSON.parse(readFileSync(new URL(p, import.meta.url), 'utf8'));
+export const UNO = json('./data/uno-pins.json');
+const PART_INDEX = json('./data/parts/index.json');
+const ORIENT = json('./data/parts/orientation.json');
+const UNO_CORNERS = ['A', 'B', 'C', 'D'].map(k => UNO.corners[k]);
 
-/** Canonical pin key ("13", "GND.1", "5V", "A0"...) for what a model or person might write, or null. */
+/** Canonical UNO pin key ("13", "GND.1", "5V", "A0"...) for what a model or person might write, or null. */
 export function pinName(s) {
   if (s == null) return null;
   let k = String(s).trim().toUpperCase().replace(/\s+/g, '').replace(/^PIN/, '');
@@ -24,6 +27,49 @@ export function pinName(s) {
   k = UNO.aliases[k] || k;
   return Object.hasOwn(UNO.pins, k) ? k : null;
 }
+
+/** Tracker points (board mm): the 4 corners plus a textured interior grid. */
+const trackGrid = (corners, W, H) => {
+  const [nu, nv] = W >= H ? [5, 3] : [3, 5];
+  const out = [...corners];
+  for (let i = 0; i < nu; i++) for (let j = 0; j < nv; j++) out.push([W * (0.15 + 0.7 * i / (nu - 1)), H * (0.22 + 0.56 * j / (nv - 1))]);
+  return out;
+};
+
+/**
+ * One registrable board: pins (u, v mm), corners A..D (u, v mm), header height, and its pin-name resolver.
+ * @typedef {{id: string, name: string, W: number, H: number, pins: Record<string, {u: number, v: number}>, corners: number[][],
+ *   headerTop: number, polarity: number, key: (name: any) => string | null, track: number[][]}} BoardSpec
+ */
+/** @type {BoardSpec} */
+const UNO_SPEC = {
+  id: 'arduino-uno', name: 'Arduino UNO', W: UNO.corners.B[0], H: UNO.corners.A[1], pins: UNO.pins, corners: UNO_CORNERS,
+  headerTop: UNO.headerTop, polarity: 1, key: pinName,
+  track: [...UNO_CORNERS, ...[10, 22, 34, 46, 58].flatMap(u => [12, 24, 36].map(v => [u, v]))],
+};
+const SPECS = new Map();
+/** The board spec for a model id ("uno-r3", "raspberry-pi-4", ...), or null if it can't be registered. */
+export function boardSpec(model) {
+  if (model && typeof model === 'object' && model.pins) return model;
+  if (UNO_MODELS.includes(model) || model === 'arduino-uno') return UNO_SPEC;
+  if (SPECS.has(model)) return SPECS.get(model);
+  const entry = PART_INDEX.parts[model], o = ORIENT[model];
+  if (!entry || !o?.corners) return null;
+  const t = partTable(json(`./data/parts/${entry.file}`), o);
+  const corners = ['A', 'B', 'C', 'D'].map(k => t.corners[k]);
+  const spec = { id: model, name: t.name, W: t.W, H: t.H, pins: t.pins, corners, headerTop: t.headerTop, polarity: t.polarity,
+    key: name => t.resolve(name), info: t.info, track: trackGrid(corners, t.W, t.H) };
+  SPECS.set(model, spec);
+  return spec;
+}
+/** Every model the brain can name for which pins can be registered. */
+export const BOARD_MODELS = new Set([...UNO.models, 'arduino-uno', ...Object.keys(ORIENT).filter(k => !k.startsWith('_') && PART_INDEX.parts[k])]);
+
+// The board the tracker is following. tracker.mjs re-fits with boardFromH(H, size) and seeds TRACK_POINTS, without
+// knowing the model, so boardFromReply (its seed) sets both here. One call at a time per agent process.
+let current = UNO_SPEC;
+/** Points on the current board (mm) for the tracker to follow (live binding: changes with the board in view). */
+export let TRACK_POINTS = UNO_SPEC.track;
 
 // ---------- small linear algebra ----------
 
@@ -109,14 +155,18 @@ export function homography(src, dst, weights) {
 const cross = (o, a, b) => (a[0] - o[0]) * (b[1] - o[1]) - (a[1] - o[1]) * (b[0] - o[0]);
 
 /**
- * A registered UNO from its image homography (board mm -> image px).
+ * A registered board from its image homography (board mm -> image px).
  * @param {number[]} H  @param {{w:number,h:number}} size frame size in px
- * @returns {object | null} null when the homography is not a believable view of an UNO
+ * @param {string | BoardSpec} [model] defaults to the board the tracker is following (the UNO until another is seeded)
+ * @returns {object | null} null when the homography is not a believable view of that board
  */
-export function boardFromH(H, size) {
+export function boardFromH(H, size, model = current) {
   if (!H || !H.every(Number.isFinite)) return null;
+  const spec = boardSpec(model);
+  if (!spec) return null;
   const { w, h } = size;
-  const quad = CORNERS.map(([u, v]) => apply(H, u, v));
+  const BW = spec.W, BH = spec.H;
+  const quad = spec.corners.map(([u, v]) => apply(H, u, v));
   if (!quad.every(([x, y]) => Number.isFinite(x) && Number.isFinite(y))) return null;
   // Convex and clockwise on screen (y down) as A -> B -> C -> D: we always see the board's top face, never its mirror.
   for (let i = 0; i < 4; i++) if (cross(quad[i], quad[(i + 1) % 4], quad[(i + 2) % 4]) <= 0) return null;
@@ -148,44 +198,50 @@ export function boardFromH(H, size) {
   const pxPerMm = Math.sqrt(area / (BW * BH));
   const camDist = Math.hypot(BW / 2 * r1[0] + BH / 2 * r2[0] + t[0], BW / 2 * r1[1] + BH / 2 * r2[1] + t[1], BW / 2 * r1[2] + BH / 2 * r2[2] + t[2]);
   return {
-    H, Hinv, w, h, quad, pxPerMm, camDist,
+    H, Hinv, w, h, quad, pxPerMm, camDist, part: spec,
     /** board mm (z mm above the top face) -> image px */
     project,
     /** board mm -> normalised image point */
     norm: (u, v, z = 0) => { const [x, y] = project(u, v, z); return [x / w, y / h]; },
     /** normalised image point -> board mm on the z=0 plane */
     toBoard: (nx, ny) => (Hinv ? apply(Hinv, nx * w, ny * h) : null),
-    pin: name => { const k = pinName(name); return k ? UNO.pins[k] : null; },
-    /** Normalised image point of a header hole (top of the female header). */
-    pinPoint(name) { const p = this.pin(name); return p ? this.norm(p.u, p.v, UNO.headerTop) : null; },
+    /** Canonical pin key on this board, or null. */
+    pinKey: name => spec.key(name),
+    pin: name => { const k = spec.key(name); return k ? spec.pins[k] : null; },
+    /** Normalised image point of a pin: top of the female header / male pin, or the solder joint on top. */
+    pinPoint(name) { const p = this.pin(name); return p ? this.norm(p.u, p.v, spec.headerTop) : null; },
     corners: () => quad.map(([x, y]) => [x / w, y / h]),
   };
 }
 
 /**
- * @param {number[][]} corners 4 points [x, y] normalised 0..1 (A, B, C, D as defined in uno-pins.json)
+ * @param {number[][]} corners 4 points [x, y] normalised 0..1 (A, B, C, D as defined in uno-pins.json / orientation.json)
  * @param {{w:number,h:number}} size frame size in px (aspect matters for the pose)
+ * @param {string | BoardSpec} [model] board model id (default: the UNO)
  */
-export function createBoard(corners, size) {
-  if (!Array.isArray(corners) || corners.length !== 4) return null;
+export function createBoard(corners, size, model = 'uno-r3') {
+  const spec = boardSpec(model);
+  if (!spec || !Array.isArray(corners) || corners.length !== 4) return null;
   const dst = corners.map(c => [Number(c?.[0]) * size.w, Number(c?.[1]) * size.h]);
   if (!dst.every(([x, y]) => Number.isFinite(x) && Number.isFinite(y))) return null;
-  return boardFromH(homography(CORNERS, dst), size);
+  return boardFromH(homography(spec.corners, dst), size, spec);
 }
 
 /**
- * Board from a brain reply's `board` field, or null (not an UNO, no corners, or an implausible quad).
- * With the frame the brain saw, the corners are first snapped to the header holes in the picture (refineCorners).
+ * Board from a brain reply's `board` field, or null (not a known board, no corners, or an implausible quad).
+ * With the frame the brain saw, the corners are first snapped to the header holes / pins in the picture (refineCorners).
+ * Also makes this the board the tracker follows (boardFromH's default and TRACK_POINTS).
  */
 export function boardFromReply(board, size, frame = null) {
   if (!board || !BOARD_MODELS.has(board.model)) return null;
-  const corners = frame ? refineCorners(frame, board.corners).corners : board.corners;
-  return createBoard(corners, size);
+  const spec = boardSpec(board.model);
+  current = spec; TRACK_POINTS = spec.track;
+  const corners = frame ? refineCorners(frame, board.corners, spec).corners : board.corners;
+  return createBoard(corners, size, spec);
 }
 
 // ---------- snapping the model's corners to the real header holes ----------
 
-const PIN_LIST = Object.values(UNO.pins);
 /** Luma of an RGBA frame as Float32 (0..255). */
 function luma(frame) {
   const { data, width: w, height: h } = frame, out = new Float32Array(w * h);
@@ -202,36 +258,38 @@ const CORE = [[0, 0], [0.25, 0], [-0.25, 0], [0, 0.25], [0, -0.25]];
 const RIM = [[1.27, 0], [-1.27, 0], [0, 1.0], [0, -1.0], [1.27, 1.0], [-1.27, 1.0], [1.27, -1.0], [-1.27, -1.0]];
 
 /**
- * How well a board's header holes line up with dark holes in the picture: mean (rim - hole) brightness, normalised by
- * the local contrast. Higher is better.
+ * How well a board's header holes line up with dark holes in the picture (or, for male pins / solder joints, bright
+ * points: spec.polarity -1): mean (rim - hole) brightness, normalised by the local contrast. Higher is better.
  */
 function holeScore(img, b) {
+  const { pins, headerTop, polarity } = b.part;
   let s = 0, n = 0;
-  for (const p of PIN_LIST) {
+  for (const p of Object.values(pins)) {
     let c = 0, r = 0, r2 = 0, ok = true;
-    for (const [du, dv] of CORE) { const [x, y] = b.project(p.u + du, p.v + dv, UNO.headerTop); const v = sample(img, x, y); if (Number.isNaN(v)) { ok = false; break; } c += v; }
+    for (const [du, dv] of CORE) { const [x, y] = b.project(p.u + du, p.v + dv, headerTop); const v = sample(img, x, y); if (Number.isNaN(v)) { ok = false; break; } c += v; }
     if (!ok) continue;
-    for (const [du, dv] of RIM) { const [x, y] = b.project(p.u + du, p.v + dv, UNO.headerTop); const v = sample(img, x, y); if (Number.isNaN(v)) { ok = false; break; } r += v; r2 += v * v; }
+    for (const [du, dv] of RIM) { const [x, y] = b.project(p.u + du, p.v + dv, headerTop); const v = sample(img, x, y); if (Number.isNaN(v)) { ok = false; break; } r += v; r2 += v * v; }
     if (!ok) continue;
     c /= CORE.length; r /= RIM.length;
     const sd = Math.sqrt(Math.max(0, r2 / RIM.length - r * r));
-    s += (r - c) / (12 + sd); n++;
+    s += polarity * (r - c) / (12 + sd); n++;
   }
   return n >= 12 ? s / n : -Infinity;
 }
 
 /**
- * Snaps the brain's 4 corners (normalised) so the 31 header holes land on the dark holes in `frame`: a translation
- * grid search, then coordinate descent on all 8 corner coordinates, bounded to ~3 mm. Keeps the model's corners when
- * the holes cannot be seen (no clear gain).
+ * Snaps the brain's 4 corners (normalised) so the header holes (UNO: 31) land on the holes / pins in `frame`: a
+ * translation grid search, then coordinate descent on all 8 corner coordinates, bounded to ~3 mm. Keeps the model's
+ * corners when the holes cannot be seen (no clear gain).
+ * @param {string | BoardSpec} [model] board model id (default: the UNO)
  * @returns {{ corners: number[][], gain: number, moved: number }} gain = score improvement, moved = max corner shift in mm
  */
-export function refineCorners(frame, corners) {
+export function refineCorners(frame, corners, model = 'uno-r3') {
   const size = { w: frame.width, h: frame.height };
-  const b0 = createBoard(corners, size);
+  const b0 = createBoard(corners, size, model);
   if (!b0) return { corners, gain: 0, moved: 0 };
   const img = luma(frame);
-  const at = c => { const b = createBoard(c, size); return b ? holeScore(img, b) : -Infinity; };
+  const at = c => { const b = createBoard(c, size, model); return b ? holeScore(img, b) : -Infinity; };
   const mm = b0.pxPerMm, start = holeScore(img, b0);
   const toPx = c => c.map(([x, y]) => [x * size.w, y * size.h]), toN = c => c.map(([x, y]) => [x / size.w, y / size.h]);
   const orig = toPx(corners);
@@ -269,18 +327,12 @@ export function refineCorners(frame, corners) {
 export function resolveMarks(marks, board) {
   return (marks || []).map(m => {
     const n = { ...m };
-    const k1 = board ? pinName(m.pin) : null, k2 = board && m.kind === 'wire' ? pinName(m.pin2) : null;
+    const k1 = board ? board.pinKey(m.pin) : null, k2 = board && m.kind === 'wire' ? board.pinKey(m.pin2) : null;
     if (k1) { [n.x, n.y] = board.pinPoint(k1); n.pinKey = k1; }
     if (k2) { [n.x2, n.y2] = board.pinPoint(k2); n.pin2Key = k2; }
     return n;
   });
 }
-
-/** Points on the board (mm) for the tracker to follow: the 4 corners plus a textured interior grid. */
-export const TRACK_POINTS = [
-  ...CORNERS,
-  ...[10, 22, 34, 46, 58].flatMap(u => [12, 24, 36].map(v => [u, v])),
-];
 
 // ---------- 3D jumper geometry ----------
 
@@ -297,7 +349,7 @@ const TUBE = 1.9;         // mm: cable diameter
 export function wireGeometry(board, a, b) {
   if (!board) return null;
   const end = e => {
-    if (e.pin) { const p = UNO.pins[e.pin]; return p ? { u: p.u, v: p.v, z: UNO.headerTop, pin: true } : null; }
+    if (e.pin) { const p = board.part.pins[e.pin]; return p ? { u: p.u, v: p.v, z: board.part.headerTop, pin: true } : null; }
     const q = board.toBoard(e.x, e.y);
     return q && q.every(Number.isFinite) ? { u: q[0], v: q[1], z: 0, pin: false } : null;
   };

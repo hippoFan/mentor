@@ -40,6 +40,7 @@ export function pinInfo(key, model = 'uno-r3') {
  */
 export function pinKey(table, name, near) {
   if (name == null) return null;
+  if (table.resolve) return table.resolve(name, near);   // a library board (partpins.js)
   let s = String(name).trim().replace(/^(?:pin|arduino pin|uno pin)\s*/i, '').replace(/\s+/g, '');
   if (!s) return null;
   if (/^d\d{1,2}$/i.test(s)) s = s.slice(1);
@@ -135,19 +136,33 @@ export const FEATURES = {
 const FEATURE_WORDS = [
   [/usb|cable|computer|port/i, 'usb'], [/barrel|dc jack|power jack|wall adapter|9\s?v/i, 'jack'],
   [/matrix/i, 'matrix'], [/esp32|wi-?fi module|wireless/i, 'esp'], [/qwiic|stemma/i, 'qwiic'],
-  [/16u2/i, 'usbchip'], [/atmega|ra4m1|chip|processor|micro\s?controller|\bmcu\b|brain/i, 'chip'],
+  [/16u2/i, 'usbchip'], [/wi-?fi|cyw43/i, 'wifi'], [/atmega|ra4m1|chip|processor|micro\s?controller|\bmcu\b|brain/i, 'chip'],
   [/\bL\b.*(?:led|light)|\bL$|built-?in led|led_builtin|L light/i, 'led_l'], [/\btx\b/i, 'led_tx'], [/\brx\b/i, 'led_rx'],
   [/\bon\b.*(?:led|light)|power (?:led|light)|^power$/i, 'led_on'], [/reset/i, 'reset'], [/icsp/i, 'icsp'],
   [/crystal|oscillator/i, 'crystal'], [/regulator/i, 'reg'], [/arduino|uno|the board|your board/i, 'board'],
+  // library boards (parts3d.js); the UNO has none of these keys, so its matches above are unchanged
+  [/hdmi\s?-?1|second hdmi|hdmi 2/i, 'hdmi1'], [/hdmi/i, 'hdmi0'], [/ethernet|rj-?45|\blan\b|network/i, 'ethernet'],
+  [/usb\s?-?3|blue usb/i, 'usb3'], [/usb\s?-?2|black usb|usb-?a/i, 'usb2'], [/usb-?c|type-?c|power (?:port|in)/i, 'usbc'],
+  [/audio|headphone|3\.5\s?mm/i, 'audio'], [/gpio|40-?pin|pin header/i, 'gpio'], [/micro\s?sd|sd card|\bsd\b/i, 'sd'],
+  [/camera|\bcsi\b/i, 'csi'], [/display|\bdsi\b/i, 'dsi'], [/\bram\b|memory|lpddr/i, 'ram'], [/antenna/i, 'antenna'],
+  [/wroom|esp-?12|module|shield/i, 'esp'], [/bootsel/i, 'bootsel'], [/\bboot\b|flash button|\bflash\b.*button/i, 'boot'],
+  [/\ben\b|enable|\brst\b/i, 'en'], [/wi-?fi|cyw43|wireless|bluetooth/i, 'wifi'], [/\bflash\b/i, 'flash'], [/debug|\bswd\b/i, 'debug'],
+  [/\bled\b|light/i, 'led_l'], [/raspberry|\bpi\b|pico|esp32|esp8266|nodemcu|nano|mega|devkit/i, 'board'],
 ];
-export function featureFor(label, model) {
-  const f = FEATURES[model] || FEATURES['uno-r3'];
+/** Feature key named in a label, among `feats` (a library board's features) or the UNO model's. */
+export function featureFor(label, model, feats) {
+  const f = feats || FEATURES[model] || FEATURES['uno-r3'];
   for (const [re, k] of FEATURE_WORDS) if (re.test(label || '') && f[k]) return k;
   return null;
 }
 /** Pin named inside a free-text label ("Pin 13", "GND", "5V", "A0"), or null. */
 export function pinFromLabel(table, label) {
   const s = String(label || '');
+  if (table.resolve) {   // library board: try each pin-like word ("GPIO17", "pin 11", "D5", "GP15", "3V3", "GND")
+    const re = /\b(?:GPIO\s?\d{1,2}|GP\d{1,2}|D\d{1,2}|A\d{1,2}|pin\s*\d{1,2}|3V3|3\.3\s?V|5\s?V|GND|VIN|VBUS|VSYS|SDA|SCL|TX\d?|RX\d?|VP|VN)\b/gi;
+    for (const m of s.matchAll(re)) { const k = table.resolve(m[0]); if (k) return k; }
+    return null;
+  }
   let m = s.match(/\b(?:pin|d)\s*(\d{1,2})\b/i) || s.match(/^\s*(\d{1,2})\s*$/);
   if (m) return pinKey(table, m[1]);
   m = s.match(/\b(A[0-5])\b/); if (m) return pinKey(table, m[1]);
@@ -155,11 +170,16 @@ export function pinFromLabel(table, label) {
   return null;
 }
 
-/** Which board this is, from a turn's `board`, a `part` event, or (last resort) the words in Mentor's marks. */
-export function inferModel({ board, part, marks } = {}) {
-  const ok = m => m === 'uno-r3' || m === 'uno-r4-wifi';
+/**
+ * Which board this is, from a turn's `board`, a `part` event, or (last resort) the words in Mentor's marks.
+ * `known`: extra model ids the twin can show (library boards); the words only ever pick an UNO, and not while
+ * `current` is a library board.
+ */
+export function inferModel({ board, part, marks } = {}, known = [], current = null) {
+  const ok = m => m === 'uno-r3' || m === 'uno-r4-wifi' || known.includes(m);
   if (board && !Array.isArray(board) && ok(board.model)) return board.model;
   if (part && ok(part.model)) return part.model;
+  if (current && known.includes(current)) return null;
   const text = (marks || []).map(m => m.label).join(' ');
   if (/usb-?c|\br4\b|wi-?fi|matrix|esp32|ra4m1/i.test(text)) return 'uno-r4-wifi';
   if (/usb-?b|\br3\b|atmega|16u2/i.test(text)) return 'uno-r3';
@@ -215,12 +235,13 @@ export function resolveEnd(table, model, { pin, label, x, y, other, H, preferBb 
   if (!preferBb) {
     const lp = pinFromLabel(table, label);
     if (lp) return { on: 'pin', key: pinKey(table, lp, near) };
-    const f = featureFor(label, model);
+    const f = featureFor(label, model, table.features);
     if (f && f !== 'board') return { on: 'feature', key: f };
   }
   if (H && x >= 0 && y >= 0) {
     const [u, v] = applyH(H, x, y);
-    if (u > -8 && u < BOARD_W + 2 && v > -2 && v < BOARD_H + 2) return { on: 'board', u, v };
+    const bw = table.W || BOARD_W, bh = table.H || BOARD_H;
+    if (u > -8 && u < bw + 2 && v > -2 && v < bh + 2) return { on: 'board', u, v };
   }
   return null;
 }
@@ -253,8 +274,8 @@ export function resolveMarks(table, model, marks, board) {
 /** Human name of a target, for the wiring list ("13", "breadboard J10", "USB-C port"). */
 export function targetName(table, model, t) {
   if (!t) return '?';
-  if (t.on === 'pin') return pinInfo(t.key, model).name.replace(/^D(\d)/, '$1');
+  if (t.on === 'pin') return table.info ? (/^\d+$/.test(t.key) ? t.key : table.info(t.key).name) : pinInfo(t.key, model).name.replace(/^D(\d)/, '$1');
   if (t.on === 'bb') return t.hole.kind === 'area' ? 'breadboard' : t.hole.kind === 'rail' ? `breadboard ${t.hole.key}` : `breadboard ${t.hole.key}`;
-  if (t.on === 'feature') return (FEATURES[model] || FEATURES['uno-r3'])[t.key]?.name || t.key;
+  if (t.on === 'feature') return (table.features || FEATURES[model] || FEATURES['uno-r3'])[t.key]?.name || t.key;
   return 'board';
 }

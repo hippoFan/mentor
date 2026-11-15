@@ -5,7 +5,7 @@ import { strict as assert } from 'node:assert';
 
 const DIR = new URL('../data/parts/', import.meta.url);
 const load = f => JSON.parse(readFileSync(new URL(f, DIR), 'utf8'));
-const files = readdirSync(DIR).filter(f => f.endsWith('.json') && f !== 'index.json');
+const files = readdirSync(DIR).filter(f => f.endsWith('.json') && f !== 'index.json' && f !== 'orientation.json');
 const parts = new Map(files.map(f => [f.replace(/\.json$/, ''), load(f)]));
 const index = load('index.json');
 
