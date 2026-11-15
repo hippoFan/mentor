@@ -7,7 +7,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { EDIT, EDIT_MATERIALS, EDIT_SHAPES, describeChange, hasChange, hexColor, mergeChange, modifyPrompt, modsMemory, parseModify, parseRevert, planModify, sanitizeChange, sanitizeEdit } from '../modify.mjs';
 import { CHECK, addItem, addedLine, checklistMemory, checklistPrompt, findItem, neededLine, parseChecklistAdd, parseChecklistOp, planItem, removeItem, sanitizeItem, setStatus, unknownPart } from '../checklist.mjs';
-import { projectMemoryText } from '../memory.mjs';
+import { RULES, projectMemoryText } from '../memory.mjs';
 import { validatePageMessage } from '../live.mjs';
 import { analysisPrompt, comboKey, createAnalyzer } from '../combo.mjs';
 import { partFromWords, createProject, describe as describeCircuit } from '../circuit.mjs';
@@ -199,10 +199,10 @@ await test('project memory: contains the modifications and the parts list', () =
   const list = [sanitizeItem({ part: 'Active buzzer 5V', pins: ['+ -> pin 8'] }, { id: 'ck-1', name: 'Buzzer' }), { ...sanitizeItem(null, { id: 'ck-2', name: 'Relay module' }), status: 'have' }];
   const circuit = createProject({ board: 'arduino-uno' });
   const m = projectMemoryText({ board: 'uno-r3', circuit: describeCircuit(circuit), scan: 'Red retractable pen', mods, checklist: list });
-  assert.match(m, /^\[Project memory/);
+  assert.match(m, /^\[Rules for this call:[^\]]*\]\n\[Project memory/);
   assert.match(m, /modified by voice.*Tip cone now "Brush tip"/); assert.match(m, /Pocket clip.*#d4af37/);
   assert.match(m, /parts list.*Buzzer \(needed, Active buzzer 5V\).*Relay module \(have/);
-  assert.equal(projectMemoryText({}), '');
+  assert.equal(projectMemoryText({}), RULES);   // the call rules (no names, any object) always go
   assert.equal(modsMemory([]), ''); assert.equal(checklistMemory([]), '');
 });
 

@@ -233,7 +233,9 @@ const agent = defineAgent({
     // Written only once the caller has said yes: before that, nothing is saved.
     const saveConversation = async () => {
       if (!consented() || !await ensureRun()) return;
-      try { await writeFile(`${runDir}conversation.json`, JSON.stringify([...consentLog, ...brain.messages])); } catch { /* best effort */ }
+      // The per-turn rules/memory text rides along with what the caller said; keep it out of the saved conversation.
+      const clean = JSON.stringify([...consentLog, ...brain.messages]).replace(/\\n\[Rules for this call:[^\]]*\]/g, '').replace(/\\n\[Project memory from this call\.[^\]]*\]/g, '');
+      try { await writeFile(`${runDir}conversation.json`, clean); } catch { /* best effort */ }
     };
     const saveRecap = async () => {
       if (!await ensureRun()) return;
@@ -323,6 +325,7 @@ const agent = defineAgent({
       return true;
     };
     // "Scan this": a dedicated brain call builds an approximate 3D model of whatever is on camera for the laptop's /twin.
+    let pending = null;   // a one-question follow-up: {kind:'modify', query} | {kind:'sensor'}
     let lastScan = null;   // {id, spec, cut, at}: "it's actually a Galaxy S24 Ultra" corrects this one
     const interiors = new Map();   // scan name (lower case) -> researched interior, for the build-combo analysis
     const research = (id, spec, cut, opts = {}) => {
@@ -674,6 +677,26 @@ const agent = defineAgent({
       if (CIRCUIT_ON && circuit.components.length && isShowHow(heard)) {
         console.log(`[heard] ${heard} (show the current step)`); live.send({ type: 'heard', text: heard });
         await showNext({ speak: true }); return;
+      }
+      heard = heard.replace(/\bcensor(s?)\b/gi, 'sensor$1');   // speech-to-text's favourite mishearing
+      // Half-finished commands get one short question, and the answer completes them:
+      // "change the tip" -> "To what?" -> "a brush"; "add a sensor" -> "Which one?" -> "distance".
+      if (pending && Date.now() - pending.at < 30_000 && heard.split(/\s+/).length <= 8 && !isScanIntent(heard)) {
+        const p = pending; pending = null;
+        const ans = heard.replace(/[.!?]+$/, '').replace(/^(um+|uh+|a|an|the|make it|to|into)\s+/i, '').trim();
+        if (ans) heard = p.kind === 'modify' ? `change the ${p.query} to ${ans}` : `add a ${ans} ${/sensor/i.test(ans) ? '' : 'sensor'}`.trim();
+      } else pending = null;
+      const half = heard.replace(/[.!?]+$/, '').trim();
+      let hm = half.match(/^(?:can you\s+|please\s+|let'?s\s+)?(?:change|swap|replace|modify|edit|redo)\s+(?:the|its|that|this|my)\s+([a-z][a-z -]{1,30})$/i);
+      if (hm && !/\b(subject|topic|plan|idea|mind)\b/i.test(hm[1]) && !/\b(to|into|with|for|from)\b/i.test(hm[1]) && hm[1].trim().split(/\s+/).length <= 3) {
+        pending = { kind: 'modify', query: hm[1].trim(), at: Date.now() };
+        console.log(`[heard] ${heard} (edit: asking what to change it to)`); live.send({ type: 'heard', text: heard });
+        say(`Change the ${hm[1].trim()} to what? For example, a different shape, size, color or material.`, 0); return;
+      }
+      if (/^(?:can you\s+|please\s+)?add\s+(?:a|an|one|another)\s+(?:sensor|censor|senser|module)$/i.test(half)) {
+        pending = { kind: 'sensor', at: Date.now() };
+        console.log(`[heard] ${heard} (circuit: asking which sensor)`); live.send({ type: 'heard', text: heard });
+        say('Which sensor? Distance, temperature, or motion?', 0); return;
       }
       if (revertTurn(heard)) return;              // "undo that" / "put the tip back" after a voice edit
       if (checklistOpTurn(heard)) return;         // "I have the buzzer" / "what do I still need?"

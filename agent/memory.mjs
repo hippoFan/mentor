@@ -9,6 +9,10 @@ import { checklistMemory } from './checklist.mjs';
  *   scan?: string, mods?: {target: {name: string}, change: object}[], checklist?: object[]}} m
  * @returns {string} '' when there is nothing to remember
  */
+// Always sent. Speech-to-text often hears a single mumbled word as a name ("Candace."), and the brain then kept calling
+// the caller that; and the old board-only habit made it refuse edits on other objects.
+export const RULES = '[Rules for this call: never call the caller by any name unless they clearly said "my name is ..."; Ody can scan, explode, take apart and edit ANY object by voice (pens, phones, anything), not only boards: never say it can\'t; if a request is unclear, ask one short question.]';
+
 export function projectMemoryText({ board = '', circuit = '', wiring = '', removed = [], analysis = null, scan = '', mods = [], checklist = [] } = {}) {
   const lines = [];
   if (board) lines.push(`board recognised: ${board}`);
@@ -19,6 +23,6 @@ export function projectMemoryText({ board = '', circuit = '', wiring = '', remov
   if (analysis) lines.push(`last combo verdict: ${analysis.title} (${analysis.works ? 'works' : "won't work"})`);
   if (scan) lines.push(`last scan: ${scan}`);
   const c = checklistMemory(checklist); if (c) lines.push(c);
-  if (!lines.length) return '';
-  return `[Project memory from this call. Trust it for what the caller has planned, added and changed. A part added by voice may not be plugged in yet: never say it is missing or that you don't have it; if you can't see it on camera, say it isn't plugged in yet and say where it goes. Parts on the parts list have no 3D model yet; the caller may not have them. ${lines.join('; ').slice(0, 1200)}]`;
+  if (!lines.length) return RULES;
+  return `${RULES}\n[Project memory from this call. Trust it for what the caller has planned, added and changed. A part added by voice may not be plugged in yet: never say it is missing or that you don't have it; if you can't see it on camera, say it isn't plugged in yet and say where it goes. Parts on the parts list have no 3D model yet; the caller may not have them. ${lines.join('; ').slice(0, 1200)}]`;
 }
