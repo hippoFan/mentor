@@ -2,7 +2,7 @@
 //   node serve-recaps.mjs   then   cloudflared tunnel --url http://localhost:8787
 // Read-only, GET only, no directory listings; run folders have random names so links are unguessable.
 import { createServer } from 'node:http';
-import { readFile } from 'node:fs/promises';
+import { readFile, stat } from 'node:fs/promises';
 import { extname, join, normalize, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -21,8 +21,11 @@ async function handle(req, res) {
   const file = normalize(join(ROOT, path));
   if (!file.startsWith(ROOT) || !TYPES[extname(file)] || file.split(sep).some(p => p.startsWith('.'))) { res.writeHead(404).end(); return; }
   try {
+    const st = await stat(file);
+    if (Date.now() - st.mtimeMs > 24 * 3600 * 1000) { res.writeHead(410).end('This recap has expired.'); return; }   // links live 24 h
     const body = await readFile(file);
     res.writeHead(200, { 'content-type': TYPES[extname(file)], 'cache-control': 'no-store', 'x-content-type-options': 'nosniff',
-      'referrer-policy': 'no-referrer', 'x-robots-tag': 'noindex' }).end(body);
+      'referrer-policy': 'no-referrer', 'x-robots-tag': 'noindex', 'cross-origin-resource-policy': 'same-origin',
+      'content-security-policy': "default-src 'none'; img-src 'self'; style-src 'unsafe-inline'; base-uri 'none'; frame-ancestors 'none'" }).end(body);
   } catch { res.writeHead(404).end(); }
 }

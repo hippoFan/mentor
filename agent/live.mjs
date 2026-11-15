@@ -11,12 +11,21 @@ const PAGE = new URL('./monitor.html', import.meta.url);
 /** @returns {Promise<{send: (event: object) => void, close: () => Promise<void>}>} never throws; a no-op if the port is busy */
 export async function startLive() {
   const state = { call: null, step: '', transcript: [], brain: '', turns: [] };   // replayed to a page that connects mid-call
+  // Only this machine's own page may connect (stops cross-site WebSocket hijacking and DNS rebinding).
+  const okHost = h => h === `localhost:${PORT}` || h === `127.0.0.1:${PORT}`;
+  const okOrigin = o => o === `http://localhost:${PORT}` || o === `http://127.0.0.1:${PORT}`;
   const server = createServer(async (req, res) => {
+    if (!okHost(req.headers.host)) { res.writeHead(403).end(); return; }
     if (req.method === 'GET' && (req.url === '/' || req.url === '/index.html')) {
-      res.writeHead(200, { 'content-type': 'text/html; charset=utf-8', 'cache-control': 'no-store' }).end(await readFile(PAGE));
+      res.writeHead(200, { 'content-type': 'text/html; charset=utf-8', 'cache-control': 'no-store', 'x-frame-options': 'DENY',
+        'content-security-policy': "default-src 'self'; img-src 'self' data:; style-src 'self' 'unsafe-inline'; script-src 'self' 'unsafe-inline'; connect-src 'self' ws://localhost:* ws://127.0.0.1:*; frame-ancestors 'none'",
+        'referrer-policy': 'no-referrer' }).end(await readFile(PAGE));
     } else res.writeHead(404).end();
   });
-  const wss = new WebSocketServer({ server });
+  const wss = new WebSocketServer({
+    server, maxPayload: 4096,   // the page never needs to send anything large
+    verifyClient: ({ origin, req }) => okOrigin(origin) && okHost(req.headers.host) && wss.clients.size < 4,
+  });
   wss.on('connection', ws => {
     ws.send(JSON.stringify({ type: 'hello', ...state }));
   });

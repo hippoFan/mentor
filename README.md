@@ -205,6 +205,15 @@ mentor/
   is torn down. The recap server only serves pages and images from random, unguessable folder names.
 - **Safety.** Mentor tells you to unplug power before rewiring, and it never declares a circuit "safe".
 
+## Security and privacy
+
+See [SECURITY.md](SECURITY.md). In short:
+- Camera frames and audio go to ElevenLabs and your chosen brain.
+- Everything else stays on the host laptop in `runs/`.
+- The laptop screen is local-only, and recap links expire after 24 h.
+- Model output is treated as untrusted data.
+- The `claude-code` brain is for the owner's own testing only.
+
 ## Limits
 
 - Gemini's free tier allows about **20 requests a day per model**. Mentor falls through `MENTOR_GEMINI_MODELS` when one
@@ -224,5 +233,7 @@ Built in 12 hours for the HackUTA 2026 theme *Homer's Odyssey*, for the **Best U
 
 ## License
 
-MIT for Mentor's own code (see [LICENSE](LICENSE)). `agent/chert-rooms.mjs` and `agent/greet.mjs` come from Chert's
-`chert new --video` starter and keep Chert's terms.
+MIT for Mentor's own code (see [LICENSE](LICENSE)), with these exceptions:
+- `agent/chert-rooms.mjs` and `agent/greet.mjs` come from Chert's `chert new --video` starter and keep Chert's terms.
+- `agent/fonts/InterVariable.ttf` is Inter, under the SIL Open Font License (`agent/fonts/OFL-Inter.txt`).
+- The film and tests use a public-domain (CC0) photo of an Arduino Uno from Wikimedia Commons.

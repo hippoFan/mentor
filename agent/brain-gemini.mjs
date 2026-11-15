@@ -2,7 +2,7 @@
 // Gemini points natively on a 0-1000 grid, so marks are asked for in that grid and divided by 1000.
 // Free key: Google AI Studio (MLH link for HackUTA: https://mlh.link/hackuta-aistudio).
 import { GoogleGenAI, ThinkingLevel } from '@google/genai';
-import { RECAP_ASK, RECAP_SCHEMA, SCHEMA, SYSTEM_CORE, pointingRules } from './brain.mjs';
+import { RECAP_ASK, RECAP_SCHEMA, SCHEMA, SYSTEM_CORE, pointingRules, sanitizeReply } from './brain.mjs';
 
 // Models tried in order. The free tier allows only ~20 requests a day per model, and a model can be overloaded, so on a
 // 429 / 503 / 404 Mentor moves to the next one for the rest of the process instead of failing the turn.
@@ -41,6 +41,7 @@ export class GeminiBrain {
       responseMimeType: 'application/json',
       responseJsonSchema: schema,
       // Gemini 2.x takes a token budget instead of a level; 0 = no thinking (fastest).
+      maxOutputTokens: schema === SCHEMA ? 1200 : 6000,
       thinkingConfig: model.startsWith('gemini-2') ? { thinkingBudget: level === ThinkingLevel.MEDIUM ? 1024 : 0 } : { thinkingLevel: level },
       httpOptions: { timeout },
     };
@@ -89,6 +90,7 @@ export class GeminiBrain {
           .map(m => ({ ...m, x: m.x / 1000, y: m.y / 1000, x2: m.x2 >= 0 ? m.x2 / 1000 : -1, y2: m.y2 >= 0 ? m.y2 / 1000 : -1 }))
           .filter(m => m.x >= 0 && m.x <= 1 && m.y >= 0 && m.y <= 1)
       : [];
+    sanitizeReply(out);
     out.ms = ms; out.model = model;
     const u = response.usageMetadata || {};
     console.log(`[brain:gemini] ${model} ${ms}ms in=${u.promptTokenCount} cached=${u.cachedContentTokenCount ?? 0} out=${u.candidatesTokenCount}`);
