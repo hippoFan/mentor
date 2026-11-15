@@ -167,16 +167,19 @@ tabs.addEventListener('keydown', e => {
   e.preventDefault(); const next = mode === 'chat' ? 'refine' : 'chat'; setMode(next); (next === 'chat' ? tabChat : tabRefine).focus();
 });
 
-/** Fills the model picker: the stored default if it has a key, else the first provider with one. */
+/** Fills the model picker: the stored default if it has a key, else the first provider with one. While the hub is in
+ *  owner testing, the server lists 'claude-code' (owner: true, "Claude (owner's subscription — testing)") first, and it
+ *  is preselected until the user picks a model here. */
+let picked = false;
 function renderProviders(list) {
   providerList = Array.isArray(list) ? list : [];
   const keep = provider.value;
-  provider.replaceChildren(...providerList.map(p => { const o = el('option', { value: p.id }, `${p.name}${p.ready ? ' · ready' : ' (no key)'}`); if (!p.ready) o.disabled = true; return o; }));
+  provider.replaceChildren(...providerList.map(p => { const o = el('option', { value: p.id }, `${p.name}${p.ready ? ' · ready' : p.owner ? ' (claude CLI not found)' : ' (no key)'}`); if (!p.ready) o.disabled = true; return o; }));
   const ready = id => providerList.some(p => p.id === id && p.ready);
-  const want = [store.get('argos.provider'), keep].find(ready) || providerList.find(p => p.ready)?.id;
+  const want = [picked ? keep : null, providerList.find(p => p.owner && p.ready)?.id, store.get('argos.provider'), keep].find(ready) || providerList.find(p => p.ready)?.id;
   if (want) provider.value = want;
 }
-provider.addEventListener('change', () => { store.set('argos.provider', provider.value); dispatchEvent(new CustomEvent('ody:provider', { detail: provider.value })); });
+provider.addEventListener('change', () => { picked = true; store.set('argos.provider', provider.value); dispatchEvent(new CustomEvent('ody:provider', { detail: provider.value })); });
 
 async function loadState() {
   try { renderProviders((await api('state')).providers); } catch { /* server without Argos */ }
@@ -387,7 +390,7 @@ subscribe(e => {
 });
 // keys saved on the Main page: the model picker shows the new state at once (no reload)
 addEventListener('ody:keys', e => { if (Array.isArray(e.detail?.providers)) renderProviders(e.detail.providers); else void loadState(); });
-addEventListener('ody:provider', e => { if (typeof e.detail === 'string' && providerList.some(p => p.id === e.detail && p.ready)) provider.value = e.detail; });
+addEventListener('ody:provider', e => { if (typeof e.detail === 'string' && providerList.some(p => p.id === e.detail && p.ready)) { provider.value = e.detail; picked = true; } });
 addEventListener('storage', e => { if (e.key === 'argos.provider') renderProviders(providerList); });
 
 function setOpen(open, { focus = true } = {}) {

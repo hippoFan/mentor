@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Keeps Mentor and the Chert connector alive for a demo: restarts either one if it exits.
 #   ./demo.sh                      (Gemini brain; for judges/anyone)
-#   ODY_BRAIN=claude-code ODY_OWNER_TESTING=1 ./demo.sh   (owner testing only)
+#   ODY_BRAIN=claude-code ODY_OWNER_TESTING=1 ./demo.sh   (owner testing only: the call brain AND Argos on your subscription)
 # Logs: ../logs/agent.log, ../logs/chert-dev.log, ../logs/record.log (+ ../logs/sessions/). Ctrl+C stops all.
 set -u
 cd "$(dirname "$0")"
@@ -21,7 +21,15 @@ keep() {   # keep <name> <log> <cmd...>
   done
 }
 : > "$LOGS/agent.log"; : > "$LOGS/chert-dev.log"; : > "$LOGS/hub.log"
-keep hub "$LOGS/hub.log" node --env-file=../.env hub.mjs &      # the laptop page, always on (http://localhost:8790 and /twin)
+# Owner testing (ODY_BRAIN=claude-code + ODY_OWNER_TESTING=1) also reaches the hub, so Argos can use the owner's
+# subscription too ('claude-code' provider, tried first). Otherwise the hub never gets the flag. Never for judges/users.
+if [ "$ODY_BRAIN" = claude-code ] && [ "${ODY_OWNER_TESTING:-${MENTOR_OWNER_TESTING:-}}" = 1 ]; then
+  HUB_ENV=(env MENTOR_OWNER_TESTING=1)
+  echo "[demo] OWNER TESTING: the call brain and Argos run on your personal Claude subscription. Never for judges or users."
+else
+  HUB_ENV=(env -u MENTOR_OWNER_TESTING -u ODY_OWNER_TESTING)
+fi
+keep hub "$LOGS/hub.log" "${HUB_ENV[@]}" node --env-file=../.env hub.mjs &      # the laptop page, always on (http://localhost:8790 and /twin)
 sleep 2
 keep record "$LOGS/record.log" node record.mjs &   # every call -> ../logs/sessions/<time>.jsonl (replay.mjs plays it back)
 keep agent "$LOGS/agent.log" node --env-file=../.env agent.mjs start &

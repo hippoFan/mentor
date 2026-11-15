@@ -49,6 +49,14 @@ own testing only.
   - only basic environment variables passed
 - **Never for anyone else.** It must not serve judges, users or the public. Their calls use an API key
   (`ODY_BRAIN=gemini` or `claude`).
+- **Argos too, same boundary.** `ODY_BRAIN=claude-code ODY_OWNER_TESTING=1 ./demo.sh` also gives the hub
+  `MENTOR_OWNER_TESTING=1`, so Argos (the laptop assistant) lists a `claude-code` model, labelled
+  "Claude (owner's subscription — testing)", and tries it first (then Gemini, then the rest). It is the same locked-down
+  `claude -p` (`agent/claude-code-cli.mjs`, shared with the call brain): no tools, MCP, settings, hooks, skills or slash
+  commands, no saved session, an allowlisted environment with none of Ody's keys, an empty temp folder, killed on its
+  timeout. Without the flag in the hub's environment it is not listed and refuses to run. Any other `./demo.sh` start
+  strips the flag from the hub (keep `MENTOR_OWNER_TESTING` out of `.env`). This extends owner testing to Argos; it is
+  still **never** for a public deployment, judges or users.
 
 ## Caller consent and the page channel
 - Ody asks the caller to agree before any frame or snapshot is processed or saved (`consent.mjs`); "stop recording"

@@ -69,27 +69,28 @@ export function createArgos({ send, callLive = () => false }) {
   let saveScans = true;
   void pruneCallScans();
 
-  async function startRefine({ instruction, designId, mode = 'single', provider, code }) {
-    const design = await getDesign(designId);
+  // create: true (from chat only, "make a phone stand 80 mm wide") starts a new design from scratch, with no parent.
+  async function startRefine({ instruction, designId, mode = 'single', provider, code, create = false, name = '' }) {
+    const design = create ? { name: cap(name, 40) || 'New design', parts: [] } : await getDesign(designId);
     if (!design) throw Object.assign(new Error('Pick a design first.'), { status: 404 });
     if (running >= 2) throw Object.assign(new Error('Two refinements are already running. Wait for one to finish.'), { status: 429 });
-    let src = typeof code === 'string' && code.trim() ? code : null;
-    if (!src) src = (await designFile(designId, 'source.scad'))?.toString('utf8') || null;
-    if (!src && design.kind === 'scan') { const spec = await designFile(designId, 'spec.json'); if (spec) src = scanToScad(JSON.parse(spec)); }
-    if (!src) throw Object.assign(new Error(design.outside
+    let src = create ? '' : typeof code === 'string' && code.trim() ? code : null;
+    if (!src && !create) src = (await designFile(designId, 'source.scad'))?.toString('utf8') || null;
+    if (!src && !create && design.kind === 'scan') { const spec = await designFile(designId, 'spec.json'); if (spec) src = scanToScad(JSON.parse(spec)); }
+    if (!src && !create) throw Object.assign(new Error(design.outside
       ? `This ${design.format?.toUpperCase() || ''} file was made outside Ody and has no OpenSCAD source, so Argos can't edit it yet. Import a .scad file to refine it.`
       : 'This design has no OpenSCAD source to refine.'), { status: 422 });
     const jobId = randomBytes(6).toString('hex');
     const m = MODES.includes(mode) ? mode : 'single';
-    jobs.set(jobId, { state: 'running', designId });
+    jobs.set(jobId, { state: 'running', designId: create ? null : designId });
     running++; counts.refine++; if (m === 'multicode') counts.multicode++;
-    send({ type: 'argos', kind: 'refine', jobId, state: 'started', mode: m, designId, instruction: cap(instruction, 300) });
-    void refine({ code: src, instruction, mode: m, provider, design: { name: design.name, parts: design.parts },
+    send({ type: 'argos', kind: 'refine', jobId, state: 'started', mode: m, designId: create ? null : designId, instruction: cap(instruction, 300), ...(create ? { create: true } : {}) });
+    void refine({ code: src, instruction, mode: m, provider, create, design: { name: design.name, parts: design.parts },
       onProgress: step => send({ type: 'argos', kind: 'refine', jobId, state: 'step', step }) })
       .then(async r => {
         counts.modelCalls += r.calls || 0;
         if (!r.ok) { jobs.set(jobId, { state: 'failed' }); send({ type: 'argos', kind: 'refine', jobId, state: 'failed', error: cap(r.error, 300), steps: r.steps }); return; }
-        const saved = await saveRefined({ parent: designId, name: `${design.name} (refined)`, code: r.code, stl: r.stl, summary: r.summary, caveats: r.caveats, mode: m, provider: r.provider });
+        const saved = await saveRefined({ parent: create ? null : designId, name: create ? design.name : `${design.name} (refined)`, code: r.code, stl: r.stl, summary: r.summary, caveats: r.caveats, mode: m, provider: r.provider });
         jobs.set(jobId, { state: 'done', designId: saved.id });
         send({ type: 'argos', kind: 'refine', jobId, state: 'done', design: saved, summary: r.summary, caveats: r.caveats, calls: r.calls, ms: r.ms });
       })

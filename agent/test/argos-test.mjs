@@ -2,7 +2,9 @@
 // compiles, and the real /argos/ routes run on a mock page server (ports 8796-8799, never the live 8790).
 // Covers: scan -> Forge design with OpenSCAD, compile, single refine (with an automatic fix after a compile error),
 // multicode (manager, researcher, developer, auditor rounds), chat routing (twin command, circuit swap, physical steps
-// only when asked, refine handoff), imports (outside label, bad files refused), keys (masked, validated), Origin checks.
+// only when asked, refine handoff, a new design from chat), imports (outside label, bad files refused), keys (masked,
+// validated), Origin checks, and the owner-testing 'claude-code' provider (listed only with MENTOR_OWNER_TESTING=1,
+// locked-down spawn, a timed-out provider falls through) using a fake `claude` that never answers.
 //   node test/argos-test.mjs
 import assert from 'node:assert/strict';
 import { createServer } from 'node:http';
@@ -14,7 +16,7 @@ import { join } from 'node:path';
 const dir = await mkdtemp(join(tmpdir(), 'argos-'));
 process.env.ARGOS_DESIGNS_DIR = dir;
 process.env.ARGOS_ENV_FILE = join(dir, 'test.env');   // key writes go to a temp file, never the real .env
-for (const k of ['GEMINI_API_KEY', 'GOOGLE_API_KEY', 'ANTHROPIC_API_KEY', 'OPENAI_API_KEY', 'ELEVENLABS_API_KEY']) delete process.env[k];
+for (const k of ['GEMINI_API_KEY', 'GOOGLE_API_KEY', 'ANTHROPIC_API_KEY', 'OPENAI_API_KEY', 'ELEVENLABS_API_KEY', 'MENTOR_OWNER_TESTING', 'ODY_OWNER_TESTING', 'MENTOR_CLAUDE_BIN']) delete process.env[k];
 
 const { createServer: netServer } = await import('node:net');
 const free = p => new Promise(ok => { const s = netServer().once('error', () => ok(false)).listen(p, '127.0.0.1', () => s.close(() => ok(true))); });
@@ -29,6 +31,7 @@ let devCalls = 0;
 const GOOD = 'module part_plate() { cube([60, 40, 3], center = true); }\nmodule assembly() { color([0.5,0.5,0.5]) part_plate(); }\nassembly();\n';
 const model = createServer(async (req, res) => {
   let body = ''; for await (const c of req) body += c;
+  if (req.method !== 'POST') return res.writeHead(404).end();   // e.g. another test's browser reconnecting to a shared mock port
   const j = JSON.parse(body), sys = j.messages[0].content, user = j.messages[1].content;
   let out;
   if (/developer/.test(sys)) out = ++devCalls === 1 ? { code: 'cube([1,2', summary: 'broken first try' } : { code: GOOD, summary: 'Made the plate 3 mm thick.' };
@@ -36,6 +39,7 @@ const model = createServer(async (req, res) => {
   else if (/researcher/.test(sys)) out = { facts: [{ fact: 'M3 clearance', value: '3.2 mm' }], unsure: [] };
   else if (/auditor/.test(sys)) out = /Compile: OK/.test(user) ? { pass: true, issues: [], fix: '' } : { pass: false, issues: ['does not compile'], fix: 'close the bracket' };
   else if (/You are the manager\. Summarise/.test(sys)) out = { summary: 'The plate is now 3 mm thick.', caveats: ['Not printed yet.'] };
+  else if (/You are Argos/.test(sys) && /phone stand/.test(user)) out = { reply: 'Making a phone stand.', refine: '', create: 'a phone stand 80 mm wide, 60 degree back rest, 10 mm lip', name: 'Phone stand' };
   else if (/You are Argos/.test(sys)) out = /thicker/.test(user) ? { reply: 'Making it thicker.', refine: 'make the plate 3 mm thick' } : { reply: 'Hi, I am Argos.', refine: '' };
   else if (/circuit|Arduino/i.test(sys)) out = { say: 'Swapped the LED for a distance sensor.', actions: [{ op: 'remove', target: 'LED' }, { op: 'add', part: 'hc-sr04' }] };
   else out = {};
@@ -62,6 +66,35 @@ try {
   assert.equal(st.providers.find(p => p.id === 'openai').ready, true); assert.ok(!JSON.stringify(st).includes('test-key-not-real')); pass('state lists providers, never the key');
   r = await fetch(`${base}/argos/chat`, { method: 'POST', headers: { 'content-type': 'application/json', origin: 'http://evil.example' }, body: '{}' });
   assert.equal(r.status, 403); pass('cross-site POST refused');
+
+  // owner testing: 'claude-code' (the owner's subscription) exists only with MENTOR_OWNER_TESTING=1
+  const fake = join(dir, 'fake-claude'), seenArgs = join(dir, 'claude-args.txt'), seenEnv = join(dir, 'claude-env.txt');
+  await writeFile(fake, `#!/bin/sh\nprintf '%s\\n' "$@" > '${seenArgs}'\nenv > '${seenEnv}'\nexec sleep 30\n`, { mode: 0o700 });   // never answers
+  process.env.MENTOR_CLAUDE_BIN = fake;
+  assert.ok(!st.providers.some(p => p.id === 'claude-code')); assert.deepEqual(st.providers.map(p => p.id), ['gemini', 'claude', 'openai']);
+  r = await post('/argos/chat', { text: 'hello there', provider: 'claude-code' }); let c0 = await r.json();
+  assert.equal(c0.route, 'chat'); assert.ok(!c0.error && /gpt/.test(c0.model) && !/didn't answer/.test(c0.text)); pass('owner testing off: claude-code not listed, and asking for it uses a provider with a key');
+  const prov = await import('../argos/providers.mjs');
+  process.env.MENTOR_OWNER_TESTING = '1';
+  let st2 = await (await fetch(`${base}/argos/state`)).json();
+  assert.equal(st2.providers[0].id, 'claude-code'); assert.equal(st2.providers[1].id, 'gemini'); assert.equal(st2.providers[0].ready, true); assert.equal(st2.providers[0].owner, true);
+  assert.match(st2.providers[0].name, /owner.s subscription.*testing/); assert.equal(st2.providers[0].model, 'claude-opus-5-5');
+  assert.deepEqual(prov.providerOrder(), ['claude-code', 'openai']); assert.deepEqual(prov.providerOrder('openai'), ['openai', 'claude-code']); pass('owner testing on: claude-code listed first, honestly labelled, ready when the binary exists');
+  process.env.MENTOR_CLAUDE_BIN = join(dir, 'no-such-claude');
+  st2 = await (await fetch(`${base}/argos/state`)).json(); assert.equal(st2.providers[0].ready, false); process.env.MENTOR_CLAUDE_BIN = fake; pass('owner testing on: not ready without the claude binary');
+  const notes = [], tFall = Date.now();
+  const fell = await prov.complete({ system: 'You are Argos, test.', prompt: 'User: hi', schema: { type: 'object', properties: { reply: { type: 'string' } } }, timeout: 1500, onNote: n => notes.push(n) });
+  assert.equal(fell.provider, 'openai'); assert.equal(fell.skipped[0].id, 'claude-code'); assert.match(notes[0], /didn't answer within 2 s; trying the next model \(OpenAI-compatible\)/);
+  assert.ok(Date.now() - tFall < 8000); pass(`fall-through: a timed-out claude-code is skipped for that request (${Date.now() - tFall} ms, "${notes[0]}")`);
+  const args = (await readFile(seenArgs, 'utf8')).split('\n'), childEnv = await readFile(seenEnv, 'utf8');
+  for (const a of ['-p', '--strict-mcp-config', '--disable-slash-commands', '--no-session-persistence']) assert.ok(args.includes(a), a);
+  assert.equal(args[args.indexOf('--tools') + 1], ''); assert.equal(args[args.indexOf('--setting-sources') + 1], ''); assert.equal(args[args.indexOf('--model') + 1], 'claude-opus-5-5');
+  assert.ok(!/ARGOS_|OPENAI|test-key-not-real|MENTOR_|ANTHROPIC/.test(childEnv)); pass('claude-code spawn: no tools, no MCP, no settings, no session, none of Ody\'s keys or settings in its env');
+  process.env.ARGOS_CHAT_TIMEOUT_MS = '1500';
+  r = await post('/argos/chat', { text: 'hello again', provider: 'gemini' }); c0 = await r.json(); delete process.env.ARGOS_CHAT_TIMEOUT_MS;
+  assert.ok(!c0.error, c0.text); assert.match(c0.text, /Claude \(owner.s subscription.*didn't answer within 2 s, so OpenAI-compatible answered/); pass(`chat: the fall-through is said plainly (${c0.text.slice(-90)})`);
+  delete process.env.MENTOR_OWNER_TESTING;
+  await assert.rejects((await import('../claude-code-cli.mjs')).claudeCodeOnce({ prompt: 'x', schema: {} }), /owner testing only/); pass('claude-code refuses to run without MENTOR_OWNER_TESTING=1');
 
   // a call's scan becomes a design
   argos.onPublished({ type: 'scan', spec: { name: 'Plate', dims_mm: { w: 60, d: 40, h: 2 }, parts: [{ name: 'Plate', shape: 'box', size_mm: { x: 60, y: 40, z: 2 }, position_mm: { x: 0, y: 0, z: 1 }, rotation_deg: { x: 0, y: 0, z: 0 }, color: '#888888', material: 'plastic', label: '' }] }, photo: Buffer.from('jpeg').toString('base64') });
@@ -103,6 +136,11 @@ try {
   r = await post('/argos/chat', { text: 'make it thicker', designId: id, provider: 'openai' }); c = await r.json();
   assert.equal(c.route, 'chat'); assert.ok(c.refineJob); pass('chat: a shape change starts a refinement of the selected design');
   await until(() => events.find(e => e.jobId === c.refineJob && (e.state === 'done' || e.state === 'failed')));
+  r = await post('/argos/chat', { text: 'make a phone stand 80 mm wide', provider: 'openai' }); c = await r.json();
+  assert.equal(c.route, 'chat'); assert.ok(c.refineJob && c.create, JSON.stringify(c));
+  const made = await until(() => events.find(e => e.jobId === c.refineJob && (e.state === 'done' || e.state === 'failed')));
+  assert.equal(made.state, 'done', made.error); assert.equal(made.design.name, 'Phone stand'); assert.equal(made.design.parent, null); assert.ok(made.design.files.includes('model.stl'));
+  r = await fetch(`${base}/argos/designs/${made.design.id}/source.scad`); assert.match(await r.text(), /assembly\(\);/); pass('chat: "make a phone stand" creates a new design with OpenSCAD source and an STL');
 
   // imports
   const stl = Buffer.alloc(184); stl.write('binary stl'); stl.writeUInt32LE(2, 80);

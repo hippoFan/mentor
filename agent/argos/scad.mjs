@@ -92,9 +92,11 @@ try {
   parentPort.postMessage({ ok: false, log, error: (e && e.message) || '' });
 }`;
 
+// What OpenSCAD's silent failure (no STL written, nothing in the log) means, in words a model can act on.
+export const NO_GEOMETRY = 'OpenSCAD made no 3D geometry: the top level is empty or only 2D. Every part must be a 3D solid (linear_extrude or rotate_extrude any 2D shape), a difference() must not remove everything, and the file must end by calling assembly();';
 /** The useful lines of OpenSCAD's log for an error (what a model needs to fix its code). */
 export const scadError = log => log.filter(l => /error|warning: (?!.*localization)/i.test(l) && !/localization/i.test(l)).join('\n').slice(0, 1500)
-  || 'OpenSCAD could not render this code (no geometry?).';
+  || NO_GEOMETRY;
 
 /** Compiles OpenSCAD to ASCII STL in a worker. Never throws. */
 export async function compileScad(code, { timeoutMs = SCAD.timeoutMs } = {}) {
@@ -108,7 +110,7 @@ export async function compileScad(code, { timeoutMs = SCAD.timeoutMs } = {}) {
     w.once('message', m => {
       const stl = typeof m.stl === 'string' ? m.stl : '';
       if (m.ok && /facet/.test(stl) && stl.length <= SCAD.maxStl) done({ ok: true, stl, error: '', log: m.log || [] });
-      else done({ ok: false, stl: '', error: m.ok ? (stl.length > SCAD.maxStl ? 'the model is too large' : 'the code made no geometry') : scadError(m.log || []), log: m.log || [] });
+      else done({ ok: false, stl: '', error: m.ok ? (stl.length > SCAD.maxStl ? 'the model is too large' : NO_GEOMETRY) : scadError(m.log || []), log: m.log || [] });
     });
     w.once('error', e => done({ ok: false, stl: '', error: `OpenSCAD failed: ${e?.message || e}`, log: [] }));
   });

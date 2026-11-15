@@ -7,6 +7,7 @@
 //
 //   await refine({ code, instruction, design, mode: 'multicode', provider: 'gemini', onProgress })
 //     -> {ok, code, stl, summary, caveats, steps, calls, ms, provider}
+//   await refine({ create: true, instruction: 'a phone stand 80 mm wide', design: {name: 'Phone stand'} })   // a new design
 import { complete } from './providers.mjs';
 import { checkScad, compileScad } from './scad.mjs';
 
@@ -33,25 +34,29 @@ const AUDIT_SCHEMA = { type: 'object', additionalProperties: false, required: ['
 const SIGNOFF_SCHEMA = { type: 'object', additionalProperties: false, required: ['summary', 'caveats'],
   properties: { summary: { type: 'string' }, caveats: { type: 'array', items: { type: 'string' } } } };
 
+const BLANK = '// A new design: nothing here yet. Write the whole OpenSCAD file from scratch.\n';
+const CREATE = 'This is a NEW design: write the whole file from scratch, one module per part (named part_<name>), and an assembly() module that the file ends by calling. Every part must be a 3D solid (extrude any 2D profile). Use realistic, printable sizes; round edges with hull() of cylinders or offset() on 2D profiles, not minkowski() (too slow to compile).';
 const designLine = d => d ? `The design: ${cap(d.name, 60) || 'unnamed'}${d.parts?.length ? `, parts: ${list(d.parts, 40, 40).join(', ')}` : ''}.` : '';
 
 /**
  * @param {{code: string, instruction: string, design?: {name?: string, parts?: string[]}, mode?: string, provider?: string,
  *   onProgress?: (p: {role: string, state: 'working'|'done'|'failed', text: string}) => void}} req
  */
-export async function refine({ code, instruction, design, mode = 'single', provider, onProgress = () => {} }) {
+export async function refine({ code, instruction, design, mode = 'single', provider, create = false, onProgress = () => {} }) {
   const t0 = Date.now();
-  const start = checkScad(code);
+  const start = create ? { ok: true, code: BLANK } : checkScad(code);
   const ask = cap(instruction, 600);
   if (!start.ok) return { ok: false, error: `The starting code is not usable: ${start.error}` };
   if (!ask) return { ok: false, error: 'Say what to change.' };
   let calls = 0, used = provider;
   const steps = [];
   const step = (role, state, text) => { const s = { role, state, text: cap(text, 300) }; steps.push(s); try { onProgress(s); } catch { /* page gone */ } };
-  const call = async (system, prompt, schema) => { calls++; const r = await complete({ provider, system, prompt, schema, timeout: 90_000 }); used = r.provider; return r.data; };
+  // a provider that times out is skipped for that call; the page sees why ("trying the next model")
+  const onNote = note => step('manager', 'working', note);
+  const call = async (system, prompt, schema) => { calls++; const r = await complete({ provider, system, prompt, schema, timeout: 90_000, onNote }); used = r.provider; return r.data; };
 
   const develop = async (extra, current) => {
-    const r = await call(`You are the developer on Ody's CAD team. You edit OpenSCAD code. ${RULES}`,
+    const r = await call(`You are the developer on Ody's CAD team. You edit OpenSCAD code. ${RULES}${create ? ` ${CREATE}` : ''}`,
       `${designLine(design)}\nRequest: ${ask}\n${extra}\nCurrent code:\n${current}\n\nReturn the complete new file in "code" and one short sentence in "summary".`, DEV_SCHEMA);
     return { code: String(r.code || ''), summary: cap(r.summary, 200) };
   };

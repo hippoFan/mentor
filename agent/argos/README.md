@@ -11,7 +11,7 @@ while Argos uses its own model key (Gemini by default).
 | `refine.mjs` | Refinement: `single`, or `multicode` (manager, researcher, developer, auditor) |
 | `scad.mjs` | Scan to OpenSCAD, code checks, and OpenSCAD WASM compiles to STL (in a worker, with a time limit) |
 | `forge.mjs` | Design store in `designs/` (git-ignored): scans, refined versions, imports |
-| `providers.mjs` | Gemini (default), Claude, and any OpenAI-compatible API |
+| `providers.mjs` | Gemini (default), Claude, any OpenAI-compatible API, and `claude-code` (owner testing only, see below). A provider that times out or fails is skipped for that request ("trying the next model"). |
 | `keys.mjs` | Keys for the Main page: write-only entry into `.env` (allowlisted names, validated values, atomic, mode 600); reads back set + last 4 only |
 | `stt.mjs` | Record button: ElevenLabs Scribe. Wispr Flow works with no setup because it types into the text box. |
 | `../twin/argos.js` | The panel: plain styling, every element starts with `argos-` |
@@ -37,7 +37,7 @@ How chat mode routes a request:
 | Method and path | Body | Returns |
 |---|---|---|
 | `GET /argos/state` | | `{providers:[{id,name,ready,model}], keys, call, designs, modes, counts}` |
-| `POST /argos/chat` | `{text, provider?, designId?}` | `{kind:'reply', text, route: twin\|circuit\|physical\|chat, refineJob?}` |
+| `POST /argos/chat` | `{text, provider?, designId?}` | `{kind:'reply', text, route: twin\|circuit\|physical\|chat, refineJob?, refine?\|create?}` |
 | `POST /argos/stt` | raw audio (`audio/webm`, `ogg`, `mp4`, `wav`) | `{text, language, ms}` |
 | `POST /argos/refine` | `{designId, instruction, mode: single\|multicode, provider?, code?}` | `202 {jobId}` |
 | `GET /argos/designs` | | `{designs:[meta]}`, newest first |
@@ -83,6 +83,19 @@ All of these are optional and go in `.env`. They can also be set from the main p
 | `ARGOS_CLAUDE_MODEL` | The Claude model |
 | `ARGOS_OPENAI_KEY`, `ARGOS_OPENAI_BASE`, `ARGOS_OPENAI_MODEL`, `ARGOS_OPENAI_NAME` | Any OpenAI-compatible API, such as OpenAI/Codex models, AIsa, or a local server |
 | `ARGOS_STT_MODEL` | Default `scribe_v2`, with `scribe_v1` as the fallback |
+| `ARGOS_CHAT_TIMEOUT_MS` | Chat's per-provider time limit (default 30000). Refinement steps get 90 s each. |
+
+### Owner testing: `claude-code`
+
+With `MENTOR_OWNER_TESTING=1` in the hub's environment (`ODY_BRAIN=claude-code ODY_OWNER_TESTING=1 ./demo.sh` sets it),
+Argos lists **"Claude (owner's subscription — testing)"**: the owner's own Claude subscription through the same
+locked-down `claude -p` as the call brain (`../claude-code-cli.mjs`). It is tried first, then Gemini, then the others,
+and the panel preselects it. Ready when the `claude` binary is on PATH (`MENTOR_CLAUDE_BIN`); model `claude-opus-5-5`
+(`MENTOR_CLAUDE_CODE_MODEL`). Without the flag it is not listed and refuses to run. Never for judges, users or a public
+deployment (see `SECURITY.md`).
+
+Chat can also start a **new** design: "make a phone stand 80 mm wide" writes OpenSCAD from scratch, compiles it and saves
+it to the Forge (no parent).
 
 ## Test
 

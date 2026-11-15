@@ -4,42 +4,18 @@
 //
 // Locked down: no tools (structured output only), no MCP servers, no settings/hooks/skills, no session saved to disk,
 // Mentor's own system prompt, run in an empty temp folder. One warm process per call, so a turn costs no startup.
-import { spawn } from 'node:child_process';
 import { mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { createInterface } from 'node:readline';
+import { startClaudeCode } from './claude-code-cli.mjs';
 import { SCAN_SCHEMA, sanitizeScan, scanSystem } from './scan.mjs';
 import { RECAP_ASK, RECAP_SCHEMA, SCHEMA, SYSTEM, normalizeReply, sanitizeReply } from './brain.mjs';
 
 const MODEL = process.env.MENTOR_CLAUDE_CODE_MODEL || 'claude-opus-5-5';   // owner testing: Opus 5.5 (smarter; a little slower than Sonnet)
 const BIN = process.env.MENTOR_CLAUDE_BIN || 'claude';
 
-function start(schema, system, dir, effort = 'low') {
-  const args = ['-p', '--model', MODEL, '--input-format', 'stream-json', '--output-format', 'stream-json', '--verbose',
-    '--json-schema', JSON.stringify(schema), '--tools', '', '--setting-sources', '', '--strict-mcp-config', '--mcp-config', '{"mcpServers":{}}',
-    '--disable-slash-commands', '--no-session-persistence', '--effort', effort, '--system-prompt', system];
-  // Allowlist: the CLI gets only what it needs to run and find its own login; none of Mentor's keys or phone numbers.
-  const env = {};
-  for (const [k, v] of Object.entries(process.env)) if (/^(PATH|HOME|USER|LANG|LC_\w+|TERM|TMPDIR|XDG_\w+|CLAUDE\w*)$/.test(k)) env[k] = v;
-  const child = spawn(BIN, args, { cwd: dir, env, stdio: ['pipe', 'pipe', 'ignore'] });
-  const waiting = [];
-  createInterface({ input: child.stdout }).on('line', line => {
-    let d; try { d = JSON.parse(line); } catch { return; }
-    if (d.type === 'result') waiting.shift()?.(d);
-  });
-  child.on('exit', () => { for (const w of waiting.splice(0)) w({ is_error: true, result: 'claude exited' }); });
-  return {
-    child,
-    ask(content, timeoutMs = 30_000) {
-      return new Promise((resolve, reject) => {
-        const timer = setTimeout(() => { child.kill(); reject(new Error('claude-code timed out')); }, timeoutMs);   // a fresh process on the next turn
-        waiting.push(d => { clearTimeout(timer); d.is_error ? reject(new Error(String(d.result || 'claude-code error'))) : resolve(d); });
-        child.stdin.write(JSON.stringify({ type: 'user', message: { role: 'user', content } }) + '\n');
-      });
-    },
-  };
-}
+// The spawn and its lockdown live in claude-code-cli.mjs (shared with Argos's owner-testing provider).
+const start = (schema, system, dir, effort = 'low') => startClaudeCode(schema, system, dir, effort, MODEL);
 
 export class ClaudeCodeBrain {
   provider = 'claude-code';
