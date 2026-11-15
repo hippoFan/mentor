@@ -66,6 +66,10 @@ export async function startLive() {
   wss.on('connection', ws => {
     ws.send(JSON.stringify({ type: 'hello', ...state }));
   });
+  // The ws server re-emits the http server's errors; without these listeners a busy port (the previous call's job
+  // still holding it) was an uncaught EADDRINUSE that killed the whole call. Now the monitor just sits this call out.
+  wss.on('error', () => {});
+  server.on('error', () => {});
   const ok = await new Promise(resolve => {
     server.once('error', () => resolve(false));
     server.listen(PORT, '127.0.0.1', () => resolve(true));

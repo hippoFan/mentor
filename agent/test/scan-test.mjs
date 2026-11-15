@@ -28,9 +28,11 @@ const test = async (name, fn) => { await fn(); pass++; console.log(`ok  ${name}`
 
 // ---------- unit ----------
 await test('scan intent', () => {
-  for (const t of ['Scan this', 'can you scan it?', 'make a 3D model of this', 'send this to my laptop', 'Send it to laptop', 'make me a model of my mouse', 'show me the digital twin'])
+  // Only the word "scan" starts a scan (the user's rule); everything else is a normal turn.
+  for (const t of ['Scan this', 'can you scan it?', 'scan my pen', 'scanning it now', 'Ody, scan this mouse'])
     assert.ok(isScanIntent(t), t);
-  for (const t of ['where does pin 13 go', 'is this right?', 'okay', 'I sent the code', 'scanner app is open'.replace('scanner', 'scanr')])
+  for (const t of ['where does pin 13 go', 'is this right?', 'okay', 'make a 3D model of this', 'send this to my laptop',
+    'show me the digital twin', "don't scan that", 'stop scanning', 'no scan please'])
     assert.ok(!isScanIntent(t), t);
 });
 await test('sanitiser caps and validates', () => {

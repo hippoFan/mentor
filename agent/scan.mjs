@@ -4,7 +4,9 @@
 import { createCanvas, loadImage } from '@napi-rs/canvas';
 
 /** Spoken requests that mean "scan this object" (checked before the normal turn). */
-export const SCAN_INTENT = /\b(scan|3-?d model|three[- ]?d model|send (it|this|that) to (my )?(laptop|computer)|digital twin|make (a|me a) (3-?d )?model)\b/i;
+// Scans only when the caller says "scan" (scan this / scan it / can you scan…). Never inferred from other words, so a
+// casual "3D" or "laptop" in conversation can't start one. "Don't scan" / "stop scanning" never triggers.
+export const SCAN_INTENT = /^(?!.*\b(don'?t|do not|stop|no)\b.{0,12}\bscan).*\bscan(s|ning)?\b/i;
 export const isScanIntent = text => SCAN_INTENT.test(String(text || ''));
 
 export const SHAPES = ['box', 'rounded_box', 'cylinder', 'sphere', 'capsule', 'cone', 'torus'];

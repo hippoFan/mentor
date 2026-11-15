@@ -7,7 +7,7 @@ set -u
 cd "$(dirname "$0")"
 LOGS=../logs; mkdir -p "$LOGS"
 AGENT_NAME=$(node --env-file=../.env -e 'process.stdout.write(process.env.AGENT_NAME||"mentor-hackuta")')
-export ODY_TASK="${ODY_TASK:-Make the Arduino onboard LED blink}"
+export ODY_TASK="${ODY_TASK:-Help the caller with whatever hands-on project or object they show you}"
 trap 'kill 0; exit 0' INT TERM
 keep() {   # keep <name> <log> <cmd...>
   local name=$1 log=$2; shift 2

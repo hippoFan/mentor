@@ -1,5 +1,0 @@
-warmup: mean 1.57 px, max 2.72 px, hidden 0/178, 1.88 ms/frame (p95 2.43)
-every frame       : mean 1.57 px, max 2.72 px, hidden 0/178, 1.90 ms/frame (p95 3.09)
-2 s brain delay   : mean 1.58 px, max 2.68 px, hidden 0/120, 1.71 ms/frame (p95 1.82)
-5 points: 2.02 ms/frame
-PASS

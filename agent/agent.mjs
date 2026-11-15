@@ -32,8 +32,8 @@ const VOICE = Boolean(process.env.ELEVEN_API_KEY);   // without an ElevenLabs ke
 const TEST_TURN = process.env.MENTOR_TEST_TURN || '';  // test hook: ask the brain this once the first camera frame arrives
 const FILLER_MS = 1500;
 const LANG = process.env.MENTOR_LANG || 'en';   // 'auto' = answer in whatever language the caller speaks
-const MAX_TURNS = Number(process.env.MENTOR_MAX_TURNS || 60);      // if the brain is slower than this, say a short filler so the call isn't silent
-const FILLERS = ['Let me take a look.', 'One sec, looking.', 'Okay, checking.'];   // marks fade if nobody talks for a while (camera moved, they are stale)
+const MAX_TURNS = Number(process.env.MENTOR_MAX_TURNS || 60);      // brain calls per call before Ody wraps up (cost guard)
+const FILLERS = ['Let me take a look.', 'One sec, looking.', 'Okay, checking.'];   // said if the brain is slower than FILLER_MS
 const RUNS_DIR = fileURLToPath(new URL('../runs/', import.meta.url));
 
 class MentorAgent extends voice.Agent {
