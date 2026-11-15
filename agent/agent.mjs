@@ -188,7 +188,7 @@ const agent = defineAgent({
     const ACKS = /^(ok(ay)?|yeah|yep|yes|sure|mm+|hm+|uh+|um+|cool|nice|got it|alright|thanks|thank you)[.!?]*$/i;
     // "Show me again": re-show the last marks and repeat the last line instantly, with no model call.
     const REPLAY = /^(.{0,20}\b)?(again|repeat( that)?|say (that|it) again|show me (that )?again|one more time|what\?|sorry\?|pardon)\W*$/i;
-    let last = null, turns = 0;
+    let last = null, turns = 0, lastPart = null;
     const onTurn = async heard => {
       if (ACKS.test(heard.trim())) { console.log(`[heard] ${heard} (acknowledgement, no brain call)`); live.send({ type: 'heard', text: heard }); return; }
       if (last && REPLAY.test(heard.trim())) {
@@ -212,9 +212,14 @@ const agent = defineAgent({
         if (seq !== turnSeq || ended) return;   // they spoke again while we were thinking; answer the newer turn
         marks = reply.marks; marksAt = Date.now();
         last = { marks: reply.marks, say: reply.say, board: reply.board };
+        // The laptop's 3D twin (/twin) builds the recognised board; tell it once per new part.
+        if (reply.board?.model && reply.board.model !== 'none' && reply.board.model !== lastPart) {
+          lastPart = reply.board.model;
+          live.send({ type: 'part', model: lastPart, label: { 'uno-r3': 'Arduino UNO R3', 'uno-r4-wifi': 'Arduino UNO R4 WiFi' }[lastPart] || 'Board' });
+        }
         tracker.seed(now, marks, reply.board);   // the brain judged `now` (the frame from the turn start): track from there;
         // with UNO corners the tracker registers the board and snaps pin marks/wires to their exact holes (board.mjs)
-        live.send({ type: 'turn', brain: brain.provider, model: reply.model || '', ms: reply.ms, marks: reply.marks, board: tracker.board ? tracker.board.corners() : null, step: reply.step, done: !!reply.done });
+        live.send({ type: 'turn', brain: brain.provider, model: reply.model || '', ms: reply.ms, marks: reply.marks, board: { model: reply.board?.model || 'none', corners: tracker.board ? tracker.board.corners() : (reply.board?.corners || []) }, step: reply.step, done: !!reply.done });
         if (reply.step) caption = reply.step;
         if (reply.done) caption = 'Done. You made it home.';   // nostos: the Odyssey's homecoming
         if (reply.step || reply.done) live.send({ type: 'step', text: caption, done: !!reply.done });

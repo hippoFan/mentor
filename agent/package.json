@@ -8,7 +8,7 @@
   },
   "scripts": {
     "start": "node --env-file=../.env agent.mjs start",
-    "check": "for f in *.mjs test/*.mjs; do node --check $f || exit 1; done",
+    "check": "for f in *.mjs test/*.mjs twin/*.js; do node --check $f || exit 1; done",
     "try-brain": "node --env-file=../.env try-brain.mjs",
     "recaps": "node serve-recaps.mjs",
     "send-recap": "node --env-file=../.env send-recap.mjs",
@@ -23,7 +23,9 @@
     "@livekit/agents": "1.8.0",
     "@livekit/agents-plugin-elevenlabs": "1.8.0",
     "@livekit/rtc-node": "0.13.35",
+    "@mediapipe/tasks-vision": "1.2.0",
     "@napi-rs/canvas": "1.1.1",
+    "three": "0.186.1",
     "ws": "^8.23.0"
   },
   "description": "Mentor: FaceTime an AI that sees your project and points at it",

@@ -1,0 +1,200 @@
+{
+ "_source": "Fallback built from the official Arduino UNO R3 drawing: 68.58 x 53.34 mm PCB, 2.54 mm header pitch, 0.06 in (1.524 mm) extra gap between D7 and D8. Used only when ../data/uno-pins.json is missing.",
+ "frame": "u (mm) along the long edge from the USB/barrel-jack edge; v (mm) from the power/analog header edge. Board top face is z=0.",
+ "models": [
+  "uno-r3",
+  "uno-r4-wifi"
+ ],
+ "pcb": {
+  "w": 68.58,
+  "h": 53.34,
+  "thickness": 1.6
+ },
+ "corners": {
+  "A": [
+   0,
+   53.34
+  ],
+  "B": [
+   66.04,
+   53.34
+  ],
+  "C": [
+   66.04,
+   0
+  ],
+  "D": [
+   0,
+   0
+  ]
+ },
+ "headerTop": 8.5,
+ "pitch": 2.54,
+ "aliases": {
+  "GND": "GND.1",
+  "D0": "0",
+  "RX": "0",
+  "TX": "1",
+  "3V3": "3.3V",
+  "3.3": "3.3V",
+  "VCC": "5V",
+  "RST": "RESET"
+ },
+ "pins": {
+  "0": {
+   "u": 63.5,
+   "v": 50.8,
+   "row": "digital"
+  },
+  "1": {
+   "u": 60.96,
+   "v": 50.8,
+   "row": "digital"
+  },
+  "2": {
+   "u": 58.42,
+   "v": 50.8,
+   "row": "digital"
+  },
+  "3": {
+   "u": 55.88,
+   "v": 50.8,
+   "row": "digital"
+  },
+  "4": {
+   "u": 53.34,
+   "v": 50.8,
+   "row": "digital"
+  },
+  "5": {
+   "u": 50.8,
+   "v": 50.8,
+   "row": "digital"
+  },
+  "6": {
+   "u": 48.26,
+   "v": 50.8,
+   "row": "digital"
+  },
+  "7": {
+   "u": 45.72,
+   "v": 50.8,
+   "row": "digital"
+  },
+  "8": {
+   "u": 41.656,
+   "v": 50.8,
+   "row": "digital"
+  },
+  "9": {
+   "u": 39.116,
+   "v": 50.8,
+   "row": "digital"
+  },
+  "10": {
+   "u": 36.576,
+   "v": 50.8,
+   "row": "digital"
+  },
+  "11": {
+   "u": 34.036,
+   "v": 50.8,
+   "row": "digital"
+  },
+  "12": {
+   "u": 31.496,
+   "v": 50.8,
+   "row": "digital"
+  },
+  "13": {
+   "u": 28.956,
+   "v": 50.8,
+   "row": "digital"
+  },
+  "GND.1": {
+   "u": 26.416,
+   "v": 50.8,
+   "row": "digital"
+  },
+  "AREF": {
+   "u": 23.876,
+   "v": 50.8,
+   "row": "digital"
+  },
+  "SDA": {
+   "u": 21.336,
+   "v": 50.8,
+   "row": "digital"
+  },
+  "SCL": {
+   "u": 18.796,
+   "v": 50.8,
+   "row": "digital"
+  },
+  "IOREF": {
+   "u": 30.48,
+   "v": 2.54,
+   "row": "power"
+  },
+  "RESET": {
+   "u": 33.02,
+   "v": 2.54,
+   "row": "power"
+  },
+  "3.3V": {
+   "u": 35.56,
+   "v": 2.54,
+   "row": "power"
+  },
+  "5V": {
+   "u": 38.1,
+   "v": 2.54,
+   "row": "power"
+  },
+  "GND.2": {
+   "u": 40.64,
+   "v": 2.54,
+   "row": "power"
+  },
+  "GND.3": {
+   "u": 43.18,
+   "v": 2.54,
+   "row": "power"
+  },
+  "VIN": {
+   "u": 45.72,
+   "v": 2.54,
+   "row": "power"
+  },
+  "A0": {
+   "u": 50.8,
+   "v": 2.54,
+   "row": "power"
+  },
+  "A1": {
+   "u": 53.34,
+   "v": 2.54,
+   "row": "power"
+  },
+  "A2": {
+   "u": 55.88,
+   "v": 2.54,
+   "row": "power"
+  },
+  "A3": {
+   "u": 58.42,
+   "v": 2.54,
+   "row": "power"
+  },
+  "A4": {
+   "u": 60.96,
+   "v": 2.54,
+   "row": "power"
+  },
+  "A5": {
+   "u": 63.5,
+   "v": 2.54,
+   "row": "power"
+  }
+ }
+}

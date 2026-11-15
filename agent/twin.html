@@ -1,0 +1,181 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Mentor twin</title>
+<script type="importmap">{"imports":{"three":"/vendor/three/build/three.module.js","three/addons/":"/vendor/three/examples/jsm/"}}</script>
+<style>
+  :root {
+    --ground: #F5F5F7; --ink: #1D1D1F; --grey: #86868B; --quiet: #C7C7CC; --line: #E3E3E8; --paper: #FFFFFF;
+    --mentor: #FFC845; --live: #FF3B30; --sea: #3B2A57; --holo: #3BD8FF; --violet: #A86BFF; --stage: #1D1D1F;
+    --font: Inter, "Inter Variable", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; height: 100%; }
+  body {
+    background: var(--ground); color: var(--ink); font: 400 15px/1.45 var(--font); font-feature-settings: "cv11", "ss01";
+    -webkit-font-smoothing: antialiased; display: grid; grid-template-rows: auto minmax(0, 1fr); height: 100dvh; overflow: hidden;
+  }
+  :focus-visible { outline: 2px solid var(--ink); outline-offset: 3px; border-radius: 8px; }
+  button { font: inherit; color: inherit; }
+
+  header { display: flex; align-items: center; gap: 12px; padding: 16px 28px 0; min-width: 0; }
+  .mark { width: 22px; height: 22px; border-radius: 50%; border: 4px solid var(--mentor); flex: none; display: grid; place-items: center; }
+  .mark::after { content: ""; width: 5px; height: 5px; border-radius: 50%; background: var(--ink); }
+  .wordmark { font-weight: 700; font-size: 20px; letter-spacing: -0.02em; }
+  .tagline { color: var(--grey); font-size: 15px; font-weight: 500; }
+  .status { margin-left: auto; display: flex; align-items: center; gap: 8px; font-weight: 500; white-space: nowrap; }
+  .status .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--quiet); }
+  body.live .status .dot { background: var(--live); }
+  .status .sub { color: var(--grey); }
+  a.back { white-space: nowrap; color: var(--ink); text-decoration: none; font-weight: 500; font-size: 14px; border: 1px solid var(--line); border-radius: 10px; padding: 7px 12px; }
+  a.back:hover { background: var(--paper); }
+
+  main { display: grid; grid-template-columns: minmax(0, 1fr) 360px; gap: 24px; padding: 16px 28px 24px; min-height: 0; }
+
+  /* ---------- the stage ---------- */
+  .stage { position: relative; border-radius: 28px; overflow: hidden; background: var(--stage); min-height: 0; isolation: isolate; }
+  body.holo .stage { background: #04070B; }
+  .stage canvas { display: block; width: 100%; height: 100%; touch-action: none; }
+  .vignette { position: absolute; inset: 0; pointer-events: none; z-index: 1;
+    background: radial-gradient(120% 90% at 50% 45%, transparent 55%, rgba(0,0,0,.55) 100%); }
+  #labels { position: absolute; inset: 0; pointer-events: none; z-index: 2; }
+
+  /* HUD tags: a dot on the target, a thin leader, a quiet label */
+  .tag { position: relative; width: 0; height: 0; }
+  .tag i { position: absolute; left: -3px; top: -3px; width: 6px; height: 6px; border-radius: 50%; background: currentColor; box-shadow: 0 0 8px currentColor; }
+  .tag b { position: absolute; left: 0; bottom: 0; width: 34px; height: 1px; background: currentColor; opacity: .7; transform-origin: 0 0; transform: rotate(-38deg); }
+  .tag span { position: absolute; left: 26px; bottom: 20px; white-space: nowrap; font: 600 12.5px/1 var(--font); letter-spacing: .01em;
+    color: #fff; background: rgba(12,16,22,.72); border: 1px solid color-mix(in srgb, currentColor 55%, transparent);
+    padding: 6px 9px 6px 8px; border-radius: 8px; backdrop-filter: blur(6px); }
+  .tag span em { font-style: normal; color: currentColor; margin-right: 6px; }
+  .tag.mentor { color: var(--mentor); } .tag.warn { color: var(--live); } .tag.wire { color: var(--holo); }
+  .tag.part { color: #8FEFFF; } .tag.part span { font-weight: 500; font-size: 11.5px; background: rgba(4,10,16,.55); }
+  .tag.layer { color: #8FEFFF; } .tag.layer b { width: 60px; transform: rotate(0deg); } .tag.layer span { left: 64px; bottom: -11px; }
+
+  .waiting { position: absolute; left: 0; right: 0; bottom: 92px; text-align: center; z-index: 3; color: #F5F5F7; pointer-events: none; transition: opacity .6s; }
+  .waiting h2 { margin: 0; font-weight: 700; font-size: clamp(26px, 2.6vw, 40px); letter-spacing: -0.03em; }
+  .waiting p { margin: 8px 0 0; color: #A1A1A6; font-size: 16px; }
+  body.has-part .waiting { opacity: 0; }
+
+  .toolbar { position: absolute; left: 50%; bottom: 20px; transform: translateX(-50%); z-index: 4; display: flex; gap: 6px; padding: 6px;
+    background: rgba(28,30,34,.72); border: 1px solid rgba(255,255,255,.08); border-radius: 16px; backdrop-filter: blur(14px); }
+  .tool { display: inline-flex; align-items: center; gap: 8px; padding: 9px 12px; border-radius: 11px; border: 0; background: transparent;
+    color: #E8E8ED; font-weight: 500; font-size: 14px; cursor: pointer; white-space: nowrap; }
+  .tool:hover { background: rgba(255,255,255,.08); }
+  .tool[aria-pressed="true"] { background: rgba(59,216,255,.16); color: #fff; }
+  .tool kbd { font: 600 11px/1 var(--font); min-width: 18px; padding: 3px 5px; border-radius: 5px; border: 1px solid currentColor; opacity: .5; }
+  .tool[hidden] { display: none; }
+  .tool:focus-visible { outline-color: var(--holo); }
+
+  .tooltip { position: absolute; z-index: 5; pointer-events: none; min-width: 150px; max-width: 260px; padding: 10px 12px; border-radius: 12px;
+    background: rgba(250,250,252,.96); color: var(--ink); box-shadow: 0 10px 30px rgba(0,0,0,.35); transform: translate(14px, -50%); }
+  .tooltip strong { display: block; font-size: 15px; letter-spacing: -0.01em; }
+  .tooltip span { display: block; color: #57575c; font-size: 13px; margin-top: 2px; }
+  .tooltip .said { color: #8a6200; font-weight: 600; }
+  .tooltip[hidden] { display: none; }
+
+  .handview { position: absolute; left: 20px; bottom: 20px; z-index: 4; width: 176px; border-radius: 14px; overflow: hidden;
+    background: rgba(8,12,16,.8); border: 1px solid rgba(59,216,255,.25); color: #C9F3FF; font-size: 11.5px; }
+  .handview canvas { display: block; width: 176px; height: 132px; }
+  .handview p { margin: 0; padding: 7px 10px 8px; line-height: 1.35; color: #9FB3BC; }
+  .handview p b { color: #E8FBFF; font-weight: 600; }
+  .handview[hidden] { display: none; }
+  .cursor { position: absolute; z-index: 6; width: 26px; height: 26px; margin: -13px 0 0 -13px; border-radius: 50%; pointer-events: none;
+    background: conic-gradient(var(--mentor) calc(var(--d, 0) * 1turn), rgba(255,255,255,.18) 0);
+    -webkit-mask: radial-gradient(circle, transparent 8px, #000 9px); mask: radial-gradient(circle, transparent 8px, #000 9px); }
+  .cursor::after { content: ""; position: absolute; left: 10px; top: 10px; width: 6px; height: 6px; border-radius: 50%; background: #fff; }
+  .cursor[hidden] { display: none; }
+  .toast { position: absolute; top: 18px; left: 50%; transform: translateX(-50%); z-index: 6; background: rgba(250,250,252,.96); color: var(--ink);
+    padding: 8px 14px; border-radius: 99px; font-weight: 500; font-size: 14px; box-shadow: 0 8px 24px rgba(0,0,0,.3); }
+  .toast[hidden] { display: none; }
+  .fps { position: absolute; top: 14px; right: 16px; z-index: 4; color: #6E6E73; font: 500 12px/1 var(--font); font-variant-numeric: tabular-nums; }
+
+  /* ---------- the panel ---------- */
+  aside { display: flex; flex-direction: column; gap: 22px; min-height: 0; overflow: auto; padding: 4px 2px 4px 0; }
+  .part h2 { margin: 0; font-size: 26px; line-height: 1.12; letter-spacing: -0.03em; font-weight: 700; text-wrap: balance; }
+  .part p { margin: 6px 0 0; color: var(--grey); font-weight: 500; }
+  body:not(.has-part) .part h2 { color: var(--quiet); }
+  .step { border-left: 3px solid var(--sea); padding: 2px 0 2px 14px; }
+  .step small { display: block; color: var(--grey); font-weight: 500; font-size: 13px; }
+  .step p { margin: 2px 0 0; font-weight: 600; font-size: 17px; line-height: 1.35; letter-spacing: -0.01em; }
+  .step.done { border-left-color: var(--mentor); }
+  h3 { margin: 0 0 8px; font-size: 13px; font-weight: 600; color: var(--grey); }
+  ul.list { list-style: none; margin: 0; padding: 0; display: grid; gap: 2px; }
+  ul.list li button { width: 100%; display: grid; grid-template-columns: 18px minmax(0, 1fr) auto; align-items: center; gap: 10px; text-align: left;
+    padding: 8px 10px; border-radius: 10px; border: 0; background: transparent; cursor: pointer; }
+  ul.list li button:hover { background: var(--paper); }
+  ul.list .ico { width: 14px; height: 14px; border-radius: 50%; border: 3px solid var(--mentor); }
+  ul.list .ico.warn { border-color: var(--live); }
+  ul.list .ico.wire { border: 0; border-radius: 4px; height: 6px; background: linear-gradient(90deg, var(--holo), var(--violet)); }
+  ul.list .ico.miss { border-color: var(--quiet); }
+  ul.list .what { font-weight: 500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  ul.list .where { color: var(--grey); font-size: 13px; font-variant-numeric: tabular-nums; }
+  ul.list li.old { opacity: .55; }
+  .empty { color: var(--grey); margin: 0; font-size: 14px; }
+  .actions { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: auto; }
+  .btn { padding: 11px 12px; border-radius: 12px; border: 1px solid var(--line); background: var(--paper); font-weight: 600; font-size: 14px; cursor: pointer; }
+  .btn:hover { border-color: var(--quiet); }
+  .btn.primary { background: var(--ink); color: var(--ground); border-color: var(--ink); grid-column: 1 / -1; }
+  .btn.primary:hover { background: #000; }
+  .hint { color: var(--grey); font-size: 13px; margin: 0; }
+
+  @media (max-width: 900px) {
+    body { overflow: auto; height: auto; display: block; }
+    header { padding: 14px 16px 0; } .tagline { display: none; }
+    main { grid-template-columns: 1fr; padding: 12px 16px 24px; }
+    .stage { height: 62vh; border-radius: 22px; }
+    .toolbar { left: 8px; right: 8px; transform: none; overflow-x: auto; scrollbar-width: none; }
+    .waiting { bottom: 84px; } .waiting p { display: none; }
+    .tool kbd { display: none; }
+  }
+  @media (prefers-reduced-motion: reduce) { .waiting { transition: none; } }
+</style>
+</head>
+<body class="holo">
+<header>
+  <span class="mark" aria-hidden="true"></span>
+  <span class="wordmark">Mentor</span>
+  <span class="tagline">Digital twin</span>
+  <div class="status" role="status"><span class="dot"></span><span id="status">Waiting for a call</span><span class="sub" id="brain"></span></div>
+  <a class="back" href="/">Call view</a>
+</header>
+<main>
+  <section class="stage" id="stage" aria-label="3D view of your board. Drag to turn, scroll to zoom.">
+    <canvas id="view"></canvas>
+    <div class="vignette"></div>
+    <div id="labels"></div>
+    <div class="waiting" id="waiting"><h2>Show Mentor your board.</h2><p>Every voyage starts with a look.</p></div>
+    <div class="tooltip" id="tip" hidden><strong></strong><span></span></div>
+    <div class="cursor" id="cursor" hidden></div>
+    <div class="toast" id="toast" hidden></div>
+    <div class="fps" id="fps" hidden></div>
+    <div class="handview" id="handview" hidden>
+      <canvas id="handcanvas" width="176" height="132"></canvas>
+      <p><b id="handmode">Show a hand</b><br>Pinch to turn, two pinches to zoom, fist to move, open palm to reset, point to pick a pin.</p>
+    </div>
+    <div class="toolbar" role="toolbar" aria-label="View">
+      <button class="tool" id="t-holo" type="button" aria-pressed="true">Hologram <kbd>H</kbd></button>
+      <button class="tool" id="t-explode" type="button" aria-pressed="false">Explode <kbd>E</kbd></button>
+      <button class="tool" id="t-reset" type="button">Reset view <kbd>R</kbd></button>
+      <button class="tool" id="t-hands" type="button" aria-pressed="false" hidden>Hands</button>
+    </div>
+  </section>
+  <aside>
+    <div class="part"><h2 id="part">No board yet</h2><p id="partsub">Mentor names the board as soon as it sees it.</p></div>
+    <div class="step" id="stepbox"><small>Current step</small><p id="step">Waiting for the call to start</p></div>
+    <div><h3>Marked this call</h3><ul class="list" id="marks"></ul><p class="empty" id="marks-empty">Rings, wires and warnings Mentor draws appear here.</p></div>
+    <div><h3>Wiring</h3><ul class="list" id="wires"></ul><p class="empty" id="wires-empty">No wires yet.</p></div>
+    <div class="actions">
+      <button class="btn primary" id="export" type="button">Export scene (.glb)</button>
+      <button class="btn" id="copy" type="button">Copy wiring</button>
+      <button class="btn" id="reset2" type="button">Reset view</button>
+    </div>
+    <p class="hint">Drag to turn, scroll to zoom, hover a pin to see what it does. Keys: H hologram, E explode, R reset, X export.</p>
+    <p class="hint" id="privacy" hidden>Hand tracking runs on this laptop. Video never leaves it.</p>
+  </aside>
+</main>
+<script type="module" src="/twin/app.js"></script>
+</body>
+</html>
