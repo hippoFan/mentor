@@ -18,7 +18,7 @@ const cap = (s, n) => String(s ?? '').replace(/[\u0000-\u0008\u000b-\u001f\u007f
 const list = (a, k, n) => (Array.isArray(a) ? a : []).slice(0, k).map(x => cap(x, n)).filter(Boolean);
 
 const RULES = `OpenSCAD rules: millimetres; keep one module per part with the existing module names unless the request
-renames or removes a part; no include, use, import or surface; $fn at most 96; the file must end by calling the top-level
+renames or removes a part; no include, use, import or surface; $fn at most 48 (the CGAL render on a laptop is slow: keep booleans few, avoid minkowski, avoid hull() of many spheres); the file must end by calling the top-level
 assembly. Change only what the request asks for and keep everything else exactly as it was.`;
 
 const DEV_SCHEMA = { type: 'object', additionalProperties: false, required: ['code', 'summary'],

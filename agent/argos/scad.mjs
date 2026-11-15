@@ -7,7 +7,7 @@
 //   await compileScad(code)       // {ok, stl, ms, error, log}
 import { Worker } from 'node:worker_threads';
 
-export const SCAD = { maxCode: 60_000, timeoutMs: 20_000, maxStl: 40 * 1024 * 1024 };
+export const SCAD = { maxCode: 60_000, timeoutMs: 60_000, maxStl: 40 * 1024 * 1024 };   // wasm OpenSCAD on a laptop CPU: real designs took 20+ s
 
 const n = (v, d = 0) => { const x = Number(v); return Number.isFinite(x) ? Math.round(x * 100) / 100 : d; };
 const vec = (v, d = 0) => `[${n(v?.x, d)}, ${n(v?.y, d)}, ${n(v?.z, d)}]`;
