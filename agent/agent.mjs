@@ -21,7 +21,7 @@ import { startLive } from './live.mjs';
 import { createMarkTracker } from './tracker.mjs';
 import { cropJpeg, isScanIntent, parseModelCorrection, scanLine } from './scan.mjs';
 import { researchInterior } from './research.mjs';
-import { CIRCUIT_BOARDS, circuitEvent, circuitIntent, createProject, findComponent, handleUtterance, markDone, nextStep, setBoard } from './circuit.mjs';
+import { CIRCUIT_BOARDS, circuitEvent, circuitIntent, createProject, describe as describeCircuit, findComponent, handleUtterance, markDone, nextStep, setBoard } from './circuit.mjs';
 import { MARK_TTL_MS, OVERLAY, overlayFrame, shouldDraw } from './overlay-policy.mjs';
 import { matchPart, parseTwin, partList } from './twin-voice.mjs';
 import { createAnalyzer } from './combo.mjs';
@@ -384,7 +384,25 @@ const agent = defineAgent({
 
     // ---- the laptop page talks back (live.mjs validates and rate-limits): parts on the 3D stage, "analyze this combo" ----
     const stage = { board: null, scan: null, circuit: null }, removedStack = [];
-    let stageScope = null, focusPart = null, analysisNo = 0;
+    let stageScope = null, focusPart = null, analysisNo = 0, lastAnalysis = null;
+    // Project memory: what the caller BUILT this call (by voice), so the brain never says "I don't see an LED" about a
+    // part it added itself. Sent with every brain turn; short (≤ ~600 chars); the brain trusts it over the camera for
+    // what exists in the plan, and uses the camera only for what is physically plugged in.
+    const projectMemory = () => {
+      const lines = [];
+      const boardName = lastPart && lastPart !== 'none' ? lastPart : '';
+      if (boardName) lines.push(`board recognised: ${boardName}`);
+      if (circuit.components?.length) {
+        const n = nextStep(circuit), done = circuit.done?.length || 0;
+        lines.push(`circuit the caller asked for (by voice): ${describeCircuit(circuit)}`);
+        lines.push(n ? `wiring progress: step ${n.index} of ${n.total}, next: ${n.say}` : `wiring: all ${done} steps done`);
+      }
+      if (removedStack.length) lines.push(`parts removed in the 3D twin: ${removedStack.map(p => p.name).join(', ')}`);
+      if (lastAnalysis) lines.push(`last combo verdict: ${lastAnalysis.title} (${lastAnalysis.works ? 'works' : "won't work"})`);
+      if (lastScan) lines.push(`last scan: ${lastScan.spec.model_guess || lastScan.spec.name}${lastScan.spec.model_source === 'user' ? ' (the caller confirmed the model)' : ''}`);
+      if (!lines.length) return '';
+      return `[Project memory from this call. Trust it for what the caller has planned and added. A part added by voice may not be plugged in yet: never say it is missing or that you don't have it; if you can't see it on camera, say it isn't plugged in yet and say where it goes. ${lines.join('; ').slice(0, 900)}]`;
+    };
     const stageParts = () => (stageScope && stage[stageScope]?.parts) || [];
     const analyzer = createAnalyzer({ brain });
     const analyzeTurn = async msg => {
@@ -399,6 +417,7 @@ const agent = defineAgent({
         if (ended) return;
         live.send({ type: 'analysis', id: ++analysisNo, scope: msg.scope, board: msg.board, kept: msg.kept, removed: msg.removed,
           title: r.title, works: r.works, summary: r.summary, pros: r.pros, cons: r.cons, needs: r.needs, verdict: r.verdict, cached: r.cached, ms: r.ms, model: r.model });
+        lastAnalysis = r;
         console.log(`[analysis] ${r.works ? 'works' : 'does not work'}: ${r.title} (${r.ms} ms${r.cached ? ', cached' : ''})`);
         say(`${r.summary} Details are on your laptop.`, 0);
       } catch (e) {
@@ -511,7 +530,8 @@ const agent = defineAgent({
         const now = getLatest();
         const image = now ? await frameJpeg(now) : null;
         usage.brain++;
-        const reply = await brain.turn(heard, image).finally(() => clearTimeout(filler));
+        const memory = projectMemory();
+        const reply = await brain.turn(memory ? `${heard}\n${memory}` : heard, image).finally(() => clearTimeout(filler));
         if (seq !== turnSeq || ended) return;   // they spoke again while we were thinking; answer the newer turn
         // Safety: if Ody says "Stop…" about something it marked, make sure the mark shows as a red warning.
         if (/^\s*stop\b/i.test(reply.say || '') && reply.marks.length && !reply.marks.some(m => m.kind === 'warn')) reply.marks[0] = { ...reply.marks[0], kind: 'warn' };
