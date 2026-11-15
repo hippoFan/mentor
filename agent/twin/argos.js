@@ -104,7 +104,7 @@ body[data-page]:not([data-page="argo"]) #argos-btn,body[data-page]:not([data-pag
 #argos-panel :focus-visible{outline-color:var(--a-cream)}
 /* ---- the living dog (inline SVG, GSAP in this file; transform only, never takes a click) ---- */
 svg.argos-dog{display:block;pointer-events:none;overflow:visible}
-html.v2 #argos-btn.argos-has-dog{background:var(--clay),var(--parchment)}
+html.v2 #argos-btn.argos-has-dog{background:var(--oak,#865628)}
 html.v2 #argos-btn.argos-has-dog > svg.argos-dog,#argos-btn.argos-has-dog > svg.argos-dog{visibility:visible;width:66%;height:78%;margin:0 0 6% 4%}
 .argos-head-dog{flex:none;width:calc(var(--ody-space-unit) * 11);height:calc(var(--ody-space-unit) * 12);margin:calc(var(--ody-space-1) * -1) calc(var(--ody-space-1) * -1) 0 calc(var(--ody-space-1) * -1);pointer-events:none}
 .argos-head-dog svg{width:100%;height:100%}
