@@ -9,6 +9,7 @@ import { mkdir, writeFile } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
 import { AutoSubscribe, defineAgent, voice } from '@livekit/agents';
 import * as elevenlabs from '@livekit/agents-plugin-elevenlabs';
+import { BackgroundVoiceCancellation, NoiseCancellation } from '@livekit/noise-cancellation-node';
 import {
   LocalVideoTrack, RoomEvent, TrackKind, TrackSource, VideoBufferType, VideoFrame, VideoSource, VideoStream,
 } from '@livekit/rtc-node';
@@ -32,7 +33,12 @@ const VOICE = Boolean(process.env.ELEVEN_API_KEY);   // without an ElevenLabs ke
 const TEST_TURN = process.env.MENTOR_TEST_TURN || '';  // test hook: ask the brain this once the first camera frame arrives
 const FILLER_MS = 1500;
 const LANG = process.env.MENTOR_LANG || 'en';   // 'auto' = answer in whatever language the caller speaks
-const MAX_TURNS = Number(process.env.MENTOR_MAX_TURNS || 60);      // brain calls per call before Ody wraps up (cost guard)
+const MAX_TURNS = Number(process.env.MENTOR_MAX_TURNS || 60);
+const NOISE = (process.env.MENTOR_NOISE || 'bvc').toLowerCase();   // bvc (default) | nc | off
+// Wake word: with ODY_WAKE=1, Ody only acts on sentences that address it ("Ody, scan this"). Speech-to-text spells the
+// name many ways, so accept the common ones; the name is stripped before the rest is handled.
+const WAKE = process.env.MENTOR_WAKE === '1';
+const WAKE_RE = /^\W*(hey |ok |okay )?(ody|odie|oddy|odi|oddie|audi|otie|odee|o\.?d\.?)\b[\s,.!:-]*/i;      // brain calls per call before Ody wraps up (cost guard)
 const FILLERS = ['Let me take a look.', 'One sec, looking.', 'Okay, checking.'];   // said if the brain is slower than FILLER_MS
 const RUNS_DIR = fileURLToPath(new URL('../runs/', import.meta.url));
 
@@ -247,7 +253,12 @@ const agent = defineAgent({
     ];
     // Only short, direct commands ("Ody, explode it"), so a sentence that merely mentions a word isn't hijacked.
     const twinCommand = text => text.trim().split(/\s+/).length <= 7 && TWIN_CMDS.find(([re]) => re.test(text));
-    const onTurn = async heard => {
+    const onTurn = async raw => {
+      let heard = raw;
+      if (WAKE) {
+        if (!WAKE_RE.test(raw)) { console.log(`[heard] ${raw} (not addressed to Ody, ignored)`); live.send({ type: 'heard', text: raw, ignored: true }); return; }
+        heard = raw.replace(WAKE_RE, '').trim() || 'Hi';
+      }
       const cmd = !isScanIntent(heard) && twinCommand(heard);
       if (cmd) {
         console.log(`[heard] ${heard} (twin: ${cmd[1]}, no brain call)`); live.send({ type: 'heard', text: heard });
@@ -353,6 +364,9 @@ const agent = defineAgent({
       agent: new MentorAgent({ onTurn: text => { onTurn(text).catch(e => console.error('[mentor] turn failed', e?.message || e)); } }),
       record: false,
       inputOptions: {
+        // Ody's ears: Krisp background-voice cancellation (LiveKit Cloud) keeps the main, closest speaker and removes
+        // other voices and room noise before speech-to-text. ODY_NOISE=nc (noise only) or off.
+        ...(NOISE === 'off' ? {} : { noiseCancellation: NOISE === 'nc' ? NoiseCancellation() : BackgroundVoiceCancellation() }),
         participantIdentity: caller.identity,
         audioEnabled: true,
         videoEnabled: false,   // we read video ourselves above
