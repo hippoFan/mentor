@@ -3,7 +3,8 @@
  "frame": "u (mm) along the long edge from the USB/barrel-jack edge; v (mm) from the power/analog header edge. Board top face is z=0.",
  "models": [
   "uno-r3",
-  "uno-r4-wifi"
+  "uno-r4-wifi",
+  "uno-q"
  ],
  "pcb": {
   "w": 68.58,

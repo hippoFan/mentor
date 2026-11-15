@@ -1,4 +1,4 @@
-// Procedural Arduino UNO (R3 / R4 WiFi) and half-size breadboard, built from the pin table in millimetres.
+// Procedural Arduino UNO (R3 / R4 WiFi / Q) and half-size breadboard, built from the pin table in millimetres.
 // Every mesh carries userData.holo (its hologram tint) and sits in an explode layer, so the page can switch between
 // the realistic and the hologram look and pull the board apart.
 import * as THREE from 'three';
@@ -75,17 +75,18 @@ function silkscreen(table, model, holo) {
   const c = canvas(Math.round(BOARD_W * S), Math.round(BOARD_H * S)), g = c.getContext('2d');
   const X = u => u * S, Y = v => (BOARD_H - v) * S;
   const ink = holo ? 'rgba(190,245,255,0.95)' : '#f4f7f6';
-  g.fillStyle = holo ? '#000' : (model === 'uno-r4-wifi' ? '#00818a' : '#00878f');
+  const Q = model === 'uno-q';   // the UNO Q's solder mask is dark navy, not teal
+  g.fillStyle = holo ? '#000' : Q ? '#17223d' : (model === 'uno-r4-wifi' ? '#00818a' : '#00878f');
   g.fillRect(0, 0, c.width, c.height);
   // copper traces under the solder mask: faint, seeded so the board looks the same every time
-  const rnd = seeded(model === 'uno-r4-wifi' ? 7 : 3);
+  const rnd = seeded(Q ? 11 : model === 'uno-r4-wifi' ? 7 : 3);
   g.lineCap = 'round'; g.lineJoin = 'round';
-  g.strokeStyle = holo ? 'rgba(60,200,255,0.22)' : 'rgba(0,70,76,0.55)'; g.lineWidth = 0.28 * S;
+  g.strokeStyle = holo ? 'rgba(60,200,255,0.22)' : Q ? 'rgba(48,70,118,0.6)' : 'rgba(0,70,76,0.55)'; g.lineWidth = 0.28 * S;
   for (let i = 0; i < 46; i++) {
     let u = 8 + rnd() * 56, v = 6 + rnd() * 42; g.beginPath(); g.moveTo(X(u), Y(v));
     for (let k = 0; k < 3; k++) { if (rnd() < 0.5) u += (rnd() - 0.5) * 24; else v += (rnd() - 0.5) * 20; u = Math.min(64, Math.max(4, u)); v = Math.min(49, Math.max(5, v)); g.lineTo(X(u), Y(v)); }
     g.stroke();
-    g.beginPath(); g.arc(X(u), Y(v), 0.45 * S, 0, Math.PI * 2); g.fillStyle = holo ? 'rgba(120,230,255,0.4)' : 'rgba(0,60,66,0.7)'; g.fill();
+    g.beginPath(); g.arc(X(u), Y(v), 0.45 * S, 0, Math.PI * 2); g.fillStyle = holo ? 'rgba(120,230,255,0.4)' : Q ? 'rgba(30,46,82,0.8)' : 'rgba(0,60,66,0.7)'; g.fill();
   }
   // header outlines
   g.strokeStyle = ink; g.lineWidth = 0.18 * S;
@@ -105,9 +106,26 @@ function silkscreen(table, model, holo) {
   const text = (t, u, v, size, weight = 600, align = 'center', font = FONT) => {
     g.font = `${weight} ${size * S}px ${font}`; g.fillStyle = ink; g.textAlign = align; g.textBaseline = 'middle'; g.fillText(t, X(u), Y(v));
   };
+  const F = FEATURES[model];
+  if (Q) {
+    // UNO Q printing as on Arduino's renders (pinout ABX00162 p.1, user manual "main components"): BOOT on the power
+    // header's first hole, POWER / ON / JCTL / JSPI / QWIIC, the four RGB LED numbers, the Arduino mark + UNO Q box
+    vtext('BOOT', table.pins.IOREF.u - PITCH, 4.7, 1.1, 'left');
+    text('POWER', 6.4, 45.4, 1.2, 700); text('ON', 5.0, 32.3, 1.2, 700); text('JCTL', 13.4, 41.2, 1.0, 700);
+    text('JSPI', 63.5, 33.6, 1.1, 700); text('QWIIC', 65.4, 18.9, 1.0, 700);
+    F.rgb && [42.2, 44.1, 46.1, 48.1].forEach((v, i) => text(String(i + 1), 62.9, v, 0.9, 700));
+    g.strokeStyle = ink; g.lineWidth = 0.6 * S;
+    for (const du of [-2.0, 2.0]) { g.beginPath(); g.arc(X(23.2 + du), Y(28.6), 2.0 * S, 0, Math.PI * 2); g.stroke(); }
+    g.lineWidth = 0.38 * S; g.beginPath(); g.moveTo(X(20.4), Y(28.6)); g.lineTo(X(22.0), Y(28.6)); g.moveTo(X(24.4), Y(28.6)); g.lineTo(X(26.0), Y(28.6)); g.moveTo(X(25.2), Y(29.4)); g.lineTo(X(25.2), Y(27.8)); g.stroke();
+    text('ARDUINO', 23.2, 25.4, 1.35, 800);
+    g.fillStyle = ink; g.fillRect(X(18.8), Y(23.3), 9 * S, 2.6 * S);
+    g.fillStyle = holo ? '#000' : '#17223d'; g.fillRect(X(18.8 + 5.9), Y(23.1), 2.9 * S, 2.2 * S);
+    g.font = `800 ${1.9 * S}px ${FONT}`; g.textAlign = 'center'; g.textBaseline = 'middle';
+    g.fillStyle = holo ? '#000' : '#17223d'; g.fillText('UNO', X(21.8), Y(22.0));
+    g.fillStyle = ink; g.fillText('Q', X(26.1), Y(22.0));
+  } else {
   text('DIGITAL (PWM~)', 53, 40.4, 1.5);
   text('POWER', 37, 10.6, 1.5); text('ANALOG IN', 57.2, 10.6, 1.5);
-  const F = FEATURES[model];
   text('L', F.led_l.u - 2.2, F.led_l.v, 1.3); text('TX', F.led_tx.u - 2.6, F.led_tx.v, 1.1); text('RX', F.led_rx.u - 2.6, F.led_rx.v, 1.1);
   text('ON', F.led_on.u + 3, F.led_on.v, 1.3); text('RESET', F.reset.u + 7, F.reset.v + 1.8, 1.0); text('ICSP', 63.5, 32.2, 1.0);
   if (model === 'uno-r4-wifi') {
@@ -121,6 +139,7 @@ function silkscreen(table, model, holo) {
     text('ARDUINO', 42.5, 32.4, 1.6, 700);
     text('UNO', 55.5, 37.2, 4.2, 800);
   }
+  }
   // mounting-hole pads
   for (const [u, v] of [[13.97, 2.54], [15.24, 50.8], [66.04, 7.62], [66.04, 35.56]]) {
     g.beginPath(); g.arc(X(u), Y(v), 2.6 * S, 0, Math.PI * 2); g.fillStyle = holo ? 'rgba(140,235,255,0.5)' : '#c8ccc9'; g.fill();
@@ -133,7 +152,8 @@ function silkscreen(table, model, holo) {
  * @returns {{group, layers, pinPos, featurePos, uvPos, pick, pickKeys, model}}
  */
 export function buildUno(table, model) {
-  const group = new THREE.Group(); group.name = model === 'uno-r4-wifi' ? 'Arduino UNO R4 WiFi' : 'Arduino UNO R3';
+  const Q = model === 'uno-q';
+  const group = new THREE.Group(); group.name = Q ? 'Arduino UNO Q' : model === 'uno-r4-wifi' ? 'Arduino UNO R4 WiFi' : 'Arduino UNO R3';
   const layers = {};
   for (const name of ['pcb', 'parts', 'leds', 'chip', 'ports', 'headers']) { const l = new THREE.Group(); l.name = name; layers[name] = l; group.add(l); }
   const L = (u, h, v) => new THREE.Vector3(u - BOARD_W / 2, PCB_T + h, BOARD_H / 2 - v);
@@ -156,7 +176,7 @@ export function buildUno(table, model) {
   const silk = silkscreen(table, model, false);
   const pcb = new THREE.Mesh(pcbGeom, [
     new THREE.MeshStandardMaterial({ map: silk, roughness: 0.5, metalness: 0.05 }),
-    new THREE.MeshStandardMaterial({ color: 0x0c5a57, roughness: 0.7 }),
+    new THREE.MeshStandardMaterial({ color: Q ? 0x111a30 : 0x0c5a57, roughness: 0.7 }),
   ]);
   pcb.name = 'PCB'; pcb.receiveShadow = true; pcb.castShadow = true;
   pcb.userData.holo = 'pcb'; pcb.userData.holoMap = silkscreen(table, model, true);
@@ -180,17 +200,18 @@ export function buildUno(table, model) {
     m.userData.holoMap = holeTexture(n, true);
   });
 
-  // ICSP (2x3 male) near the far edge
+  // ICSP (2x3 male) near the far edge; the UNO Q has its JSPI header (MISO, 5V, SCK, MOSI, RESET, GND) in the same spot
   {
     const f = FEATURES[model].icsp;
-    as('icsp', 'ICSP header');
-    add('headers', new THREE.BoxGeometry(2 * PITCH, 2.5, 3 * PITCH), M.black, 'body', f.u, 1.25, f.v, 'ICSP header');
+    as('icsp', Q ? 'JSPI header' : 'ICSP header');
+    add('headers', new THREE.BoxGeometry(2 * PITCH, 2.5, 3 * PITCH), M.black, 'body', f.u, 1.25, f.v, Q ? 'JSPI header' : 'ICSP header');
     const pg = new THREE.BoxGeometry(0.64, 6, 0.64);
     for (let a = 0; a < 2; a++) for (let b = 0; b < 3; b++) add('headers', pg, M.gold, 'metal', f.u + (a - 0.5) * PITCH, 3, f.v + (b - 1) * PITCH);
   }
 
-  // ports
   const F = FEATURES[model];
+  if (Q) unoQParts(); else {
+  // ports
   if (model === 'uno-r4-wifi') {
     as('usb', 'USB-C port');
     const usb = add('ports', new RoundedBoxGeometry(7.35, 3.26, 8.94, 3, 1.4), M.metal, 'metal', 2.35, 1.63, F.usb.v, 'USB-C port');
@@ -280,6 +301,73 @@ export function buildUno(table, model) {
     if (k === 'led_on') { m.material.emissiveIntensity = 1.6; m.userData.lit = true; }
     if (k === 'led_l') m.userData.blink = true;
   }
+  }
+
+  /** UNO Q parts (positions: FEATURES['uno-q'] in pins.js, sources cited there). No barrel jack, no reset button. */
+  function unoQParts() {
+    const o = new THREE.Object3D();
+    const chipTop = (lines, w, d, bg, color) => new THREE.MeshStandardMaterial({ map: textTexture(lines, Math.round(w * 24), Math.round(d * 24), { bg, color, size: Math.min(w, d) * 3.2 }), roughness: 0.45 });
+    const grey = new THREE.MeshStandardMaterial({ color: 0x3b3e44, roughness: 0.4, metalness: 0.2 });
+    const below = d => -PCB_T - d / 2;   // h of a part on the underside, d thick
+    // USB-C (power in 5 V / 3 A, data, DisplayPort video out)
+    as('usb', 'USB-C port');
+    const usb = add('ports', new RoundedBoxGeometry(7.35, 3.26, 8.94, 3, 1.4), M.metal, 'metal', 2.35, 1.63, F.usb.v, 'USB-C port');
+    const slot = new THREE.Mesh(new RoundedBoxGeometry(0.6, 1.9, 7.4, 2, 0.9), M.dark); slot.position.set(-3.5, 0, 0); slot.userData.holo = 'dark'; usb.add(slot);
+    const tongue = new THREE.Mesh(new THREE.BoxGeometry(0.7, 0.55, 5.6), M.black); tongue.position.set(-3.4, 0, 0); tongue.userData.holo = 'body'; usb.add(tongue);
+    // Qualcomm QRB2210 MPU (runs Debian Linux), LPDDR4 RAM next to it, PM4125 PMIC, ANX7625 USB-C video bridge
+    as('mpu', 'Qualcomm QRB2210 processor (Linux)');
+    add('chip', new THREE.BoxGeometry(12, 1.2, 12), [grey, grey, chipTop(['Qualcomm', 'QRB2210'], 12, 12, '#3b3e44', '#9a9ea6'), grey, grey, grey], 'body', F.chip.u, 0.6, F.chip.v, 'QRB2210').userData.label = 'QRB2210';
+    as('ram', 'LPDDR4 RAM');
+    add('chip', new THREE.BoxGeometry(14.3, 1.0, 10), grey, 'body', F.ram.u, 0.5, F.ram.v, 'LPDDR4 RAM');
+    as('pmic', 'PM4125 power-management chip');
+    add('chip', new THREE.BoxGeometry(6.5, 0.9, 7), [grey, grey, chipTop(['PM4125'], 6.5, 7, '#3b3e44', '#9a9ea6'), grey, grey, grey], 'body', F.pmic.u, 0.45, F.pmic.v, 'PM4125');
+    as('bridge', 'ANX7625 USB-C video bridge');
+    add('parts', new THREE.BoxGeometry(3.6, 0.8, 3.6), M.black, 'body', F.bridge.u, 0.4, F.bridge.v, 'ANX7625');
+    // WCBN3536A Wi-Fi 5 / Bluetooth 5.1 module: green module PCB, tin shield
+    as('wifi', 'WCBN3536A Wi-Fi / Bluetooth module');
+    add('chip', new THREE.BoxGeometry(12, 0.8, 16), new THREE.MeshStandardMaterial({ color: 0x2f6b34, roughness: 0.6 }), 'body', F.wifi.u, 0.4, F.wifi.v, 'WCBN3536A module');
+    add('chip', new RoundedBoxGeometry(11.2, 1.6, 12.4, 2, 0.3), M.tin, 'metal', F.wifi.u, 1.6, F.wifi.v - 1.4, 'WCBN3536A shield').userData.label = 'Wi-Fi';
+    // 8 x 13 blue LED matrix (104 LEDs, set at 45 degrees as on the board); a Q lit
+    as('matrix', '8 × 13 blue LED matrix');
+    const glyph = ['0000011100000', '0000100010000', '0001000001000', '0001000001000', '0001000101000', '0000100010000', '0000011101000', '0000000000000'];
+    const leds = new THREE.InstancedMesh(new THREE.BoxGeometry(1.15, 0.45, 1.15), new THREE.MeshBasicMaterial(), 104);
+    leds.userData.holo = 'led'; leds.name = 'LED matrix';
+    let n = 0; const col = new THREE.Color();
+    for (let r = 0; r < 8; r++) for (let c2 = 0; c2 < 13; c2++) {
+      o.position.set((c2 - 6) * 2.2, 0.23, (r - 3.5) * 2.13); o.rotation.set(0, Math.PI / 4, 0); o.updateMatrix(); leds.setMatrixAt(n, o.matrix);
+      leds.setColorAt(n++, col.set(glyph[r][c2] === '1' ? 0x3d8bff : 0xc9ced6));
+    }
+    leds.position.copy(L(F.matrix.u, 0, F.matrix.v)); own(leds, 'leds');
+    // power LED (green, on the 3.3 V rail) and the four RGB LEDs (1-2 Linux side, 3-4 the STM32)
+    as('led-on', 'Power LED');
+    const on = add('leds', new THREE.BoxGeometry(1.6, 0.6, 0.8), new THREE.MeshStandardMaterial({ color: 0x39ff6a, emissive: 0x39ff6a, emissiveIntensity: 1.6, roughness: 0.3 }), 'led', F.led_on.u, 0.3, F.led_on.v, 'Power LED');
+    on.userData.lit = true;
+    [42.2, 44.1, 46.1, 48.1].forEach((v, i) => {
+      as(`rgb${i + 1}`, `RGB LED ${i + 1} (${i < 2 ? 'Linux' : 'STM32'})`);
+      add('leds', new THREE.BoxGeometry(1.0, 0.5, 1.0), new THREE.MeshStandardMaterial({ color: 0xf2f2f2, emissive: 0xbfd4ff, emissiveIntensity: 0.15, roughness: 0.3 }), 'led', F.rgb.u, 0.25, v, `RGB LED ${i + 1}`);
+    });
+    // POWER button (long press reboots Linux) and the Qwiic I2C connector
+    as('power', 'Power button');
+    add('parts', new THREE.BoxGeometry(6, 1.8, 6), M.white, 'body', F.power.u, 0.9, F.power.v, 'Power button');
+    add('parts', new THREE.CylinderGeometry(1.9, 1.9, 1.2, 24), new THREE.MeshStandardMaterial({ color: 0xdadde2, roughness: 0.5 }), 'body', F.power.u, 2.4, F.power.v);
+    as('qwiic', 'Qwiic connector');
+    add('parts', new THREE.BoxGeometry(4.25, 2.9, 6), M.white, 'body', F.qwiic.u, 1.45, F.qwiic.v, 'Qwiic connector');
+    // JCTL 2x5 male header (1.8 V boot / console / reset)
+    as('jctl', 'JCTL header');
+    add('headers', new THREE.BoxGeometry(5 * PITCH, 2.5, 2 * PITCH), M.black, 'body', F.jctl.u, 1.25, F.jctl.v, 'JCTL header');
+    const pg = new THREE.BoxGeometry(0.64, 6, 0.64);
+    for (let a = 0; a < 5; a++) for (let b = 0; b < 2; b++) add('headers', pg, M.gold, 'metal', F.jctl.u + (a - 2) * PITCH, 3, F.jctl.v + (b - 0.5) * PITCH);
+    // underside (< 2 mm tall): STM32U585 MCU, eMMC, the JMEDIA / JMISC 60-pin high-speed connectors
+    as('stm32', 'STM32U585 microcontroller (underside)');
+    add('pcb', new THREE.BoxGeometry(7, 0.9, 7), [M.black, M.black, M.black, chipTop(['STM32U585'], 7, 7, '#151517', '#8a8a90'), M.black, M.black], 'body', F.stm32.u, below(0.9), F.stm32.v, 'STM32U585').userData.label = 'STM32U585';
+    as('emmc', 'eMMC storage (underside)');
+    add('pcb', new THREE.BoxGeometry(11.5, 1.0, 13), grey, 'body', F.emmc.u, below(1.0), F.emmc.v, 'eMMC storage');
+    for (const k of ['jmedia', 'jmisc']) {
+      as(k, `${k.toUpperCase()} 60-pin connector (underside)`);
+      add('pcb', new THREE.BoxGeometry(5, 1.9, 38.5), M.black, 'body', F[k].u, below(1.9), F[k].v, `${k.toUpperCase()} connector`);
+      add('pcb', new THREE.BoxGeometry(1.2, 0.2, 36), M.gold, 'metal', F[k].u, below(1.9) - 1.0, F[k].v);
+    }
+  }
 
   // pin picking: one invisible pad per hole, on top of the header
   const pickKeys = Object.keys(P);
@@ -291,6 +379,11 @@ export function buildUno(table, model) {
 
   return {
     group, layers, model, pick, pickKeys, partNames: parts,
+    ...(Q ? {
+      tags: [['usb', 'USB-C'], ['chip', 'QRB2210 (Linux)'], ['matrix', 'LED matrix'], ['wifi', 'Wi-Fi module'], ['qwiic', 'Qwiic'], ['power', 'Power button']],
+      layerNames: { pcb: 'Board + underside: STM32U585, eMMC, JMEDIA, JMISC', parts: 'Power button, Qwiic, video bridge', leds: '8 × 13 matrix, power and RGB LEDs',
+        chip: 'QRB2210, LPDDR4 RAM, PM4125, Wi-Fi module', ports: 'USB-C', headers: 'Headers: digital, power, analog, JSPI, JCTL' },
+    } : {}),
     /** top of a header hole (group-local); the hole's layer is 'headers' */
     pinPos: k => (P[k] ? L(P[k].u, HEADER_H, P[k].v) : null),
     featurePos: k => (F[k] ? L(F[k].u, F[k].h, F[k].v) : null),

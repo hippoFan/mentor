@@ -2,6 +2,8 @@
 // Chrome (SwiftShader, no window), then screenshots in both looks, pin tooltips from the library, marks on the right
 // pins, explode and .glb export.
 //   node test/twin-parts-test.mjs [id ...]      screenshots: ~/.playwright-mcp/twin-part-<id>-{holo,real,marks}.png
+// "uno-q" (in the default run too): the Arduino UNO Q (board.js) via mock-twin --parts --board uno-q, explode, remove its
+// Wi-Fi module by voice; screenshots ~/.playwright-mcp/unoq-{holo,real,exploded}.png
 import { spawn } from 'node:child_process';
 import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises';
 import { homedir, tmpdir } from 'node:os';
@@ -16,7 +18,8 @@ const SHOTS = join(homedir(), '.playwright-mcp');
 const CHROME = process.env.MENTOR_CHROME || join(homedir(), '.cache/ms-playwright/chromium-1248/chrome-linux64/chrome');
 const ALL = ['raspberry-pi-4', 'esp32-devkit-v1', 'arduino-nano', 'arduino-mega-2560', 'raspberry-pi-pico', 'raspberry-pi-pico-w', 'esp32-devkitc', 'nodemcu-esp8266'];
 const IDS = process.argv.slice(2).filter(a => !a.startsWith('--'));
-const ids = IDS.length ? IDS : ALL;
+const UNOQ = !IDS.length || IDS.includes('uno-q');
+const ids = (IDS.length ? IDS : ALL).filter(i => i !== 'uno-q');
 // a pin per board whose tooltip must come from the library: [key, name shown, words in the function]
 const TIPS = {
   'raspberry-pi-4': ['GPIO17', 'GPIO17', /pin 11/], 'esp32-devkit-v1': ['D21', 'D21', /I2C SDA/], 'arduino-nano': ['A4', 'A4', /SDA/],
@@ -93,6 +96,48 @@ try {
       await evalJs("document.getElementById('t-explode').click()");
       const glb = await evalJs('window.mentorTwin.exportBytes()');
       await test(`${part}: explode + .glb export`, () => { assert.equal(glb.magic, 'glTF'); assert.ok(glb.length > 50_000, `${glb.length} bytes`); return `${glb.length} bytes`; });
+    }
+    mock.kill(); await new Promise(r => mock.once('exit', r)); mock = null;
+  }
+  if (UNOQ) {
+    mock = spawn(process.execPath, ['test/mock-twin.mjs', '--parts', '--board', 'uno-q', '--port', String(PORT)], { cwd: HERE, stdio: ['ignore', 'pipe', 'inherit'], env: { ...process.env, MOCK_GAP_MS: '600000', MOCK_START_MS: '300' } });
+    await new Promise((res, rej) => { mock.stdout.on('data', d => { if (/twin on/.test(String(d))) res(); }); mock.on('exit', c => rej(new Error(`mock exited ${c}`))); });
+    let st = null;
+    for (let attempt = 0; attempt < 3 && !st; attempt++) {
+      await cdp('Page.navigate', { url: 'about:blank' }); await sleep(200);   // same URL as the last board: force a real load
+      await cdp('Page.navigate', { url: `http://localhost:${PORT}/twin#argo` });
+      st = await until('(s => s?.built === "uno-q" && s)(window.mentorTwin?.boardState?.())', 80, 250);
+    }
+    if (!st) console.log('      state:', await evalJs('JSON.stringify(window.mentorTwin?.boardState?.() ?? location.href)').catch(e => e.message));
+    await test('uno-q: Arduino UNO Q built (not the R4)', () => {
+      assert.ok(st, `board never built ${errors.join(' | ').slice(0, 600)}`);
+      assert.equal(st.name, 'Arduino UNO Q'); assert.equal(st.pins, 31); assert.ok(st.meshes >= 40, `${st.meshes} meshes`);
+      assert.match(st.sub, /8 × 13 LED matrix/);
+      return `${st.pins} pins, ${st.meshes} meshes, "${st.sub}"`;
+    });
+    if (st) {
+      await evalJs("document.getElementById('t-reset').click()");
+      for (const look of ['holo', 'real']) { await evalJs(`window.mentorTwin.setLook(${look === 'holo'})`); await settle(); await shot(`unoq-${look}.png`); }
+      await test('uno-q: 3.3 V pin tooltips (D3 and A0 not 5 V-tolerant)', () => evalJs('JSON.stringify([window.mentorTwin.pinTip("3"), window.mentorTwin.pinTip("A0"), window.mentorTwin.pinTip("IOREF")])').then(j => {
+        const [d3, a0, io] = JSON.parse(j); assert.match(d3.fn, /not 5 V-tolerant/); assert.match(a0.fn, /not 5 V-tolerant/); assert.match(io.fn, /3\.3 V/); return `${d3.name}: ${d3.fn}`;
+      }));
+      const ps = await evalJs('JSON.stringify(window.mentorTwin.partsState().parts.map(p => p.id))').then(JSON.parse);
+      await test('uno-q: real parts listed for explode / remove', () => {
+        for (const id of ['mpu', 'ram', 'pmic', 'wifi', 'matrix', 'usb', 'power', 'qwiic', 'jctl', 'icsp', 'stm32', 'emmc', 'jmedia', 'jmisc', 'rgb1']) assert.ok(ps.includes(id), `${id} missing: ${ps.join(',')}`);
+        for (const id of ['jack', 'reset', 'esp32', 'regulator']) assert.ok(!ps.includes(id), `${id} should not be on a UNO Q`);
+        return `${ps.length} parts`;
+      });
+      await evalJs("document.getElementById('t-explode').click()");
+      await until('window.mentorTwin.boardState().explode > 0.99', 60, 300); await settle();
+      await shot('unoq-exploded.png');
+      await evalJs('window.mentorTwin.inject({ type: "twin", action: "remove", target: "the wifi module" })');
+      const gone = await until('(window.mentorTwin.partsState().parts.find(p => p.id === "wifi") || {}).removed', 30, 300);
+      await test('uno-q: "remove the wifi module" takes the WCBN3536A off', () => assert.ok(gone, 'wifi still on the board'));
+      await settle(); await shot('unoq-exploded-nowifi.png');
+      await evalJs('window.mentorTwin.inject({ type: "twin", action: "combine" })');
+      await evalJs("document.getElementById('t-explode').click()");
+      const glb = await evalJs('window.mentorTwin.exportBytes()');
+      await test('uno-q: .glb export', () => { assert.equal(glb.magic, 'glTF'); assert.ok(glb.length > 50_000, `${glb.length} bytes`); return `${glb.length} bytes`; });
     }
     mock.kill(); await new Promise(r => mock.once('exit', r)); mock = null;
   }

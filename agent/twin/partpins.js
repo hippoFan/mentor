@@ -6,7 +6,7 @@
 // v = outline height - y_mm (v up the drawing), z up out of the top face: a right-handed frame, so corners A -> B -> C -> D
 // (data/parts/orientation.json) run clockwise on screen when the board is seen from above.
 
-export const UNO_MODELS = ['uno-r3', 'uno-r4-wifi'];
+export const UNO_MODELS = ['uno-r3', 'uno-r4-wifi', 'uno-q'];
 
 const fill = (tpl, n) => (tpl ? tpl.replace('{n}', String(n)) : null);
 const base = k => k.replace(/\.\d+$/, '');

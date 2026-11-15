@@ -11,7 +11,7 @@ export const isScanIntent = text => SCAN_INTENT.test(String(text || ''));
 
 export const SHAPES = ['box', 'rounded_box', 'cylinder', 'sphere', 'capsule', 'cone', 'torus'];
 export const MATERIALS = ['plastic', 'metal', 'pcb', 'glass', 'rubber', 'screen'];
-export const KNOWN = ['uno-r3', 'uno-r4-wifi', 'none'];
+export const KNOWN = ['uno-r3', 'uno-r4-wifi', 'uno-q', 'none'];
 export const FACES = ['top', 'bottom', 'front', 'back', 'left', 'right'];
 export const MAX_PARTS = 40;
 
@@ -96,7 +96,7 @@ Modelling:
 - name: what the part is (max 4 words). label: set it (max 3 words) for at most 6 notable parts worth pointing at, else "".
 - name (top level): what the object is, short and specific ("Digital multimeter", "Wired mouse"). category: one word.
 - confidence: 0..1, how sure you are of the identity and the proportions.
-- known_model: "uno-r3" or "uno-r4-wifi" if the object is that Arduino board, else "none".
+- known_model: "uno-r3", "uno-r4-wifi" or "uno-q" if the object is that Arduino board, else "none".
 - Exact model: identify the exact make and model whenever the photo allows it, from visible cues: the camera bump's
   shape, the number and arrangement of lenses, flash / sensor / microphone positions, logos and printed text, ports and
   buttons, colours and finish, proportions and corner radius. A case hides some cues; read its cut-outs (a case's lens

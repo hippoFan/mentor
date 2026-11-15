@@ -185,7 +185,7 @@ function registerCustom(ev) {
 
 function boardPanel() {
   $('part').textContent = S.model ? nameOf(S.model) : 'No board yet';
-  $('partsub').textContent = isPart(S.model) ? (S.uno?.sub || '') : S.model === 'uno-r4-wifi' ? 'USB-C, 12 × 8 LED matrix, Wi-Fi' : S.model ? 'USB-B, ATmega328P' : 'Ody names the board as soon as it sees it.';
+  $('partsub').textContent = isPart(S.model) ? (S.uno?.sub || '') : S.model === 'uno-r4-wifi' ? 'USB-C, 12 × 8 LED matrix, Wi-Fi' : S.model === 'uno-q' ? 'USB-C, 8 × 13 LED matrix, Linux + STM32 · 3.3 V logic' : S.model ? 'USB-B, ATmega328P' : 'Ody names the board as soon as it sees it.';
   $('scaninfo').hidden = true;
 }
 function setPart(model, label) {

@@ -410,7 +410,7 @@ const agent = defineAgent({
         }
         if (spec.known_model !== 'none' && spec.known_model !== lastPart) {
           lastPart = spec.known_model;
-          live.send({ type: 'part', model: lastPart, label: { 'uno-r3': 'Arduino UNO R3', 'uno-r4-wifi': 'Arduino UNO R4 WiFi' }[lastPart] });
+          live.send({ type: 'part', model: lastPart, label: { 'uno-r3': 'Arduino UNO R3', 'uno-r4-wifi': 'Arduino UNO R4 WiFi', 'uno-q': 'Arduino UNO Q' }[lastPart] });
         }
         console.log(`[scan] ${spec.name}${spec.model_guess ? ` = ${spec.model_guess} (${Math.round(spec.model_confidence * 100)}%: ${spec.id_cues.join('; ')})` : ''} (${spec.parts.length} parts, ${Math.round(spec.confidence * 100)}%) in ${spec.ms} ms`);
         if (recording() && await ensureRun()) {
@@ -810,7 +810,7 @@ const agent = defineAgent({
         // The laptop's 3D twin (/twin) builds the recognised board; tell it once per new part.
         if (reply.board?.model && reply.board.model !== 'none' && reply.board.model !== 'other' && reply.board.model !== lastPart) {
           lastPart = reply.board.model;
-          live.send({ type: 'part', model: lastPart, label: { 'uno-r3': 'Arduino UNO R3', 'uno-r4-wifi': 'Arduino UNO R4 WiFi' }[lastPart] || 'Board' });
+          live.send({ type: 'part', model: lastPart, label: { 'uno-r3': 'Arduino UNO R3', 'uno-r4-wifi': 'Arduino UNO R4 WiFi', 'uno-q': 'Arduino UNO Q' }[lastPart] || 'Board' });
         }
         tracker.seed(now, marks, reply.board);   // the brain judged `now` (the frame from the turn start): track from there;
         // A board nobody mapped (custom PCB): headers.mjs read its headers; send that board to the laptop twin once.

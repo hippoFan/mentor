@@ -66,6 +66,25 @@ t('UNO unchanged: uno models still resolve through uno-pins.json', () => {
   assert.equal(key('uno-r3', 'D13'), '13'); assert.equal(key('uno-r4-wifi', 'GND'), 'GND.1'); assert.equal(key('uno-r3', 'GPIO17'), null);
   assert.ok(BOARD_MODELS.has('uno-r3') && BOARD_MODELS.has('raspberry-pi-4') && !BOARD_MODELS.has('dht22'));
 });
+t('UNO Q: registers with the UNO header geometry, own features, 3.3 V tooltips, D14-D21 names', () => {
+  assert.ok(BOARD_MODELS.has('uno-q'));
+  assert.equal(boardSpec('uno-q'), boardSpec('uno-r3'), 'UNO Q must share the UNO outline + header table');
+  assert.equal(key('uno-q', 'D13'), '13'); assert.equal(key('uno-q', 'GND'), 'GND.1');
+  const F = twinPins.FEATURES['uno-q'];
+  for (const k of ['usb', 'chip', 'matrix', 'wifi', 'qwiic', 'power', 'stm32', 'jmedia', 'jmisc']) assert.ok(F[k], k);
+  assert.ok(!F.jack && !F.reset, 'the UNO Q has no barrel jack and no reset button');
+  for (const f of Object.values(F)) assert.ok(f.u >= 0 && f.u <= twinPins.BOARD_W && f.v >= 0 && f.v <= twinPins.BOARD_H, f.name);
+  assert.equal(twinPins.featureFor('the STM32 microcontroller', 'uno-q'), 'stm32');
+  assert.equal(twinPins.featureFor('Qualcomm chip', 'uno-q'), 'chip');
+  assert.equal(twinPins.featureFor('the microcontroller', 'uno-r3'), 'chip', 'R3 microcontroller words changed');
+  assert.match(twinPins.pinInfo('A0', 'uno-q').fn, /not 5 V-tolerant/); assert.match(twinPins.pinInfo('IOREF', 'uno-q').fn, /3\.3 V/);
+  assert.doesNotMatch(twinPins.pinInfo('IOREF', 'uno-r3').fn, /3\.3 V/);
+  const tab = { pins: Object.fromEntries(['A0', 'A5', 'SDA', 'SCL', '13'].map(k => [k, { u: 0, v: 0 }])) };
+  assert.deepEqual(['D14', 'D19', 'D20', 'D21', 'D13'].map(n => twinPins.pinKey(tab, n)), ['A0', 'A5', 'SDA', 'SCL', '13']);
+  assert.equal(twinPins.inferModel({ board: { model: 'uno-q' } }), 'uno-q');
+  assert.equal(twinPins.inferModel({ marks: [{ label: 'QRB2210 processor' }] }), 'uno-q');
+  assert.equal(twinPins.MODEL_NAMES['uno-q'], 'Arduino UNO Q');
+});
 
 // ---------- synthetic warped boards: known camera, known corners ----------
 const W = 720, H = 960, f = 0.8 * Math.max(W, H);
@@ -207,14 +226,15 @@ t('twin pins.js: marks on a Pi and an ESP32 resolve to library pins', () => {
 const brain = await import('../brain.mjs');
 t('brain: board.model enum = UNO variants + every part id + other/none', () => {
   const en = brain.SCHEMA.properties.board.properties.model.enum;
-  for (const id of ['uno-r3', 'uno-r4-wifi', 'other', 'none', ...Object.keys(index.parts).filter(i => i !== 'arduino-uno')]) assert.ok(en.includes(id), id);
+  for (const id of ['uno-r3', 'uno-r4-wifi', 'uno-q', 'other', 'none', ...Object.keys(index.parts).filter(i => i !== 'arduino-uno')]) assert.ok(en.includes(id), id);
   assert.ok(!en.includes('arduino-uno'));
 });
 t('brain: prompt has a corner line per registrable board, full rule on demand, still short', () => {
   for (const id of Object.keys(orientation).filter(k => !k.startsWith('_'))) assert.ok(brain.SYSTEM.includes(`- ${id}: `), id);
   assert.match(brain.SYSTEM, /A = the corner where the USB-connector edge meets the long edge with the digital header/);
   assert.match(brain.boardNote('raspberry-pi-4'), /C = .*D = .*Edges/);
-  assert.equal(brain.boardNote('uno-r3'), '');
+  assert.equal(brain.boardNote('uno-r3'), ''); assert.equal(brain.boardNote('uno-q'), '');
+  assert.match(brain.SYSTEM, /UNO Q: Qualcomm chip \+ LED matrix \+ USB-C, no barrel jack/);
   assert.ok(brain.SYSTEM.length < 9500, `SYSTEM ${brain.SYSTEM.length} chars`);
   return `SYSTEM ${brain.SYSTEM.length} chars`;
 });

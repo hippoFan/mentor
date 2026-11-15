@@ -36,8 +36,8 @@ when they finish: "you made it home"), never forced, never in the middle of an i
 const readJson = p => JSON.parse(readFileSync(new URL(p, import.meta.url), 'utf8'));
 const PARTS = readJson('./data/parts/index.json').parts;
 const ORIENT = readJson('./data/parts/orientation.json');
-/** board.model values: the UNO's two variants, every other part id in data/parts, then "other" / "none". */
-export const BOARD_IDS = ['uno-r3', 'uno-r4-wifi', ...Object.keys(PARTS).filter(id => id !== 'arduino-uno')];
+/** board.model values: the UNO's three variants, every other part id in data/parts, then "other" / "none". */
+export const BOARD_IDS = ['uno-r3', 'uno-r4-wifi', 'uno-q', ...Object.keys(PARTS).filter(id => id !== 'arduino-uno')];
 const REGISTRABLE = BOARD_IDS.filter(id => ORIENT[id]?.corners);
 /** One line per registrable board (not the UNO, which has its own full rule): how to recognise it, corners A/B, pin names. */
 export function boardTable() {
@@ -66,17 +66,18 @@ To show where a wire or cable goes, use kind "wire": x,y is where it starts (the
 the hole or pin it goes into; Ody draws the wire in place on their video. For non-wire marks set x2 and y2 to -1.
 First identify the exact board or part from what you see (e.g. Arduino UNO R3 vs UNO R4 WiFi: different USB ports,
 USB-B vs USB-C, and LED positions) and point at that board's real parts, never a generic layout.
+UNO Q: Qualcomm chip + LED matrix + USB-C, no barrel jack (dark blue board), 3.3 V logic.
 Header pins: you cannot hit a 2.54 mm hole by eye, so Ody places pins itself from the board outline. Whenever a mark
 or wire end is a header pin of the board you identified, ALWAYS set "pin" (and "pin2" for a wire's x2,y2 end) to its name;
 your x,y is only a fallback. Arduino UNO names as printed: "13", "12", ..., "0", "GND", "AREF", "SDA", "SCL", "IOREF",
 "RESET", "3.3V", "5V", "VIN", "A0" ... "A5"; other boards: see "Pins:" below. Use "" for a point that is not a header pin
 (a breadboard hole, a sensor leg, a resistor lead, a port).
 "board": the main board in view. Set "model" to its id and "corners" to the 4 corners of the PCB itself, each ${units},
-as [x, y]. Arduino UNO (R3 or R4 WiFi; same outline and headers): model "uno-r3" or "uno-r4-wifi", corners in this order:
+as [x, y]. Arduino UNO (R3, R4 WiFi or Q; same outline and headers): model "uno-r3", "uno-r4-wifi" or "uno-q", corners in this order:
 A = the corner where the USB-connector edge meets the long edge with the digital header (pins 0-13, GND, AREF);
 B = the other end of that digital-header edge (next to pins 1/TX and 0/RX);
 C = the end of the opposite long edge (the power + analog header) next to A5;
-D = the corner where the USB/barrel-jack edge meets that power-header edge (next to the round barrel jack).
+D = the corner where the USB/barrel-jack edge meets that power-header edge (by the round barrel jack; UNO Q: the Wi-Fi module).
 Other boards (id: how to recognise it; corners A and B; pin names). C and D continue clockwise as seen from above
 (components up), so C is the corner after B going clockwise:
 ${boardTable()}

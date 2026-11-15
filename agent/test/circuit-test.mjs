@@ -254,5 +254,20 @@ if (BRAIN && (BRAIN !== 'claude-code' || process.env.MENTOR_OWNER_TESTING === '1
   await brain.close?.();
 } else console.log('skip  real planner calls (set MENTOR_BRAIN; claude-code also needs MENTOR_OWNER_TESTING=1)');
 
+// ---------- UNO Q: 3.3 V logic ----------
+await test('UNO Q: same UNO pins, 3.3 V notes spoken, 5 V echo kept off D3 / A0 / A1', () => {
+  let st = C.createProject({ board: 'uno-q' });
+  assert.equal(st.board, 'arduino-uno'); assert.equal(st.variant, 'uno-q');
+  let r = say(st, 'add a distance sensor'); assert.ok(r.changed, r.say); st = r.state;
+  assert.match(r.say, /3\.3 volt logic/); assert.notEqual(wires(st, 'sonar1').ECHO, '3');
+  r = C.apply(st, [{ op: 'move', connection: 'sonar1.ECHO', to: 'uno.3' }]);
+  assert.ok(!r.changed); assert.match(r.rejected[0]?.why || r.say, /3\.3 volts/);
+  r = say(st, 'add an LED on pin 6'); assert.ok(r.changed, r.say); assert.match(r.say, /220 ohm resistor still works/);
+  const r3 = say(C.createProject({ board: 'uno-r3' }), 'add a distance sensor');
+  assert.doesNotMatch(r3.say, /3\.3 volt/, 'R3 must not get the UNO Q note');
+  assert.equal(C.setBoard(st, 'uno-r3').variant, 'uno-r3');
+  return r.say;
+});
+
 console.log(`${pass} passed, ${fail} failed`);
 process.exitCode = fail ? 1 : 0;

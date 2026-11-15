@@ -40,7 +40,7 @@ const WOKWI_RENAME_UNO = { 'A5.2': 'SCL', 'A4.2': 'SDA' }; // uno-pins.json nami
 const PARTS = [
   { id: 'arduino-uno', name: 'Arduino UNO R3', kind: 'header', src: 'elements', file: 'arduino-uno', type: 'wokwi-el', snap: true,
     outline: { w: 68.58, h: 53.34 }, shiftFromViewBox: true, rename: WOKWI_RENAME_UNO,
-    aliases: ['Arduino UNO', 'UNO', 'UNO R3', 'Arduino UNO R4', 'UNO R4 WiFi', 'Arduino', 'ATmega328P UNO'],
+    aliases: ['Arduino UNO', 'UNO', 'UNO R3', 'Arduino UNO R4', 'UNO R4 WiFi', 'Arduino UNO Q', 'UNO Q', 'Arduino', 'ATmega328P UNO'],
     note: 'Same header layout as UNO R4 (WiFi/Minima).' },
   { id: 'arduino-mega-2560', name: 'Arduino Mega 2560', kind: 'header', src: 'elements', file: 'arduino-mega', type: 'wokwi-el', snap: true,
     outline: { w: 101.6, h: 53.34 }, shiftFromViewBox: true,

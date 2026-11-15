@@ -75,7 +75,7 @@ const WOKWI_BOARD = { 'arduino-uno': 'wokwi-arduino-uno', 'arduino-nano': 'wokwi
   'esp32-devkit-v1': 'wokwi-esp32-devkit-v1', 'raspberry-pi-pico': 'wokwi-pi-pico', 'raspberry-pi-pico-w': 'wokwi-pi-pico-w' };
 const WOKWI_PIN = { 'arduino-uno': { SDA: 'A4.2', SCL: 'A5.2' } };   // uno-pins.json renamed these from wokwi-elements
 /** The agent's board ids (brain.mjs BOARD_IDS) -> the part id that holds the pins. */
-const toPartId = m => (m === 'uno-r3' || m === 'uno-r4-wifi' || !m ? 'arduino-uno' : m);
+const toPartId = m => (m === 'uno-r3' || m === 'uno-r4-wifi' || m === 'uno-q' || !m ? 'arduino-uno' : m);
 export const CIRCUIT_BOARDS = Object.keys(BOARD_PREFIX);
 
 const tables = new Map();
@@ -152,13 +152,13 @@ const pinSay = (t, k) => (t.pins[k]?.name || k).replace(/^pin /, 'pin ');
 
 // ---------- project state ----------
 /**
- * A fresh project. `board` is the board Ody identified (brain.mjs ids: uno-r3, uno-r4-wifi, arduino-nano...) or a part
+ * A fresh project. `board` is the board Ody identified (brain.mjs ids: uno-r3, uno-r4-wifi, uno-q, arduino-nano...) or a part
  * id; anything without a circuit pin table falls back to the Arduino UNO.
  */
 export function createProject({ board } = {}) {
   let part = toPartId(board);
   if (!boardPins(part)) part = 'arduino-uno';
-  return { v: 1, board: part, variant: part === 'arduino-uno' ? (board === 'uno-r4-wifi' ? 'uno-r4-wifi' : 'uno-r3') : part,
+  return { v: 1, board: part, variant: part === 'arduino-uno' ? (board === 'uno-r4-wifi' || board === 'uno-q' ? board : 'uno-r3') : part,
     boardId: BOARD_PREFIX[part], components: [], connections: [], notes: [], done: [], rev: 0 };
 }
 /** The project on a new board (keeps the parts, re-validates every wire against the new pins). */
@@ -184,6 +184,10 @@ function users(st, t, k) {
   const keys = new Set(t.nets[k] || [k]);
   return st.connections.filter(w => keys.has(endPin(w.from)));
 }
+// UNO Q (STM32U585): 3.3 V logic. Digital pins are 5 V-tolerant inputs except D3; A0 / A1 never are (datasheet ABX00162
+// sections 9.6 / 9.7, https://docs.arduino.cc/resources/datasheets/ABX00162-datasheet.pdf). The HC-SR04's echo is a 5 V output.
+const NOT_5V_TOLERANT = new Set(['3', 'A0', 'A1']);
+const fiveVoltOut = (part, pinName) => part === 'hc-sr04' && pinName === 'ECHO';
 const isPowerKey = (t, k) => ['5v', '3v3', 'gnd', 'vin'].some(c => t.pins[k]?.caps.has(c));
 const busy = (st, t, k) => !isPowerKey(t, k) && users(st, t, k).length > 0;
 
@@ -193,7 +197,8 @@ function candidates(st, t, role, prefer = []) {
   const pool = role === 'analog' ? t.order.analog : role === 'sda' ? t.order.sda : role === 'scl' ? t.order.scl
     : role === 'led' || role === 'servo' ? [...t.order.pwm, ...t.order.digital] : t.order.digital;
   const p = t.arduino ? prefer : [];
-  const list = [...new Set([...p.filter(k => pool.includes(k)), ...pool])];
+  let list = [...new Set([...p.filter(k => pool.includes(k)), ...pool])];
+  if (st.variant === 'uno-q' && role === 'in') list = list.filter(k => !NOT_5V_TOLERANT.has(k));   // 5 V inputs (echo) stay off D3 / A0 / A1
   return list.filter(k => !(role === 'led' && servo && t.arduino && (k === '9' || k === '10')));   // Servo.h takes Timer1: no fading on 9/10
 }
 
@@ -220,6 +225,8 @@ function pinProblem(st, t, comp, pinName, k, mode) {
   }
   if (caps.has('5v') || caps.has('3v3') || caps.has('vin')) return `That would put ${t.pins[k].name} straight onto ${what}. It needs a signal pin.`;
   if (caps.has('gnd')) return `${what} needs a signal pin, not ground.`;
+  if (st.variant === 'uno-q' && fiveVoltOut(comp.part, pinName) && NOT_5V_TOLERANT.has(k))
+    return `Stop, the UNO Q runs at 3.3 volts and ${pinSay(t, k)} can't take the ${prof.speak}'s 5 volt echo. Use pin 10, 8 or 5.`;
   if (t.arduino && (k === '0' || k === '1')) return `Pins 0 and 1 carry the USB serial line, so uploads would fail. Pick another pin.`;
   if (!t.arduino && caps.has('uart')) return `${k} carries the USB serial line. Pick another pin.`;
   if (role === 'analog' && !caps.has('analog')) return `The ${prof.speak} needs an analog pin like A0, not ${pinSay(t, k)}.`;
@@ -456,7 +463,11 @@ function addLine(st, t, comp) {
   const where = sig.map(w => `${sig.length > 1 ? `${pinWords(endPin(w.to), comp.part)} ` : ''}${pinSay(t, endPin(w.from))}`).join(sig.length > 2 ? ', ' : ' and ');
   const extra = comp.part === 'led-5mm' ? ` through a 220 ohm resistor${comp.mode === 'fade' ? ', fading' : ''}` : '';
   const power = prof.order.some(p => POWER_ROLES.has(prof.pins[p].role)) ? ', power from the rails' : '';
-  return `Added the ${labelOf(comp)}: ${where || 'wired'}${extra}${power}.`;
+  // UNO Q: say what its 3.3 V logic means for this part
+  const level = st.variant !== 'uno-q' ? '' : comp.part === 'hc-sr04'
+    ? ' The UNO Q is 3.3 volt logic: the 5 volt echo is fine on that pin, but never on D3, A0 or A1.'
+    : comp.part === 'led-5mm' ? ' At 3.3 volts the 220 ohm resistor still works; the LED is just a bit dimmer.' : '';
+  return `Added the ${labelOf(comp)}: ${where || 'wired'}${extra}${power}.${level}`;
 }
 function notInLibrary(what) {
   const w = String(what || 'that').trim().slice(0, 30) || 'that';

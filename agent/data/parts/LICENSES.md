@@ -27,5 +27,16 @@ ESP32-DevKitC (pin names and positions on the standard 0.1" grid, which are publ
 or descriptions. If this needs to be airtight before wider distribution, regenerate those three files from the official Raspberry Pi
 Pico / Espressif datasheets or ask Wokwi to add a license; `license` is set to `unspecified` in the files to keep this visible.
 
+## Arduino UNO Q (layout facts, no artwork)
+The UNO Q (`uno-q`) has the UNO R3 outline, mounting holes and shield headers (datasheet section 12), so it reuses the
+`arduino-uno` pin map (`data/uno-pins.json`); its power header's first hole is BOOT, and D20/D21 are SDA/SCL. Part
+positions in `twin/pins.js` (`FEATURES['uno-q']`) and the 3.3 V logic notes in `circuit.mjs` / `twin/pins.js` are facts
+read from Arduino's official documents (pinout pages are CC BY-SA 4.0; only names, voltages and approximate
+millimetre positions were taken, no images or text):
+- Datasheet ABX00162: https://docs.arduino.cc/resources/datasheets/ABX00162-datasheet.pdf (pin maps 9.3-9.7, LEDs, mechanical)
+- Full pinout: https://docs.arduino.cc/resources/pinouts/ABX00162-full-pinout.pdf (top view p.1, LED matrix p.3)
+- User manual, "UNO Q's main components": https://docs.arduino.cc/tutorials/uno-q/user-manual/
+- Product page: https://docs.arduino.cc/hardware/uno-q/
+
 ## Not imported
 L298N motor driver module: not present in wokwi-elements or Fritzing core (only bare L298 ICs).

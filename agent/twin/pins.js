@@ -22,6 +22,7 @@ const DIGITAL_FN = {
 };
 /** Printed name and what the pin does, for the tooltip. */
 export function pinInfo(key, model = 'uno-r3') {
+  if (model === 'uno-q') return unoQInfo(key);
   if (/^\d+$/.test(key)) return { name: `D${key}`, fn: DIGITAL_FN[key] || 'Digital', pwm: PWM.has(key) };
   const base = key.replace(/\.\d$/, '');
   const fn = {
@@ -30,6 +31,26 @@ export function pinInfo(key, model = 'uno-r3') {
     '5V': '5 V out, from USB or the regulator', VIN: 'Supply in, 6–24 V on R4, 7–12 V on R3',
     A0: model === 'uno-r4-wifi' ? 'Analog in · DAC out' : 'Analog in', A1: 'Analog in', A2: 'Analog in', A3: 'Analog in',
     A4: 'Analog in · I²C SDA', A5: 'Analog in · I²C SCL',
+  }[base];
+  return { name: base, fn: fn || '', pwm: false };
+}
+
+// UNO Q (STM32U585, 3.3 V logic). Datasheet ABX00162 sections 9.6 / 9.7 (JDIGITAL / JANALOG pin maps),
+// https://docs.arduino.cc/resources/datasheets/ABX00162-datasheet.pdf
+const UNOQ_PWM = new Set(['3', '5', '6', '9', '10', '11']);
+function unoQInfo(key) {
+  if (/^\d+$/.test(key)) {
+    const fn = { 0: 'RX · serial receive', 1: 'TX · serial transmit', 3: 'PWM~ · not 5 V-tolerant', 4: 'Digital · CAN TX',
+      5: 'PWM~ · CAN RX', 10: 'PWM~ · SPI CS', 11: 'PWM~ · SPI COPI', 12: 'SPI CIPO', 13: 'SPI SCK' }[key] || (UNOQ_PWM.has(key) ? 'PWM~' : 'Digital');
+    return { name: `D${key}`, fn: `${fn} · 3.3 V logic`, pwm: UNOQ_PWM.has(key) };
+  }
+  const base = key.replace(/\.\d$/, '');
+  const fn = {
+    GND: 'Ground, 0 V', AREF: 'Analog reference voltage in', SDA: 'I²C data (D20)', SCL: 'I²C clock (D21)',
+    IOREF: 'Logic level: 3.3 V (output only)', RESET: 'Resets the STM32U585 microcontroller', '3.3V': '3.3 V out',
+    '5V': '5 V system rail (USB-C or VIN)', VIN: 'Supply in, 7–24 V',
+    A0: 'Analog in · DAC0 · not 5 V-tolerant', A1: 'Analog in · DAC1 · not 5 V-tolerant', A2: 'Analog in', A3: 'Analog in',
+    A4: 'Analog in (D18)', A5: 'Analog in (D19)',
   }[base];
   return { name: base, fn: fn || '', pwm: false };
 }
@@ -45,6 +66,8 @@ export function pinKey(table, name, near) {
   if (!s) return null;
   if (/^d\d{1,2}$/i.test(s)) s = s.slice(1);
   const up = s.toUpperCase();
+  // UNO R4 / UNO Q digital numbering of the analog and I2C pins (D14-D19 = A0-A5, D20/D21 = SDA/SCL)
+  if (/^(1[4-9]|2[01])$/.test(up) && !table.pins[up]) { const k = ['A0', 'A1', 'A2', 'A3', 'A4', 'A5', 'SDA', 'SCL'][Number(up) - 14]; if (table.pins[k]) return k; }
   if (/^\d{1,2}$/.test(up)) return table.pins[String(Number(up))] ? String(Number(up)) : null;
   if (up === 'GND' || up === 'GROUND') {
     const gnds = Object.keys(table.pins).filter(k => k.startsWith('GND'));
@@ -132,8 +155,31 @@ export const FEATURES = {
     qwiic: { u: 63.6, v: 14.8, h: 3, name: 'Qwiic connector' }, reg: { u: 6.5, v: 18.5, h: 1.8, name: '5 V regulator' },
     board: { u: 34, v: 27, h: 0, name: 'Arduino UNO R4 WiFi' },
   },
+  // Arduino UNO Q (ABX00162). Same 68.58 x 53.34 mm UNO outline, holes and shield headers as the R3 (datasheet section 12,
+  // https://docs.arduino.cc/resources/datasheets/ABX00162-datasheet.pdf). Part centres measured (~1 mm) from Arduino's own
+  // top/bottom renders: the full pinout https://docs.arduino.cc/resources/pinouts/ABX00162-full-pinout.pdf (pages 1 and 3)
+  // and the user manual's "UNO Q's main components" image, https://docs.arduino.cc/tutorials/uno-q/user-manual/
+  // (uno-q-architecture-3.png). h < 0: on the underside (STM32U585, eMMC, JMEDIA / JMISC 60-pin connectors).
+  'uno-q': {
+    usb: { u: 3.0, v: 38.0, h: 3.3, name: 'USB-C port' }, power: { u: 5.6, v: 50.0, h: 3.0, name: 'Power button' },
+    led_on: { u: 2.0, v: 32.3, h: 0.8, name: 'Power LED' }, jctl: { u: 18.6, v: 45.6, h: 6, name: 'JCTL header (1.8 V)' },
+    bridge: { u: 16.1, v: 36.8, h: 0.9, name: 'ANX7625 USB-C video bridge' },
+    chip: { u: 34.6, v: 29.8, h: 1.3, name: 'Qualcomm QRB2210' }, ram: { u: 34.7, v: 42.3, h: 1.1, name: 'LPDDR4 RAM' },
+    pmic: { u: 53.0, v: 38.2, h: 1.0, name: 'PM4125 power chip' },
+    wifi: { u: 11.4, v: 13.9, h: 2.0, name: 'WCBN3536A Wi-Fi / Bluetooth' },
+    matrix: { u: 46.0, v: 12.7, h: 0.8, name: '8 × 13 LED matrix' },
+    rgb: { u: 65.3, v: 45.2, h: 0.8, name: 'RGB LEDs 1–4' }, qwiic: { u: 66.0, v: 14.5, h: 3, name: 'Qwiic connector' },
+    icsp: { u: 63.5, v: 27.94, h: 8.5, name: 'JSPI header' },
+    stm32: { u: 44.2, v: 11.7, h: -2.6, name: 'STM32U585 (underside)' }, emmc: { u: 47.0, v: 26.0, h: -2.8, name: 'eMMC storage (underside)' },
+    jmedia: { u: 11.7, v: 27.1, h: -3.2, name: 'JMEDIA connector (underside)' }, jmisc: { u: 58.7, v: 27.1, h: -3.2, name: 'JMISC connector (underside)' },
+    board: { u: 34, v: 27, h: 0, name: 'Arduino UNO Q' },
+  },
 };
 const FEATURE_WORDS = [
+  // UNO Q only (other boards have none of these keys, so their matches below are unchanged)
+  [/stm32|u585|micro\s?controller|\bmcu\b/i, 'stm32'], [/qrb|qualcomm|dragonwing|\bmpu\b|linux|processor/i, 'chip'],
+  [/power button|\bbutton\b/i, 'power'], [/\bjctl\b/i, 'jctl'], [/jspi/i, 'icsp'], [/jmedia/i, 'jmedia'], [/jmisc/i, 'jmisc'],
+  [/emmc|storage/i, 'emmc'], [/pm4125|pmic/i, 'pmic'], [/anx7625|video bridge/i, 'bridge'], [/rgb/i, 'rgb'],
   [/usb|cable|computer|port/i, 'usb'], [/barrel|dc jack|power jack|wall adapter|9\s?v/i, 'jack'],
   [/matrix/i, 'matrix'], [/esp32|wi-?fi module|wireless/i, 'esp'], [/qwiic|stemma/i, 'qwiic'],
   [/16u2/i, 'usbchip'], [/wi-?fi|cyw43/i, 'wifi'], [/atmega|ra4m1|chip|processor|micro\s?controller|\bmcu\b|brain/i, 'chip'],
@@ -176,17 +222,18 @@ export function pinFromLabel(table, label) {
  * `current` is a library board.
  */
 export function inferModel({ board, part, marks } = {}, known = [], current = null) {
-  const ok = m => m === 'uno-r3' || m === 'uno-r4-wifi' || known.includes(m);
+  const ok = m => m === 'uno-r3' || m === 'uno-r4-wifi' || m === 'uno-q' || known.includes(m);
   if (board && !Array.isArray(board) && ok(board.model)) return board.model;
   if (part && ok(part.model)) return part.model;
   if (current && known.includes(current)) return null;
   const text = (marks || []).map(m => m.label).join(' ');
+  if (/\buno\s?q\b|qrb\s?2210|stm32u5|dragonwing/i.test(text)) return 'uno-q';
   if (/usb-?c|\br4\b|wi-?fi|matrix|esp32|ra4m1/i.test(text)) return 'uno-r4-wifi';
   if (/usb-?b|\br3\b|atmega|16u2/i.test(text)) return 'uno-r3';
   if (/arduino|\buno\b|\bpin\s*\d|\bgnd\b|\b5\s?v\b|\bA[0-5]\b/i.test(text)) return 'uno-r3';
   return null;
 }
-export const MODEL_NAMES = { 'uno-r3': 'Arduino UNO R3', 'uno-r4-wifi': 'Arduino UNO R4 WiFi' };
+export const MODEL_NAMES = { 'uno-r3': 'Arduino UNO R3', 'uno-r4-wifi': 'Arduino UNO R4 WiFi', 'uno-q': 'Arduino UNO Q' };
 
 // ---------- homography: image point -> board mm, from the brain's 4 corners ----------
 /** 3x3 homography (row-major, 9 numbers) mapping src[i] -> dst[i] for 4 point pairs, or null. */

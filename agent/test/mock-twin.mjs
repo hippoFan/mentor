@@ -11,7 +11,7 @@
 //   --circuit    a voice circuit build through circuit.mjs (no brain): UNO -> "add a distance sensor" -> "add an LED on
 //                pin 6" -> "add a servo" -> "remove the LED", one {type:'circuit'} event per change, as agent.mjs sends them
 //   --parts      UNO R4 WiFi, then voice: explode, select "the wifi module", remove it, combine, and a mock analysis
-//                (the real one comes from the agent after the page's {type:'analyze'}); --board uno-r3 for the R3
+//                (the real one comes from the agent after the page's {type:'analyze'}); --board uno-r3 / uno-q for the R3 / Q
 //   --interior [dir]  "scan this" for each <name>.case.json in dir (default: the research test's output), then the
 //                researched interior for it a moment later ({type:'interior', id, interior}), as agent.mjs sends them
 const args = process.argv.slice(2);
@@ -158,7 +158,7 @@ if (has('--parts')) {
   const model = opt('--board', 'uno-r4-wifi');
   await sleep(Number(process.env.MOCK_START_MS || 1500));
   start();
-  live.send({ type: 'part', model, label: model === 'uno-r3' ? 'Arduino UNO R3' : 'Arduino UNO R4 WiFi' });
+  live.send({ type: 'part', model, label: { 'uno-r3': 'Arduino UNO R3', 'uno-q': 'Arduino UNO Q' }[model] || 'Arduino UNO R4 WiFi' });
   live.send({ type: 'say', text: 'That is your board. Want to take it apart?' });
   const voice = async (heard, action, target, ms = gap) => { await sleep(ms); live.send({ type: 'heard', text: heard }); live.send({ type: 'twin', action, ...(target ? { target } : {}) }); console.log(`[mock] twin ${action} ${target || ''}`); };
   const wifi = model === 'uno-r3' ? 'the usb chip' : 'the wifi module';
@@ -167,7 +167,11 @@ if (has('--parts')) {
   await voice('Remove it.', 'remove', wifi);
   await voice('Put it back together.', 'combine');
   await sleep(2500);
-  live.send(model === 'uno-r3'
+  live.send(model === 'uno-q'
+    ? { type: 'analysis', id: 1, scope: 'board', board: model, kept: [], removed: [{ id: 'wifi', name: 'WCBN3536A Wi-Fi / Bluetooth module' }], title: 'UNO Q without Wi-Fi', works: true,
+        summary: 'Linux on the QRB2210 and sketches on the STM32U585 still run; the module only adds Wi-Fi and Bluetooth.',
+        pros: ['Linux, the LED matrix and every header still work'], cons: ['No Wi-Fi or Bluetooth'], needs: ['USB-C to a computer for App Lab'], verdict: 'It still works, just offline.' }
+    : model === 'uno-r3'
     ? { type: 'analysis', id: 1, scope: 'board', board: model, kept: [], removed: [{ id: 'usbchip', name: 'ATmega16U2 USB chip' }], title: 'UNO R3 without its USB chip', works: false,
         summary: 'The ATmega328P still runs a sketch, but nothing on the board can talk USB any more.', pros: ['The main chip and its 16 MHz clock are intact'], cons: ['No USB upload or serial monitor'],
         needs: ['A USB-serial adapter on pins 0 and 1, or an ICSP programmer'], verdict: 'It runs, but you can no longer program it over USB.' }

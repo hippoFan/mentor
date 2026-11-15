@@ -10,6 +10,8 @@
     "UNO R3",
     "Arduino UNO R4",
     "UNO R4 WiFi",
+    "Arduino UNO Q",
+    "UNO Q",
     "Arduino",
     "ATmega328P UNO"
    ],
@@ -359,6 +361,8 @@
   "unor3": "arduino-uno",
   "arduinounor4": "arduino-uno",
   "unor4wifi": "arduino-uno",
+  "arduinounoq": "arduino-uno",
+  "unoq": "arduino-uno",
   "arduino": "arduino-uno",
   "atmega328puno": "arduino-uno",
   "arduinomega2560": "arduino-mega-2560",
