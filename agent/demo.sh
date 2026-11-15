@@ -7,6 +7,8 @@ set -u
 cd "$(dirname "$0")"
 LOGS=../logs; mkdir -p "$LOGS"
 AGENT_NAME=$(node --env-file=../.env -e 'process.stdout.write(process.env.AGENT_NAME||"mentor-hackuta")')
+# Judges always get Gemini unless told otherwise (an ANTHROPIC_API_KEY in .env would otherwise pick the Claude API).
+export ODY_BRAIN="${ODY_BRAIN:-${MENTOR_BRAIN:-gemini}}"
 export ODY_TASK="${ODY_TASK:-Help the caller with whatever hands-on project or object they show you}"
 trap 'kill 0; exit 0' INT TERM
 keep() {   # keep <name> <log> <cmd...>
