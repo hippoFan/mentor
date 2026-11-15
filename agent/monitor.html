@@ -6,71 +6,153 @@
 <title>Mentor live</title>
 <style>
   :root {
-    --sweep: #F5F5F7;   /* ground, same as the film */
+    --ground: #F5F5F7;   /* same sweep as the film */
     --ink: #1D1D1F;
-    --muted: #6E6E73;
+    --grey: #86868B;
+    --quiet: #C7C7CC;
+    --line: #E3E3E8;
     --paper: #FFFFFF;
-    --mentor: #FFC845;  /* only Mentor's own things: its marks, its lines, its mark */
-    --live: #FF3B30;    /* only the live dot */
+    --mentor: #FFC845;   /* only Mentor's own things: its rings, its words, its mark */
+    --live: #FF3B30;     /* only the live dot */
+    --font: Inter, "Inter Variable", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
   }
   * { box-sizing: border-box; }
   html, body { margin: 0; height: 100%; }
   body {
-    background: var(--sweep); color: var(--ink);
-    font: 400 17px/1.45 Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
-    display: grid; grid-template-rows: auto 1fr; min-height: 100vh;
+    background: var(--ground); color: var(--ink);
+    font: 400 16px/1.45 var(--font); font-feature-settings: "cv11", "ss01";
+    -webkit-font-smoothing: antialiased;
+    display: grid; grid-template-rows: auto minmax(0, 1fr); height: 100dvh; overflow: hidden;
   }
-  header {
-    display: flex; align-items: center; gap: 14px;
-    padding: 20px 32px 0;
+  :focus-visible { outline: 2px solid var(--ink); outline-offset: 3px; border-radius: 8px; }
+
+  /* ---------- top bar ---------- */
+  header { display: flex; align-items: center; gap: 12px; padding: 18px 32px 0; min-width: 0; }
+  .mark { width: 22px; height: 22px; border-radius: 50%; border: 4px solid var(--mentor); flex: none; }
+  .wordmark { font-weight: 700; font-size: 20px; letter-spacing: -0.02em; }
+  .status { margin-left: auto; display: flex; align-items: center; gap: 8px; font-weight: 500; font-variant-numeric: tabular-nums; white-space: nowrap; }
+  .status .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--quiet); }
+  body.live .status .dot { background: var(--live); }
+  .status .brain { color: var(--grey); }
+  .toggle {
+    font: 500 14px/1 var(--font); color: var(--ink); background: transparent;
+    border: 1px solid var(--line); border-radius: 10px; padding: 8px 10px 8px 12px;
+    display: inline-flex; align-items: center; gap: 8px; cursor: pointer;
   }
-  .mark { width: 26px; height: 26px; border-radius: 50%; border: 5px solid var(--mentor); outline: 2px solid var(--ink); outline-offset: -1px; flex: none; }
-  .wordmark { font-weight: 900; font-size: 24px; letter-spacing: -0.02em; }
-  .status { margin-left: auto; display: flex; align-items: center; gap: 10px; color: var(--muted); font-weight: 500; font-variant-numeric: tabular-nums; }
-  .dot { width: 10px; height: 10px; border-radius: 50%; background: #C7C7CC; }
-  body.on .dot { background: var(--live); }
+  .toggle:hover { background: var(--paper); }
+  .toggle[aria-pressed="true"] { background: var(--ink); color: var(--ground); border-color: var(--ink); }
+  kbd {
+    font: 600 11px/1 var(--font); min-width: 18px; padding: 3px 5px; border-radius: 5px;
+    border: 1px solid currentColor; opacity: .55; text-align: center;
+  }
+
+  /* ---------- layout ---------- */
   main {
-    display: grid; grid-template-columns: minmax(0, 1.85fr) minmax(320px, 1fr);
-    gap: 32px; padding: 24px 32px 32px; min-height: 0;
+    display: grid; grid-template-columns: auto minmax(0, 1fr); grid-template-rows: minmax(0, 1fr); gap: 48px;
+    padding: 20px 32px 24px; min-height: 0;
   }
-  .stage {
-    position: relative; align-self: start;
-    aspect-ratio: 16 / 9; width: 100%;
-    background: #E8E8ED; border-radius: 28px; overflow: hidden;
-    box-shadow: 0 30px 70px rgba(0,0,0,.14);
+  body.tester main { grid-template-columns: auto minmax(0, 1fr) minmax(340px, 400px); gap: 36px; }
+
+  /* the phone is the hero: what the caller is looking at, right now */
+  .phone {
+    height: 100%; max-height: 880px; aspect-ratio: 9 / 16; align-self: start;
+    background: var(--ink); border-radius: 44px; padding: 10px; position: relative;
   }
-  .stage img { width: 100%; height: 100%; object-fit: cover; display: block; }
-  .stage img[hidden] { display: none; }
-  .stage .empty {
-    position: absolute; inset: 0; display: grid; place-content: center; text-align: center; padding: 24px;
-    color: var(--muted);
+  .screen { width: 100%; height: 100%; border-radius: 34px; overflow: hidden; position: relative; background: #2C2C2E; }
+  .screen img { width: 100%; height: 100%; object-fit: cover; display: block; }
+  .screen img[hidden] { display: none; }
+  .screen .idle { position: absolute; inset: 0; display: grid; place-items: center; }
+  .screen .idle span { width: 40px; height: 40px; border-radius: 50%; border: 5px solid var(--mentor); }
+  body.has-frame .screen .idle { display: none; }
+  .stale { position: absolute; left: 50%; top: 22px; transform: translateX(-50%); background: var(--ink); color: var(--ground);
+    font-size: 13px; font-weight: 500; padding: 6px 12px; border-radius: 99px; white-space: nowrap; }
+  .stale[hidden] { display: none; }
+
+  /* judge column */
+  .story { display: grid; grid-template-rows: auto auto auto minmax(0, 1fr); min-height: 0; max-width: 760px; }
+  h1 {
+    font-weight: 700; font-size: clamp(34px, 3.5vw, 54px); line-height: 1.05; letter-spacing: -0.035em;
+    margin: 6px 0 0; max-width: 17ch; text-wrap: balance;
   }
-  .stage .empty strong { display: block; color: var(--ink); font-size: 28px; font-weight: 700; letter-spacing: -0.01em; margin-bottom: 6px; }
-  body.has-frame .stage .empty { display: none; }
-  aside { display: grid; grid-template-rows: auto 1fr; gap: 20px; min-height: 0; }
-  .step {
-    font-weight: 900; font-size: clamp(28px, 3.2vw, 46px); line-height: 1.04; letter-spacing: -0.025em;
-    min-height: 2.1em; margin: 4px 0 0;
-  }
-  .step.idle { color: #C7C7CC; }
-  .step.done::before { content: ""; display: inline-block; width: .55em; height: .55em; border-radius: 50%; background: var(--mentor); outline: 2px solid var(--ink); margin-right: .3em; vertical-align: .08em; }
-  .log {
-    background: var(--paper); border-radius: 22px; padding: 18px 20px; overflow-y: auto; min-height: 0;
-    display: flex; flex-direction: column; gap: 14px;
-  }
-  .log:empty::after { content: "What you and Mentor say shows up here."; color: var(--muted); }
-  .line { max-width: 60ch; }
-  .line .who { font-weight: 700; font-size: 14px; color: var(--muted); margin-bottom: 2px; }
-  .line.mentor { border-left: 4px solid var(--mentor); padding-left: 12px; }
+  h1 .then { color: var(--grey); }
+  .hint { font-size: 19px; color: var(--ink); margin: 18px 0 0; max-width: 44ch; text-wrap: pretty; }
+  .hint:empty { display: none; }
+  body.tester h1 { font-size: clamp(30px, 2.8vw, 44px); }
+  .steps { list-style: none; margin: 22px 0 0; padding: 0; display: flex; flex-direction: column; gap: 4px; counter-reset: s; }
+  .steps:empty { display: none; }
+  .steps li { counter-increment: s; display: grid; grid-template-columns: 22px 1fr; gap: 6px; color: var(--grey); font-size: 15px; }
+  .steps li::before { content: counter(s); font-variant-numeric: tabular-nums; font-weight: 600; }
+  .steps li.now { color: var(--ink); font-weight: 600; }
+  .steps li.done { color: var(--grey); text-decoration: line-through; text-decoration-color: var(--quiet); }
+
+  .talk { min-height: 0; display: grid; grid-template-rows: auto minmax(0, 1fr); margin-top: 26px; border-top: 1px solid var(--line); }
+  .talk h2, .panel h2 { font-size: 13px; font-weight: 600; color: var(--grey); margin: 14px 0 8px; letter-spacing: 0; }
+  .log { overflow-y: auto; min-height: 0; display: flex; flex-direction: column; gap: 14px; padding: 4px 4px 8px 0; scrollbar-width: thin; }
+  .log .empty { color: var(--grey); }
+  .line { display: grid; grid-template-columns: 70px minmax(0, 1fr); gap: 12px; max-width: 64ch; }
+  .line .who { font-size: 14px; font-weight: 600; color: var(--grey); height: 25px; display: flex; align-items: center; gap: 6px; }
   .line.mentor .who { color: var(--ink); }
-  .line .meta { color: var(--muted); font-size: 13px; margin-top: 3px; font-variant-numeric: tabular-nums; }
-  @media (max-width: 900px) {
-    main { grid-template-columns: 1fr; }
-    header { padding: 16px 16px 0; } main { padding: 16px; }
+  .line.mentor .who::before { content: ""; width: 9px; height: 9px; border-radius: 50%; border: 2.5px solid var(--mentor); flex: none; }
+  .line .text { font-size: 18px; line-height: 1.4; }
+  .line.you .text { color: #3A3A3C; }
+  .line .meta { display: block; color: var(--grey); font-size: 13px; margin-top: 2px; font-variant-numeric: tabular-nums; }
+
+  /* ---------- tester panel ---------- */
+  .panel {
+    display: none; min-height: 0; overflow-y: auto; scrollbar-width: thin;
+    background: var(--paper); border: 1px solid var(--line); border-radius: 14px; padding: 4px 20px 20px;
   }
+  body.tester .panel { display: block; }
+  .panel h2:first-child { margin-top: 16px; }
+  .health { display: grid; grid-template-columns: auto 1fr; gap: 4px 14px; font-size: 14px; margin: 0; }
+  .health dt { color: var(--grey); }
+  .health dd { margin: 0; font-variant-numeric: tabular-nums; display: flex; align-items: center; gap: 6px; min-width: 0; }
+  .health dd .pip { width: 7px; height: 7px; border-radius: 50%; border: 1.5px solid var(--ink); flex: none; }
+  .health dd .pip.on { background: var(--ink); }
+  .eye { position: relative; background: #2C2C2E; border-radius: 10px; overflow: hidden; margin: 0 auto; }
+  .eye img { display: block; width: 100%; height: auto; }
+  .eye img[hidden], .eye img[hidden] + svg { display: none; }
+  .eye svg { position: absolute; inset: 0; width: 100%; height: 100%; }
+  .eye .none { color: var(--quiet); font-size: 14px; padding: 48px 16px; text-align: center; }
+  .eye-note { font-size: 13px; color: var(--grey); margin: 8px 0 0; font-variant-numeric: tabular-nums; }
+  .points { list-style: none; padding: 0; margin: 8px 0 0; font-size: 14px; }
+  .points li { display: flex; justify-content: space-between; gap: 12px; padding: 5px 0; border-top: 1px solid var(--line); }
+  .points li span:last-child { color: var(--grey); font-variant-numeric: tabular-nums; white-space: nowrap; }
+  .stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin: 4px 0 0; }
+  .stats div { display: flex; flex-direction: column-reverse; }
+  .stats dt { font-size: 12px; color: var(--grey); }
+  .stats dd { margin: 0; font-size: 26px; font-weight: 650; letter-spacing: -0.02em; font-variant-numeric: tabular-nums; line-height: 1.1; }
+  .stats dd small { font-size: 14px; font-weight: 500; color: var(--grey); margin-left: 1px; }
+  .spark { display: block; width: 100%; height: 64px; margin-top: 12px; }
+  .turns { list-style: none; padding: 0; margin: 0; font-size: 14px; }
+  .turns li { display: grid; grid-template-columns: 28px 52px minmax(0, 1fr); gap: 8px; padding: 7px 0; border-top: 1px solid var(--line); }
+  .turns li .n { color: var(--grey); font-variant-numeric: tabular-nums; }
+  .turns li .ms { font-weight: 600; font-variant-numeric: tabular-nums; text-align: right; }
+  .turns li .ms.slow { text-decoration: underline; text-decoration-thickness: 2px; text-underline-offset: 3px; }
+  .turns li .what { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: #3A3A3C; }
+  .turns li .what em { font-style: normal; color: var(--grey); }
+  .turns .empty, .points .empty { color: var(--grey); border: 0; }
+
+  /* ---------- narrower screens ---------- */
+  @media (max-width: 1180px) {
+    body.tester main { grid-template-columns: auto minmax(0, 1fr); }
+    body.tester .panel { position: fixed; right: 16px; top: 64px; bottom: 16px; width: min(400px, calc(100vw - 32px)); z-index: 2; box-shadow: 0 0 0 100vmax rgba(29,29,31,.18); }
+  }
+  @media (max-width: 760px) {
+    body { height: auto; overflow: auto; }
+    header { padding: 14px 16px 0; flex-wrap: wrap; }
+    .status .brain { display: none; }
+    main, body.tester main { grid-template-columns: 1fr; gap: 24px; padding: 16px; }
+    .phone { height: auto; width: min(100%, 360px); justify-self: center; }
+    .log { max-height: none; }
+    body.tester .panel { position: static; width: auto; box-shadow: none; }
+  }
+
+  /* one moment of motion: the step changing */
   @media (prefers-reduced-motion: no-preference) {
-    .line { animation: in .25s ease-out both; }
-    @keyframes in { from { opacity: 0; filter: blur(4px); } to { opacity: 1; filter: none; } }
+    h1.swap { animation: swap .45s cubic-bezier(.2, .8, .2, 1) both; }
+    @keyframes swap { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+    .toggle { transition: background-color .15s, color .15s; }
   }
 </style>
 </head>
@@ -78,82 +160,306 @@
 <header>
   <div class="mark" aria-hidden="true"></div>
   <div class="wordmark">Mentor</div>
-  <div class="status" aria-live="polite"><span class="dot" aria-hidden="true"></span><span id="status">Waiting for a call</span></div>
+  <div class="status" role="status"><span class="dot" aria-hidden="true"></span><span id="status">Waiting for a call</span><span class="brain" id="brain"></span></div>
+  <button class="toggle" id="toggle" type="button" aria-pressed="false" aria-controls="panel">Tester <kbd>T</kbd></button>
 </header>
 <main>
-  <section class="stage" aria-label="What the caller sees">
-    <img id="view" alt="Live view of the caller's camera with Mentor's marks" hidden>
-    <div class="empty"><div><strong>Every Telemachus deserves a Mentor.</strong>FaceTime Mentor and point your camera at your project.</div></div>
+  <section class="phone" aria-label="What the caller sees">
+    <div class="screen">
+      <img id="view" alt="The caller's camera with Mentor's marks" hidden>
+      <div class="idle" aria-hidden="true"><span></span></div>
+      <div class="stale" id="stale" hidden>Picture paused</div>
+    </div>
   </section>
-  <aside>
-    <h1 class="step idle" id="step">Waiting for a call</h1>
-    <div class="log" id="log" role="log" aria-live="polite"></div>
+
+  <section class="story" aria-label="The call">
+    <h1 id="headline" aria-live="polite"></h1>
+    <p class="hint" id="hint"></p>
+    <ol class="steps" id="steps" aria-label="Steps so far"></ol>
+    <div class="talk">
+      <h2>Conversation</h2>
+      <div class="log" id="log" role="log" aria-live="polite"></div>
+    </div>
+  </section>
+
+  <aside class="panel" id="panel" aria-label="Tester">
+    <h2>Connection</h2>
+    <dl class="health">
+      <dt>Monitor</dt><dd><span class="pip" id="sockPip"></span><span id="sock">Connecting</span></dd>
+      <dt>Call</dt><dd id="callState">No call</dd>
+      <dt>Brain</dt><dd id="model" style="font-variant-numeric: normal">Not set</dd>
+      <dt>Pictures</dt><dd id="rates">None yet</dd>
+    </dl>
+
+    <h2>Answers</h2>
+    <dl class="stats">
+      <div><dt>Turns</dt><dd id="nTurns">0</dd></div>
+      <div><dt>Marks</dt><dd id="nMarks">0</dd></div>
+      <div><dt>Median</dt><dd id="median">–</dd></div>
+      <div><dt>Last</dt><dd id="last">–</dd></div>
+    </dl>
+    <svg class="spark" id="spark" role="img" aria-label="Response time per turn"></svg>
+    <p class="eye-note">One bar per answer, newest dark. The dashed line is 4 s.</p>
+    <h2>What Mentor sees</h2>
+    <div class="eye" id="eye">
+      <img id="input" alt="The cropped camera picture Mentor is given, with its latest marks" hidden>
+      <svg id="marks" aria-hidden="true"></svg>
+      <div class="none" id="eyeNone">No picture from Mentor yet</div>
+    </div>
+    <p class="eye-note" id="eyeNote">Marks from the latest answer appear here at their exact points.</p>
+    <ul class="points" id="points"></ul>
+
+    <h2>Turns, newest first</h2>
+    <ul class="turns" id="turns"></ul>
   </aside>
 </main>
 <script>
   const $ = id => document.getElementById(id);
-  let started = 0, timer = 0, ws;
+  const NS = 'http://www.w3.org/2000/svg';
+  const el = (tag, cls, text) => { const e = document.createElement(tag); if (cls) e.className = cls; if (text != null) e.textContent = text; return e; };
+  const sv = (tag, attrs) => { const e = document.createElementNS(NS, tag); for (const k in attrs) e.setAttribute(k, attrs[k]); return e; };
+  const secs = ms => (ms / 1000).toFixed(1);
+  const BRAINS = { gemini: 'Gemini', claude: 'Claude', 'claude-code': 'Claude Code' };
+  const SLOW = 4000;   // a turn slower than this gets underlined for the tester
 
-  function setStatus(text, on) {
-    $('status').textContent = text;
-    document.body.classList.toggle('on', !!on);
+  const S = {
+    sock: false, call: null, since: 0, brain: '', step: '', done: false,
+    steps: [], turns: [], mood: 'listening', moodTimer: 0, frames: [], inputs: [], lastFrame: 0,
+    input: null, transcript: 0,
+  };
+
+  /* ---------- the headline: the step in ink, what Mentor is doing in grey ---------- */
+  function headline() {
+    const h = $('headline'), prev = h.dataset.key;
+    let main, then, hint = '';
+    if (!S.call || S.call === 'idle') { main = 'Every Telemachus'; then = 'deserves a Mentor.'; hint = 'FaceTime Mentor and point your camera at what you are building.'; }
+    else if (S.call === 'ended') { main = S.done ? 'Done. You made it home.' : 'The call has ended.'; then = 'The recap is saved. Call again to start over.'; }
+    else if (S.done) { main = 'Done. You made it home.'; then = S.steps.length ? `${S.steps.length} step${S.steps.length === 1 ? '' : 's'}, all done.` : 'Every step done.'; }
+    else {
+      main = S.step ? S.step.replace(/[.!?]?$/, '.') : 'Mentor is on the call.';
+      then = { listening: 'Mentor is listening.', thinking: 'Mentor is looking.', speaking: 'Mentor is talking.' }[S.mood];
+    }
+    h.replaceChildren(el('span', '', main + ' '), el('span', 'then', then));
+    $('hint').textContent = hint;
+    const key = main;
+    if (prev !== key) { h.dataset.key = key; h.classList.remove('swap'); void h.offsetWidth; h.classList.add('swap'); }
   }
-  function clock() {
-    const s = Math.floor((Date.now() - started) / 1000);
-    setStatus(`Live ${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`, true);
+  function mood(m, ms) {
+    clearTimeout(S.moodTimer); S.mood = m; headline();
+    if (ms) S.moodTimer = setTimeout(() => { S.mood = 'listening'; headline(); }, ms);
   }
-  function setStep(text, done) {
-    const el = $('step');
-    el.textContent = text || 'Listening';
-    el.classList.toggle('idle', !text);
-    el.classList.toggle('done', !!done);
+
+  function renderSteps() {
+    const ol = $('steps'); ol.replaceChildren();
+    if (S.call !== 'live' && S.call !== 'ended') return;
+    S.steps.forEach((t, i) => {
+      const last = i === S.steps.length - 1;
+      const li = el('li', last && !S.done ? 'now' : 'done', t);
+      if (last && !S.done) li.setAttribute('aria-current', 'step');
+      ol.append(li);
+    });
   }
+  function addStep(text) {
+    if (!text || /^show me your project$/i.test(text) || /^done\./i.test(text)) return;
+    if (S.steps[S.steps.length - 1] !== text) S.steps.push(text);
+  }
+
+  /* ---------- conversation ---------- */
+  function emptyLog() { $('log').replaceChildren(el('p', 'empty', 'What the caller and Mentor say shows up here.')); S.transcript = 0; }
   function addLine(e) {
-    const div = document.createElement('div');
-    div.className = 'line ' + (e.type === 'say' ? 'mentor' : 'you');
-    const who = document.createElement('div'); who.className = 'who'; who.textContent = e.type === 'say' ? 'Mentor' : 'You';
-    const text = document.createElement('div'); text.textContent = e.text;
-    div.append(who, text);
-    if (e.type === 'say' && e.ms) { const m = document.createElement('div'); m.className = 'meta'; m.textContent = `Thought for ${(e.ms / 1000).toFixed(1)} s`; div.append(m); }
-    $('log').append(div);
-    $('log').scrollTop = $('log').scrollHeight;
+    const log = $('log');
+    if (!S.transcript++) log.replaceChildren();
+    const mentor = e.type === 'say';
+    const row = el('div', 'line ' + (mentor ? 'mentor' : 'you'));
+    const text = el('div', 'text', e.text);
+    if (mentor && e.ms) text.append(el('span', 'meta', `Answered in ${secs(e.ms)} s`));
+    row.append(el('div', 'who', mentor ? 'Mentor' : 'Caller'), text);
+    log.append(row);
+    while (log.children.length > 60) log.firstChild.remove();
+    log.scrollTop = log.scrollHeight;
+    requestAnimationFrame(() => { log.scrollTop = log.scrollHeight; });
   }
-  function reset() {
-    clearInterval(timer); timer = 0;
-    document.body.classList.remove('has-frame'); $('view').hidden = true;
-    setStep(''); $('step').textContent = 'Waiting for a call'; $('step').classList.add('idle');
-    setStatus('Waiting for a call', false);
+
+  /* ---------- status ---------- */
+  function status() {
+    const live = S.call === 'live';
+    document.body.classList.toggle('live', live);
+    let t;
+    if (!S.sock) t = S.everConnected ? 'Reconnecting' : 'Connecting';
+    else if (live) { const s = Math.max(0, Math.floor((Date.now() - S.since) / 1000)); t = `Live ${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`; }
+    else if (S.call === 'ended') t = 'Call ended';
+    else t = 'Waiting for a call';
+    $('status').textContent = t;
+    $('brain').textContent = S.brain && live ? 'with ' + (BRAINS[S.brain] || S.brain) : '';
+    $('sock').textContent = S.sock ? 'Connected' : S.everConnected ? 'Reconnecting' : 'Connecting';
+    $('sockPip').classList.toggle('on', S.sock);
+    $('callState').textContent = live ? 'Live' : S.call === 'ended' ? 'Ended' : 'No call';
+    const lastTurn = S.turns[S.turns.length - 1];
+    $('model').textContent = (BRAINS[S.brain] || S.brain || 'Not set') + (lastTurn?.model ? `, ${lastTurn.model}` : '');
+    const now = Date.now();
+    S.frames = S.frames.filter(t => now - t < 5000); S.inputs = S.inputs.filter(t => now - t < 5000);
+    $('rates').textContent = S.frames.length || S.inputs.length
+      ? `Caller ${(S.frames.length / 5).toFixed(1)}/s, Mentor ${(S.inputs.length / 5).toFixed(1)}/s` : 'None yet';
+    $('stale').hidden = !(live && S.lastFrame && now - S.lastFrame > 3000);
+  }
+
+  /* ---------- tester: marks on Mentor's own picture ---------- */
+  function drawMarks() {
+    const svg = $('marks'), pts = $('points');
+    svg.replaceChildren(); pts.replaceChildren();
+    const t = S.turns[S.turns.length - 1];
+    const w = S.input?.w || 1000, h = S.input?.h || 1000;
+    svg.setAttribute('viewBox', `0 0 ${w} ${h}`);
+    svg.setAttribute('preserveAspectRatio', 'none');
+    if (!t) { pts.append(el('li', 'empty', 'No marks yet')); return; }
+    const shown = $('eye').clientWidth;   // marks keep a readable size whatever the panel width
+    const u = shown > 40 ? 3 * w / shown : Math.min(w, h) / 100;
+    const marks = t.marks || [];
+    const taken = marks.map(m => [m.x * w - u * 5, m.y * h - u * 5, u * 10, u * 10]);   // rings are taken too
+    for (const m of marks) {
+      const x = m.x * w, y = m.y * h;
+      if (m.kind === 'wire' && m.x2 >= 0) svg.append(sv('line', { x1: x, y1: y, x2: m.x2 * w, y2: m.y2 * h, stroke: '#FFC845', 'stroke-width': u * 0.9, 'stroke-dasharray': `${u * 2.4} ${u * 1.4}`, 'stroke-linecap': 'round' }));
+      svg.append(sv('circle', { cx: x, cy: y, r: u * 4.2, fill: 'none', stroke: '#FFC845', 'stroke-width': u * 0.9 }));
+      // a crosshair at the exact point, so a tester can judge the aim
+      svg.append(sv('path', { d: `M${x - u * 1.6} ${y}H${x + u * 1.6}M${x} ${y - u * 1.6}V${y + u * 1.6}`, stroke: '#FFFFFF', 'stroke-width': u * 0.35 }));
+      if (m.label) {
+        const fs = u * 3.6, tw = m.label.length * fs * 0.56 + u * 3, th = fs * 1.7, gap = u * 6;
+        const tries = [[x + gap, y - th / 2], [x - gap - tw, y - th / 2], [x - tw / 2, y - gap - th], [x - tw / 2, y + gap]];
+        if (x > w * 0.6) tries.unshift(tries.splice(1, 1)[0]);
+        const fits = ([bx, by]) => bx >= 0 && by >= 0 && bx + tw <= w && by + th <= h
+          && !taken.some(r => bx < r[0] + r[2] + u && bx + tw + u > r[0] && by < r[1] + r[3] + u && by + th + u > r[1]);
+        const [bx, by] = tries.find(fits) || tries[0];
+        taken.push([bx, by, tw, th]);
+        const jx = Math.max(bx, Math.min(bx + tw, x)), jy = Math.max(by, Math.min(by + th, y)), d = Math.hypot(jx - x, jy - y);
+        if (d > u * 4.6) svg.append(sv('line', { x1: x + (jx - x) * u * 4.6 / d, y1: y + (jy - y) * u * 4.6 / d, x2: jx, y2: jy, stroke: '#FFC845', 'stroke-width': u * 0.6 }));
+        svg.append(sv('rect', { x: bx, y: by, width: tw, height: th, rx: th / 2, fill: '#FFC845' }));
+        const tx = sv('text', { x: bx + u * 1.5, y: by + fs * 1.2, 'font-size': fs, 'font-weight': 600, fill: '#1D1D1F', 'font-family': 'Inter, system-ui, sans-serif' });
+        tx.textContent = m.label; svg.append(tx);
+      }
+      const li = el('li'); li.append(el('span', '', m.label || (m.kind || 'mark')), el('span', '', `${m.kind || 'circle'}  x ${m.x.toFixed(2)}  y ${m.y.toFixed(2)}`));
+      pts.append(li);
+    }
+    if (!marks.length) pts.append(el('li', 'empty', 'The latest answer pointed at nothing'));
+  }
+  function eyeNote() {
+    const t = S.turns[S.turns.length - 1];
+    $('eyeNote').textContent = !t ? 'Marks from the latest answer appear here at their exact points.'
+      : `Turn ${S.turns.length}, ${(t.marks || []).length} mark${(t.marks || []).length === 1 ? '' : 's'}, ${Math.round((Date.now() - (t._at || Date.now())) / 1000)} s ago` + (S.input ? `. Picture ${S.input.w} by ${S.input.h}` : '');
+  }
+
+  /* ---------- tester: timing ---------- */
+  function renderTurns() {
+    const ms = S.turns.map(t => t.ms || 0);
+    const marks = S.turns.reduce((n, t) => n + (t.marks || []).length, 0);
+    $('nTurns').textContent = S.turns.length;
+    $('nMarks').textContent = marks;
+    const sorted = [...ms].sort((a, b) => a - b);
+    const med = sorted.length ? sorted[Math.floor((sorted.length - 1) / 2)] : 0;
+    $('median').innerHTML = med ? `${secs(med)}<small>s</small>` : '–';
+    $('last').innerHTML = ms.length ? `${secs(ms[ms.length - 1])}<small>s</small>` : '–';
+
+    const svg = $('spark'); svg.replaceChildren();
+    const W = 360, H = 64, max = Math.max(SLOW * 1.25, ...ms);
+    svg.setAttribute('viewBox', `0 0 ${W} ${H}`); svg.setAttribute('preserveAspectRatio', 'none');
+    const yS = H - (SLOW / max) * (H - 4);
+    svg.append(sv('line', { x1: 0, x2: W, y1: yS, y2: yS, stroke: '#C7C7CC', 'stroke-dasharray': '3 4', 'vector-effect': 'non-scaling-stroke' }));
+    const shown = ms.slice(-24), n = Math.max(shown.length, 12), bw = W / n;
+    shown.forEach((v, i) => {
+      const bh = Math.max(2, (v / max) * (H - 4));
+      svg.append(sv('rect', { x: i * bw + bw * 0.18, y: H - bh, width: bw * 0.64, height: bh, rx: 2, fill: i === shown.length - 1 ? '#1D1D1F' : '#AEAEB2' }));
+    });
+    svg.setAttribute('aria-label', ms.length ? `Response time per turn, last ${secs(ms[ms.length - 1])} seconds, dashed line at ${SLOW / 1000} seconds` : 'No turns yet');
+
+    const ul = $('turns'); ul.replaceChildren();
+    if (!S.turns.length) { ul.append(el('li', 'empty', 'Each answer from the brain is listed here.')); return; }
+    S.turns.slice(-12).reverse().forEach((t, i) => {
+      const li = el('li');
+      const m = el('span', 'ms' + ((t.ms || 0) > SLOW ? ' slow' : ''), t.ms ? secs(t.ms) + ' s' : '–');
+      const what = el('span', 'what');
+      const labels = (t.marks || []).map(k => k.label).filter(Boolean).join(', ');
+      what.append(document.createTextNode(labels || 'No marks'), el('em', '', `  ${t.model || BRAINS[t.brain] || t.brain || ''}${t.done ? ', done' : ''}`));
+      what.title = (t.step ? t.step + '. ' : '') + (t.model || '');
+      li.append(el('span', 'n', String(S.turns.length - i)), m, what);
+      ul.append(li);
+    });
+  }
+
+  /* ---------- events ---------- */
+  function resetCall() {
+    S.steps = []; S.turns = []; S.step = ''; S.done = false; S.input = null; S.lastFrame = 0;
+    emptyLog(); renderSteps(); renderTurns(); drawMarks(); eyeNote();
+    $('input').hidden = true; $('eyeNone').hidden = false;
   }
   function onCall(e) {
     if (e.state === 'live') {
-      started = e.since || Date.now(); $('log').replaceChildren(); clearInterval(timer); timer = setInterval(clock, 1000); clock();
-      setStep('');
+      if (S.call !== 'live' || S.since !== (e.since || S.since)) resetCall();
+      S.call = 'live'; S.since = e.since || Date.now(); mood('listening');
     } else if (e.state === 'ended') {
-      clearInterval(timer); timer = 0; setStatus('Call ended. Recap saved.', false);
+      S.call = 'ended'; mood('listening');
+      document.body.classList.remove('has-frame'); $('view').hidden = true;
     }
+    renderSteps(); status();
   }
   function handle(e) {
     switch (e.type) {
       case 'hello':
+        S.call = null; resetCall();
+        if (e.brain) S.brain = e.brain;
         if (e.call) onCall(e.call);
-        if (e.step) setStep(e.step);
+        (e.turns || []).forEach(t => { S.turns.push({ ...t, _at: Date.now() }); addStep(t.step); if (t.done) S.done = true; });
+        if (e.step) { S.step = e.step; addStep(e.step); }
         (e.transcript || []).forEach(addLine);
+        renderSteps(); renderTurns(); drawMarks(); headline(); status();
         break;
       case 'call': onCall(e); break;
+      case 'brain': S.brain = e.brain; status(); break;
       case 'frame':
         $('view').src = 'data:image/jpeg;base64,' + e.jpeg; $('view').hidden = false;
-        document.body.classList.add('has-frame');
+        document.body.classList.add('has-frame'); S.frames.push(Date.now()); S.lastFrame = Date.now();
         break;
-      case 'heard': case 'say': addLine(e); break;
-      case 'step': setStep(e.text, e.done); break;
+      case 'input': {
+        const sizeChanged = !S.input || S.input.w !== e.w || S.input.h !== e.h;
+        S.input = { w: e.w, h: e.h }; S.inputs.push(Date.now()); if (S.inputs.length < 3) status();
+        $('input').src = 'data:image/jpeg;base64,' + e.jpeg; $('input').hidden = false; $('eyeNone').hidden = true;
+        if (sizeChanged) { $('eye').style.width = `min(100%, calc(44vh * ${e.w} / ${e.h}))`; requestAnimationFrame(drawMarks); }
+        break;
+      }
+      case 'heard': addLine(e); mood('thinking', 12000); break;
+      case 'say': addLine(e); mood('speaking', Math.min(15000, 900 + e.text.length * 60)); break;
+      case 'step': S.step = e.text; if (e.done) S.done = true; else addStep(e.text); renderSteps(); headline(); break;
+      case 'turn':
+        S.turns.push({ ...e, _at: Date.now() }); if (S.turns.length > 40) S.turns.shift();
+        if (e.done) S.done = true;
+        renderTurns(); drawMarks(); eyeNote(); status();
+        break;
     }
   }
-  function connect() {
-    ws = new WebSocket(`ws://${location.host}`);
-    ws.onmessage = m => { try { handle(JSON.parse(m.data)); } catch {} };
-    ws.onclose = () => { if (timer) setStatus('Reconnecting', false); setTimeout(connect, 1000); };
+
+  /* ---------- tester toggle ---------- */
+  function setTester(on) {
+    document.body.classList.toggle('tester', on);
+    $('toggle').setAttribute('aria-pressed', String(on));
+    requestAnimationFrame(() => { $('log').scrollTop = $('log').scrollHeight; drawMarks(); });
+    try { localStorage.setItem('mentor.tester', on ? '1' : ''); } catch {}
   }
-  reset(); connect();
+  $('toggle').addEventListener('click', () => setTester(!document.body.classList.contains('tester')));
+  addEventListener('resize', () => { $('log').scrollTop = $('log').scrollHeight; drawMarks(); });
+  addEventListener('keydown', e => {
+    if (e.metaKey || e.ctrlKey || e.altKey) return;
+    if (e.key === 't' || e.key === 'T') setTester(!document.body.classList.contains('tester'));
+    if (e.key === 'Escape') setTester(false);
+  });
+  try { if (localStorage.getItem('mentor.tester')) setTester(true); } catch {}
+
+  function connect() {
+    const ws = new WebSocket(`ws://${location.host}`);
+    ws.onopen = () => { S.sock = true; S.everConnected = true; status(); };
+    ws.onmessage = m => { let e; try { e = JSON.parse(m.data); } catch { return; } handle(e); };
+    ws.onclose = () => { S.sock = false; status(); setTimeout(connect, 1000); };
+  }
+  emptyLog(); headline(); renderTurns(); drawMarks(); status();
+  setInterval(() => { status(); eyeNote(); }, 1000);
+  connect();
 </script>
 </body>
 </html>
