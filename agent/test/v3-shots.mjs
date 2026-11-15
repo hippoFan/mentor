@@ -38,6 +38,32 @@ try {
   const ev = async e => (await cdp('Runtime.evaluate', { expression: e, awaitPromise: true, returnByValue: true })).result?.result?.value;
   await cdp('Runtime.enable'); await cdp('Page.enable');
   const only = process.argv[2];
+  if (only === 'v4') {   // Home's exits and the nav: v4-*.png
+    const snap = async (name, clip) => { const r = await cdp('Page.captureScreenshot', { format: 'png', ...(clip ? { clip: { ...clip, scale: 1 } } : {}) }); await writeFile(join(SHOTS, `v4-${name}.png`), Buffer.from(r.result.data, 'base64')); };
+    const centre = async sel => ev(`(() => { const r = document.querySelector(${JSON.stringify(sel)}).getBoundingClientRect(); return [r.x + r.width / 2, r.y + r.height / 2]; })()`);
+    const move = async ([x, y]) => cdp('Input.dispatchMouseEvent', { type: 'mouseMoved', x, y });
+    for (const [w, h] of [[1440, 900], [1280, 800]]) {
+      await cdp('Emulation.setDeviceMetricsOverride', { width: w, height: h, deviceScaleFactor: 1, mobile: false });
+      await cdp('Page.navigate', { url: `http://localhost:${PORT}/#main` });
+      for (let i = 0; i < 60 && !(await ev('!!(window.odyPages && window.odyAccount && document.fonts.status === "loaded")')); i++) await sleep(200);
+      await sleep(1800); await move([w / 2, h / 2]); await sleep(300);
+      await snap(`home-${w}x${h}`);
+      await move(await centre('#page-main .home-rip')); await sleep(700); await snap(`rip-hover-${w}x${h}`, { x: 0, y: 64, width: 360, height: h - 64 });
+      await move(await centre('#page-main .home-column')); await sleep(700); await snap(`column-hover-${w}x${h}`, { x: w - 360, y: 64, width: 360, height: h - 64 });
+      await move([w / 2, h / 2]); await sleep(400); await snap(`nav-${w}x${h}`, { x: 0, y: 0, width: w, height: 90 });
+      await move(await centre('#page-main .home-rip'));
+      await cdp('Input.dispatchMouseEvent', { type: 'mousePressed', x: (await centre('#page-main .home-rip'))[0], y: (await centre('#page-main .home-rip'))[1], button: 'left', clickCount: 1 });
+      await cdp('Input.dispatchMouseEvent', { type: 'mouseReleased', x: (await centre('#page-main .home-rip'))[0], y: (await centre('#page-main .home-rip'))[1], button: 'left', clickCount: 1 });
+      await sleep(300); await snap(`rip-push-mid-${w}x${h}`); await sleep(1500);
+      console.log(w, 'after rip click:', await ev('window.odyPages.page()'));
+      await ev('window.odyPages.goTo("main")'); await sleep(1600);
+      const c = await centre('#page-main .home-column');
+      await cdp('Input.dispatchMouseEvent', { type: 'mousePressed', x: c[0], y: c[1], button: 'left', clickCount: 1 });
+      await cdp('Input.dispatchMouseEvent', { type: 'mouseReleased', x: c[0], y: c[1], button: 'left', clickCount: 1 });
+      await sleep(1800); console.log(w, 'after column click:', await ev('window.odyPages.page()'));
+    }
+    throw Object.assign(new Error('v4 done'), { done: true });
+  }
   for (const [w, h] of [[1280, 800], [1440, 900], [1024, 768], [1920, 1080]]) {
     await cdp('Emulation.setDeviceMetricsOverride', { width: w, height: h, deviceScaleFactor: 1, mobile: false });
     await cdp('Page.navigate', { url: `http://localhost:${PORT}/#main` });
@@ -64,6 +90,6 @@ try {
       await ev('window.odyAccount.close()');
     }
   }
-} finally { chrome.kill(); await live.close(); await rm(profile, { recursive: true, force: true }); await rm(dir, { recursive: true, force: true }); }
+} catch (e) { if (!e.done) throw e; } finally { chrome.kill(); await live.close(); await rm(profile, { recursive: true, force: true }); await rm(dir, { recursive: true, force: true }); }
 console.log(errors.length ? `errors:\n${errors.join('\n')}` : 'no console errors');
 process.exit(0);

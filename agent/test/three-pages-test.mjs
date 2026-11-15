@@ -77,10 +77,11 @@ try {
     assert.equal(await evalJs('window.odyPages.v2'), true);
     assert.equal(await evalJs('window.odyPages.page()'), 'main');
     assert.equal(await evalJs('document.querySelector(".pager [aria-current=page]").dataset.go'), 'main');
-    assert.deepEqual(await evalJs('[...document.querySelectorAll(".pager a")].map(a => a.textContent.trim())'), ['Argo', 'Home', 'The Forge']);
-    assert.ok(await visible('.appbar .brand svg.logo'), 'logo in the app bar');
+    assert.deepEqual(await evalJs('[...document.querySelectorAll(".pager a")].map(a => a.dataset.go)'), ['argo', 'main', 'forge']);
+    assert.deepEqual(await evalJs('[...document.querySelectorAll(".pager a")].map(a => a.textContent.trim() || a.getAttribute("aria-label"))'), ['Argo', 'Home', 'The Forge']);
+    assert.ok(await visible('.pager .nav-logo[aria-current=page] svg.logo'), 'the Ody wordmark is Home, highlighted');
     assert.ok(await visible('#profile-btn'), 'avatar in the app bar');
-    assert.deepEqual(await evalJs('[...document.querySelectorAll(".edge-tab")].filter(t => !t.closest("[hidden]")).map(t => t.dataset.go)'), ['argo', 'forge']);
+    assert.deepEqual(await evalJs('[...document.querySelectorAll("#page-main .home-rip, #page-main .home-column")].map(t => [t.dataset.go, t.getAttribute("aria-label")])'), [['argo', 'Go to Argo'], ['forge', 'Go to The Forge']]);
     assert.equal(await visible('#argos-btn'), false, 'the Argos button shows only on Argo');
   });
   await test('profile menu: Profile, Settings, Sign in; a local profile only (no passwords), Sign out forgets it', async () => {
@@ -153,7 +154,7 @@ try {
     assert.ok(await until('window.odyPages.page() === "argo" && !document.getElementById("page-argo").classList.contains("off")'));
     await sleep(500);
     assert.equal(await visible('#argos-btn'), true);
-    assert.ok(await until('[...document.querySelectorAll(".edge-tab")].every(t => t.closest("[hidden]"))'), 'Home (and its edges) hidden once the push lands');
+    assert.ok(await until('[...document.querySelectorAll(".home-rip, .home-column")].every(t => t.closest("[hidden]"))'), 'Home (and its edges) hidden once the push lands');
     assert.equal(await evalJs('performance.getEntriesByType("navigation").length'), 1);
   });
   live.send({ type: 'call', state: 'live', since: Date.now() - 125_000 });
@@ -224,7 +225,7 @@ try {
     await until('window.odyPages && window.odyShell', 80); await sleep(1500);
     assert.equal(await evalJs('window.odyPages.v2'), false);
     assert.ok(await visible('#stage') && await visible('#t-tester') && await visible('#argos-btn') && await visible('.rail'));
-    assert.equal(await visible('#page-main'), false); assert.equal(await visible('.pager'), false); assert.equal(await visible('.edge-tab'), false); assert.equal(await visible('.appbar'), false);
+    assert.equal(await visible('#page-main'), false); assert.equal(await visible('.pager'), false); assert.equal(await visible('.home-rip'), false); assert.equal(await visible('.appbar'), false);
     assert.equal(await evalJs('getComputedStyle(document.body).display'), 'grid');
     await shot(join(SHOTS, 'pages-legacy-fallback.png'));
     errors.splice(errCount);   // the blocked stylesheets themselves log errors
