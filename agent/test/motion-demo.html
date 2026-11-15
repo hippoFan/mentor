@@ -1,0 +1,154 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Ody motion + ink</title>
+<link rel="icon" href="data:,">
+<link rel="stylesheet" href="/twin/motion.css">
+<style>
+@font-face{font-family:"Cinzel Decorative";src:url(/fonts/CinzelDecorative-Bold.ttf) format("truetype");font-weight:700;font-display:swap}
+@font-face{font-family:"Cinzel Decorative";src:url(/fonts/CinzelDecorative-Regular.ttf) format("truetype");font-weight:400;font-display:swap}
+@font-face{font-family:"GFS Theokritos";src:url(/fonts/GFSTheokritos.otf) format("opentype");font-display:swap}
+@font-face{font-family:"Cooper Hewitt";src:url(/fonts/CooperHewitt-400.woff2) format("woff2");font-weight:400;font-display:swap}
+@font-face{font-family:"Cooper Hewitt";src:url(/fonts/CooperHewitt-600.woff2) format("woff2");font-weight:600;font-display:swap}
+:root{--paper:#fdf5cc;--navy:#12233f;--teal:#1b5a63;--sea:#c1ddd0;--orange:#ea872f;--red:#983a34;--ink-2:#34445e}
+*{box-sizing:border-box}
+html,body{margin:0;height:100%}
+body{background:var(--paper) url(/twin/paper/papyrus.svg) 0 0/256px 256px;color:var(--navy);font:400 17px/1.55 "Cooper Hewitt",system-ui,sans-serif;overflow:hidden}
+button{font:600 15px/1 "Cooper Hewitt",sans-serif;color:var(--navy);background:transparent;border:0;padding:12px 18px;cursor:pointer;border-radius:2px}
+button:focus-visible{outline:2px solid var(--teal);outline-offset:4px}
+.bar{position:relative;z-index:5;display:flex;align-items:center;gap:28px;padding:22px 48px}
+.brand{font:700 30px/1 "Cinzel Decorative",serif;letter-spacing:.02em;display:flex;align-items:center;gap:12px}
+.seal{width:40px;height:40px;border-radius:50%;background:var(--navy);color:var(--paper);display:grid;place-items:center;font:700 18px/1 "Cinzel Decorative",serif}
+nav{display:flex;gap:6px;margin-left:24px}
+nav button{font:400 16px/1 "GFS Theokritos",serif;font-size:19px;padding:10px 12px}
+nav button[aria-current]{color:var(--navy)}
+nav button:not([aria-current]){color:var(--ink-2)}
+.live{margin-left:auto;display:flex;align-items:center;gap:12px;font:600 14px/1 "Cooper Hewitt";color:var(--teal)}
+.dot{width:12px;height:12px;border-radius:50%;background:var(--teal);color:var(--teal);display:inline-block}
+#stage{position:relative;height:calc(100vh - 84px);overflow:hidden}
+.page{position:absolute;inset:0;padding:28px 48px 0;background:var(--paper) url(/twin/paper/papyrus.svg) 0 0/256px 256px;overflow:hidden}
+.page[hidden]{display:none}
+.argo{overflow:visible;z-index:3}
+.argo .waves{left:-40%;right:0}
+.rip{position:absolute;top:0;right:-39px;width:40px;height:100%;z-index:6}
+.argosdog{right:12%;bottom:90px;width:120px}
+.sky{position:absolute;pointer-events:none}
+.sun{right:7%;top:6%;width:150px}
+.cloud{top:9%;width:240px;right:22%}
+.cloud.b{top:26%;right:2%;width:170px}
+.waves{position:absolute;left:-40%;right:-40%;bottom:0;height:150px;background-repeat:repeat-x;background-position:0 100%;background-size:auto 150px;pointer-events:none}
+.waves.back{background-image:url(/twin/paper/waves-back.svg);bottom:34px;opacity:.75}
+.waves.mid{background-image:url(/twin/paper/waves-mid.svg);bottom:14px}
+.waves.front{background-image:url(/twin/paper/waves-front.svg);bottom:-18px}
+.hero{position:relative;z-index:2;max-width:660px}
+h1{font:700 64px/1.02 "Cinzel Decorative",serif;margin:18px 0 6px;letter-spacing:-.01em}
+.lede{font:400 23px/1.45 "GFS Theokritos",serif;max-width:34ch;color:var(--ink-2);margin:6px 0 26px}
+.flourish{display:block;width:420px;height:44px;margin:-4px 0 6px}
+.ship{position:absolute;z-index:1;right:9%;bottom:118px;width:400px}
+.cards{display:flex;gap:26px;margin-top:8px;position:relative;z-index:2}
+.card{width:196px;padding:18px 18px 16px;background:#fffbe6cc}
+.card b{display:block;font:600 17px/1.2 "Cooper Hewitt";margin-bottom:6px}
+.card span{font-size:14px;color:var(--ink-2)}
+.card.tilt{transform:rotate(-1deg)}
+.cta{margin-top:30px;display:flex;gap:24px;position:relative;z-index:2}
+.btn{padding:14px 22px;font-size:16px}
+.divider{height:28px;width:520px;margin:20px 0 4px}
+.forge-grid{position:relative;z-index:2;display:grid;grid-template-columns:260px 1fr;gap:56px;align-items:center;margin-top:26px;max-width:980px}
+.parts{display:flex;flex-direction:column;gap:18px}
+.chip{display:flex;align-items:center;gap:12px;padding:12px 16px;background:#fffbe6d9;font-weight:600}
+.chip i{width:14px;height:14px;border-radius:3px;display:inline-block}
+.slot{position:relative;justify-self:center;width:300px;height:220px;display:grid;place-items:center}
+.slot svg{width:180px;height:180px}
+.result{position:absolute;left:50%;top:100%;transform:translateX(-50%);width:330px;text-align:center;margin-top:18px;padding:14px 16px;background:#fffbe6;visibility:hidden}
+.result b{font:700 19px/1.2 "Cinzel Decorative"}
+.quote{font:400 21px/1.4 "GFS Theokritos";padding:8px 18px;display:inline-block;margin-top:18px}
+.toast{position:fixed;left:50%;bottom:34px;margin-left:-170px;width:340px;z-index:9;padding:16px 20px;background:var(--navy);color:var(--paper);font-weight:600;display:flex;gap:12px;align-items:center;box-shadow:0 10px 30px #12233f40;border-radius:3px}
+.toast[hidden]{display:none}
+.toast .tick{width:22px;height:22px;flex:none}
+mark{background:none;color:inherit}
+@media (max-width:760px){h1{font-size:40px}.cards{flex-wrap:wrap}.ship{display:none}.forge-grid{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<header class="bar">
+  <div class="brand" data-flip-id="brand"><span class="seal">O</span>Ody</div>
+  <nav aria-label="Pages">
+    <button data-go="argo">Argo</button>
+    <button data-go="main" aria-current="page" data-ink="underline" data-ink-color="orange" data-ink-static>Home</button>
+    <button data-go="forge">The Forge</button>
+  </nav>
+  <div class="live"><span class="dot" id="dot"></span>Live with Ody</div>
+</header>
+<main id="stage">
+  <section class="page" id="page-main" data-home aria-labelledby="h-home">
+    <img class="sky sun" src="/twin/paper/sun.svg" alt="" data-depth="0.25">
+    <img class="sky cloud" src="/twin/paper/cloud-a.svg" alt="" data-depth="0.45">
+    <img class="sky cloud b" src="/twin/paper/cloud-b.svg" alt="" data-depth="0.6">
+    <div class="waves back" data-depth="0.6"></div>
+    <div class="hero">
+      <h1 id="h-home" data-reveal>Show Ody your board.</h1>
+      <svg class="flourish" id="flourish" viewBox="0 0 420 44" aria-hidden="true"></svg>
+      <p class="lede">Hold your project up to the camera. Ody sees the parts, <mark id="mk">points at the one that's wrong</mark>, and talks you through the fix.</p>
+      <div class="cards" id="cards">
+        <div class="card" data-ink="box" data-ink-wash="sea"><b>Arduino Uno</b><span>found on the desk, pins 2–13 traced</span></div>
+        <div class="card tilt" data-ink="box"><b>Servo SG90</b><span>signal wire on pin 9</span></div>
+        <div class="card" data-ink="box" data-ink-color="red"><b>HC-SR04</b><span>echo pin floating: check it</span></div>
+      </div>
+      <div class="cta">
+        <button class="btn" id="go-forge" data-ink="box" data-ink-color="navy" data-ink-wash="orange">Open The Forge</button>
+        <button class="btn" id="ring" data-ink="circle" data-ink-color="teal">Ring Ody</button>
+      </div>
+    </div>
+    <div id="ship-holder" class="ship" data-depth="1.1" data-reveal></div>
+    <div class="waves mid" data-depth="1"></div>
+    <div class="waves front" data-depth="1.6"></div>
+  </section>
+  <section class="page argo" id="page-argo" aria-labelledby="h-argo" hidden>
+    <svg class="rip" data-rip viewBox="0 0 40 800" preserveAspectRatio="none" aria-hidden="true"><defs><pattern id="pp" patternUnits="userSpaceOnUse" width="256" height="256"><rect width="256" height="256" fill="#fdf5cc"/><image href="/twin/paper/papyrus.svg" width="256" height="256"/></pattern></defs><path d="M0 0 L22 0 L30 40 L18 78 L34 120 L24 170 L38 210 L20 262 L31 300 L16 352 L35 398 L22 446 L37 492 L19 540 L32 588 L21 636 L36 684 L18 730 L28 770 L20 800 L0 800 Z" fill="url(#pp)"/><path d="M22 0 L30 40 L18 78 L34 120 L24 170 L38 210 L20 262 L31 300 L16 352 L35 398 L22 446 L37 492 L19 540 L32 588 L21 636 L36 684 L18 730 L28 770 L20 800" fill="none" stroke="#12233f" stroke-width="1.4" vector-effect="non-scaling-stroke"/></svg>
+    <img class="sky sun" src="/twin/paper/sun.svg" alt="" data-depth="0.3">
+    <img class="sky cloud" src="/twin/paper/cloud-a.svg" alt="" data-depth="0.5">
+    <div class="hero">
+      <h1 id="h-argo" data-reveal>Argo</h1>
+      <p class="lede">Your call with Ody. The camera sees the bench; Ody draws on what it sees.</p>
+      <div class="cards"><div class="card" data-ink="box" data-ink-wash="sea"><b>Live call</b><span>camera on, mic on</span></div><div class="card tilt" data-ink="box"><b>Pointing</b><span>Ody circles the part it means</span></div></div>
+    </div>
+    <img class="sky argosdog" src="/twin/paper/column.svg" alt="" data-depth="1.2">
+    <div class="waves mid" data-depth="1"></div>
+    <div class="waves front" data-depth="1.6"></div>
+  </section>
+  <section class="page" id="page-forge" aria-labelledby="h-forge" hidden>
+    <img class="sky sun" src="/twin/paper/sun.svg" alt="" data-depth="0.25">
+    <img class="sky cloud" src="/twin/paper/cloud-b.svg" alt="" data-depth="0.5">
+    <div class="waves back" data-depth="0.6"></div>
+    <div class="hero">
+      <h1 id="h-forge" data-reveal>The Forge</h1>
+      <div class="divider" data-ink="divider"></div>
+      <span class="quote" data-ink="bracket" data-ink-color="teal">Pick the parts. Ody combines them into one build.</span>
+    </div>
+    <div class="forge-grid">
+      <div class="parts" id="parts">
+        <div class="chip" data-ink="box"><i style="background:#1b5a63"></i>Arduino Uno</div>
+        <div class="chip" data-ink="box"><i style="background:#ea872f"></i>Servo SG90</div>
+        <div class="chip" data-ink="box"><i style="background:#983a34"></i>HC-SR04 sensor</div>
+      </div>
+      <div class="slot" id="slot" data-ink="circle" data-ink-color="orange">
+        <svg viewBox="0 0 180 180" aria-hidden="true">
+          <path id="glyph" d="M40 40 L140 40 L140 140 L40 140 Z" fill="#c1ddd0" stroke="#12233f" stroke-width="3" stroke-linejoin="round"/>
+        </svg>
+        <div class="result" id="result" data-ink="box" data-ink-wash="sea" data-ink-static><b>Obstacle rover</b><br><span>3 parts combined, wiring checked</span></div>
+      </div>
+    </div>
+    <button class="btn" id="combine" style="position:relative;z-index:2;margin:26px 0 0 0" data-ink="box" data-ink-wash="orange">Combine parts</button>
+    <div class="waves mid" data-depth="1"></div>
+    <div class="waves front" data-depth="1.6"></div>
+  </section>
+</main>
+<div class="toast" id="toast" role="status" hidden>
+  <svg class="tick" viewBox="0 0 22 22" aria-hidden="true"><path id="tick" d="M4 12 L9 17 L18 5" fill="none" stroke="#ea872f" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></svg>
+  <span>Combined 3 parts into one build</span>
+</div>
+<script type="module" src="/test/motion-demo.js"></script>
+</body>
+</html>

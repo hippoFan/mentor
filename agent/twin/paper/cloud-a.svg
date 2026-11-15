@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 120" width="320" height="120" class="pk pk-cloud-a" role="img" aria-label="Cloud"><title>Cloud</title><defs><filter id="pk-ink" x="-6%" y="-6%" width="112%" height="112%" color-interpolation-filters="sRGB">
+<feTurbulence type="fractalNoise" baseFrequency="0.018" numOctaves="2" seed="4" result="w"/>
+<feDisplacementMap in="SourceGraphic" in2="w" scale="3.5" xChannelSelector="R" yChannelSelector="G" result="d"/>
+<feTurbulence type="fractalNoise" baseFrequency="0.5" numOctaves="2" seed="9" result="g"/>
+<feColorMatrix in="g" type="matrix" values="0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 -3.2 0 0 0 2.75" result="ga"/>
+<feComposite in="d" in2="ga" operator="in"/></filter>
+<filter id="pk-wash" x="-6%" y="-6%" width="112%" height="112%" color-interpolation-filters="sRGB">
+<feTurbulence type="fractalNoise" baseFrequency="0.012" numOctaves="2" seed="21" result="w"/>
+<feDisplacementMap in="SourceGraphic" in2="w" scale="7" xChannelSelector="G" yChannelSelector="R" result="d"/>
+<feTurbulence type="fractalNoise" baseFrequency="0.03 0.5" numOctaves="2" seed="2" result="g"/>
+<feColorMatrix in="g" type="matrix" values="0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 -.7 0 0 0 1.2" result="ga"/>
+<feComposite in="d" in2="ga" operator="in"/></filter></defs><g class="pk-fill" filter="url(#pk-wash)" transform="translate(3 2)"><path d="M73.0 14H217.0A13.0 13.0 0 0 1 217.0 40H73.0A13.0 13.0 0 0 1 73.0 14Z" fill="#fdf5cc"/><path d="M35.0 44H275.0A15.0 15.0 0 0 1 275.0 74H35.0A15.0 15.0 0 0 1 35.0 44Z" fill="#c1ddd0"/><path d="M103.0 78H287.0A13.0 13.0 0 0 1 287.0 104H103.0A13.0 13.0 0 0 1 103.0 78Z" fill="#fdf5cc"/></g><g class="pk-line" filter="url(#pk-ink)" fill="none" stroke="#12233f" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M73.0 14H217.0A13.0 13.0 0 0 1 217.0 40H73.0A13.0 13.0 0 0 1 73.0 14Z"/><path d="M94.0 28.3h47.068384299821645" stroke-width="1.2"/><path d="M35.0 44H275.0A15.0 15.0 0 0 1 275.0 74H35.0A15.0 15.0 0 0 1 35.0 44Z"/><path d="M74.0 60.5h113.26142179461056" stroke-width="1.2"/><path d="M103.0 78H287.0A13.0 13.0 0 0 1 287.0 104H103.0A13.0 13.0 0 0 1 103.0 78Z"/><path d="M132.0 92.3h84.5785339970178" stroke-width="1.2"/></g></svg>

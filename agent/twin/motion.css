@@ -1,0 +1,10 @@
+/* Ody motion + ink support. Tokens are also written to :root by initMotion(); these are the fallbacks. */
+:root{--m-fast:150ms;--m-base:250ms;--m-slow:400ms;--m-ease:cubic-bezier(.22,1,.36,1);--m-spring:cubic-bezier(.34,1.4,.64,1)}
+/* Hide a heading/ornament until its reveal runs (revealHeading/drawIn make it visible). Never hidden when reduced. */
+[data-reveal]{visibility:hidden}
+html[data-reduced-motion] [data-reveal]{visibility:visible}
+.ink-overlay{position:absolute;pointer-events:none;overflow:visible}
+.ink-overlay path{vector-effect:non-scaling-stroke}
+/* SplitText masks: let descenders and the rise rotation breathe */
+[data-split-mask],.m-split-mask{padding-bottom:.08em;margin-bottom:-.08em}
+@media (prefers-reduced-motion:reduce){[data-reveal]{visibility:visible}}

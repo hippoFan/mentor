@@ -73,12 +73,34 @@ try {
   await until('window.odyPages && window.odyMain && document.fonts.status === "loaded"', 80);
   await sleep(1200);
 
-  await test('Main is home: v2 shell, pager says Main, tabs to Argo and The Forge', async () => {
+  await test('Home is home: v2 shell, app bar with the Ody logo, nav says Home (no roman numerals), edges to Argo and The Forge', async () => {
     assert.equal(await evalJs('window.odyPages.v2'), true);
     assert.equal(await evalJs('window.odyPages.page()'), 'main');
     assert.equal(await evalJs('document.querySelector(".pager [aria-current=page]").dataset.go'), 'main');
-    assert.deepEqual(await evalJs('[...document.querySelectorAll(".edge-tab")].filter(t => !t.hidden).map(t => t.dataset.go)'), ['argo', 'forge']);
+    assert.deepEqual(await evalJs('[...document.querySelectorAll(".pager a")].map(a => a.textContent.trim())'), ['Argo', 'Home', 'The Forge']);
+    assert.ok(await visible('.appbar .brand svg.logo'), 'logo in the app bar');
+    assert.ok(await visible('#profile-btn'), 'avatar in the app bar');
+    assert.deepEqual(await evalJs('[...document.querySelectorAll(".edge-tab")].filter(t => !t.closest("[hidden]")).map(t => t.dataset.go)'), ['argo', 'forge']);
     assert.equal(await visible('#argos-btn'), false, 'the Argos button shows only on Argo');
+  });
+  await test('profile menu: Profile, Settings, Sign in; a local profile only (no passwords), Sign out forgets it', async () => {
+    await click('#profile-btn');
+    assert.ok(await until('!document.getElementById("profile-menu").hidden'));
+    const items = await evalJs('[...document.querySelectorAll("#profile-menu [role=menuitem]")].map(b => b.textContent.trim())');
+    assert.deepEqual(items, ['Profile', 'Settings', 'Sign in']);
+    assert.match(await evalJs('document.getElementById("profile-menu").innerText'), /Local profile on this laptop — accounts coming soon/);
+    await key('Escape', 'Escape', 27);
+    assert.ok(await until('document.getElementById("profile-menu").hidden'));
+    await evalJs('window.odyPages.goTo("profile")'); await sleep(500);
+    assert.equal(await evalJs('document.querySelectorAll("#page-profile input[type=password]").length'), 0, 'no password field');
+    await evalJs('document.getElementById("pf-name").value = "Ada Lovelace"; document.querySelector("#page-profile form").requestSubmit()');
+    assert.ok(await until('document.getElementById("profile-btn").textContent === "AL"'));
+    assert.match(await evalJs('localStorage.getItem("ody.profile")'), /Ada Lovelace/);
+    await click('#profile-btn');
+    assert.deepEqual(await evalJs('[...document.querySelectorAll("#profile-menu [role=menuitem]")].map(b => b.textContent.trim())'), ['Profile', 'Settings', 'Sign out']);
+    await evalJs('[...document.querySelectorAll("#profile-menu [role=menuitem]")].at(-1).click()');
+    assert.ok(await until('localStorage.getItem("ody.profile") === null && document.getElementById("profile-btn").classList.contains("guest")'));
+    await evalJs('window.odyPages.goTo("main")'); await sleep(500);
   });
   await test('Main: every number is real, Demo or Not tracked; fonts are the deck faces', async () => {
     await until('document.querySelector("#m-usage .usage .t-num")?.textContent !== "–"');
@@ -86,14 +108,16 @@ try {
     assert.match(txt, /Demo: Explorer plan/); assert.match(txt, /Not tracked/); assert.match(txt, /Frontier: not hardened/);
     assert.match(txt, /Running \d/); assert.doesNotMatch(txt, /\$\s?\d/);
     const fonts = await evalJs('[...document.fonts].filter(f => f.status === "loaded").map(f => f.family.replace(/"/g, ""))');
-    for (const f of ['GFS Theokritos', 'Cinzel Decorative', 'Cooper Hewitt']) assert.ok(fonts.includes(f), `${f} loaded`);
+    for (const f of ['GFS Theokritos', 'Cooper Hewitt']) assert.ok(fonts.includes(f), `${f} loaded`);
+    assert.ok(!fonts.some(f => /Cinzel|Inter/.test(f)), 'one display face + one text face only');
     const small = await evalJs('[...document.querySelectorAll("#page-main *")].filter(e => e.childNodes.length && [...e.childNodes].some(n => n.nodeType === 3 && n.textContent.trim()) && e.getClientRects().length).map(e => parseFloat(getComputedStyle(e).fontSize)).filter(s => s < 16).length');
     assert.equal(small, 0, 'no text under 16px on Main');
     return `fonts: ${[...new Set(fonts)].join(', ')}`;
   });
   await shot(join(DOCS, 'app-main.png'), join(SHOTS, 'pages-main.png'));
 
-  await test('Main: a Gemini key set here flips Argos’s model picker to ready, no reload, no full key anywhere', async () => {
+  await evalJs('window.odyPages.goTo("settings")'); await sleep(500);
+  await test('Settings: a Gemini key set here flips Argos’s model picker to ready, no reload, no full key anywhere', async () => {
     assert.match(await evalJs('document.getElementById("argos-provider").innerText'), /Gemini \(no key\)/);
     await click('#m-act-gemini');
     await until('document.querySelector("#m-in-GEMINI_API_KEY")');
@@ -101,7 +125,7 @@ try {
     await evalJs(`document.querySelector("#m-in-GEMINI_API_KEY").focus()`);
     await cdp('Input.insertText', { text: KEY });
     await key('ArrowLeft', 'ArrowLeft', 37);   // typing in a field never switches pages
-    assert.equal(await evalJs('window.odyPages.page()'), 'main');
+    assert.equal(await evalJs('window.odyPages.page()'), 'settings');
     await evalJs('document.querySelector("#m-keys .key-edit").requestSubmit()');
     assert.ok(await until('!document.querySelector("#m-in-GEMINI_API_KEY") && /····9Q7Z/.test(document.getElementById("m-keys").innerText)'), 'the row shows the last 4');
     const opt = await until('(() => { const o = document.querySelector("#argos-provider option[value=gemini]"); return o && !o.disabled && /ready/.test(o.textContent) ? o.textContent : null; })()');
@@ -114,7 +138,7 @@ try {
     for (const p of ['/argos/keys', '/argos/state']) assert.ok(!(await (await fetch(base + p)).text()).includes(KEY));
     return opt;
   });
-  await test('Main: a base URL off the allowlist is refused with a readable error', async () => {
+  await test('Settings: a base URL off the allowlist is refused with a readable error', async () => {
     await click('#m-act-openai'); await until('document.querySelector("#m-in-ARGOS_OPENAI_BASE")');
     await evalJs('document.querySelector("#m-in-ARGOS_OPENAI_BASE").value = "https://evil.example/v1"; document.querySelector("#m-keys .key-edit").requestSubmit()');
     const t = await until('[...document.querySelectorAll("#m-toasts [role=alert]")].map(e => e.textContent).join(" ")');
@@ -122,13 +146,14 @@ try {
     await click('#m-act-openai');
   });
 
+  await evalJs('window.odyPages.goTo("main")'); await sleep(500);
   await test('→ / ← keys and the edge tab switch pages without a reload; Argo shows the Argos button', async () => {
     await evalJs('document.activeElement?.blur()');
     await key('ArrowLeft', 'ArrowLeft', 37);
     assert.ok(await until('window.odyPages.page() === "argo" && !document.getElementById("page-argo").classList.contains("off")'));
     await sleep(500);
     assert.equal(await visible('#argos-btn'), true);
-    assert.deepEqual(await evalJs('[...document.querySelectorAll(".edge-tab")].filter(t => !t.hidden).map(t => t.dataset.go)'), ['main']);
+    assert.ok(await until('[...document.querySelectorAll(".edge-tab")].every(t => t.closest("[hidden]"))'), 'Home (and its edges) hidden once the push lands');
     assert.equal(await evalJs('performance.getEntriesByType("navigation").length'), 1);
   });
   live.send({ type: 'call', state: 'live', since: Date.now() - 125_000 });
@@ -190,7 +215,7 @@ try {
     await cdp('Emulation.setEmulatedMedia', { features: [] });
   });
   await test('no horizontal scroll at 1280×800 on any page', async () => {
-    for (const p of ['main', 'argo', 'forge']) { await evalJs(`window.odyPages.goTo("${p}")`); await sleep(450); assert.ok(await evalJs('document.documentElement.scrollWidth <= 1280 && document.body.scrollWidth <= 1280'), p); }
+    for (const p of ['main', 'argo', 'forge', 'profile', 'settings']) { await evalJs(`window.odyPages.goTo("${p}")`); await sleep(450); assert.ok(await evalJs('document.documentElement.scrollWidth <= 1280 && document.body.scrollWidth <= 1280'), p); }
   });
   const errCount = errors.length;
   await test('an older page server (no /twin/app.css) still gets the one-page Argo app, unchanged', async () => {
@@ -199,7 +224,7 @@ try {
     await until('window.odyPages && window.odyShell', 80); await sleep(1500);
     assert.equal(await evalJs('window.odyPages.v2'), false);
     assert.ok(await visible('#stage') && await visible('#t-tester') && await visible('#argos-btn') && await visible('.rail'));
-    assert.equal(await visible('#page-main'), false); assert.equal(await visible('.pager'), false); assert.equal(await visible('.edge-tab'), false);
+    assert.equal(await visible('#page-main'), false); assert.equal(await visible('.pager'), false); assert.equal(await visible('.edge-tab'), false); assert.equal(await visible('.appbar'), false);
     assert.equal(await evalJs('getComputedStyle(document.body).display'), 'grid');
     await shot(join(SHOTS, 'pages-legacy-fallback.png'));
     errors.splice(errCount);   // the blocked stylesheets themselves log errors

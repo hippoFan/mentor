@@ -31,6 +31,12 @@ const STATIC = [
   [/^\/twin\/([a-z0-9-]+\.css)$/, m => new URL(`./twin/${m[1]}`, import.meta.url)],
   [/^\/twin\/(ornaments\.svg)$/, m => new URL(`./twin/${m[1]}`, import.meta.url)],
   [/^\/fonts\/(GFSTheokritos\.otf|CinzelDecorative-(?:Regular|Bold)\.ttf|CooperHewitt-[456]00\.woff2)$/, m => new URL(`./fonts/${m[1]}`, import.meta.url)],
+  // Motion + ink (twin/motion.js, twin/ink.js): GSAP (standard no-charge licence), Rough.js, rough-notation, perfect-freehand (MIT).
+  [/^\/vendor\/gsap\/((?:utils\/)?[A-Za-z0-9-]+\.js)$/, m => new URL(`./node_modules/gsap/${m[1]}`, import.meta.url)],
+  [/^\/vendor\/rough\/(rough\.esm\.js)$/, m => new URL(`./node_modules/roughjs/bundled/${m[1]}`, import.meta.url)],
+  [/^\/vendor\/rough-notation\/(rough-notation\.esm\.js)$/, m => new URL(`./node_modules/rough-notation/lib/${m[1]}`, import.meta.url)],
+  [/^\/vendor\/perfect-freehand\/(index\.mjs)$/, m => new URL(`./node_modules/perfect-freehand/dist/esm/${m[1]}`, import.meta.url)],
+  [/^\/twin\/paper\/([a-z0-9-]+\.svg)$/, m => new URL(`./twin/paper/${m[1]}`, import.meta.url)],
 ];
 async function appPage() {   // the page's one inline script is its import map; CSP allows exactly that script by hash
   const html = await readFile(APP, 'utf8');

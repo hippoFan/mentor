@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 150 420" width="150" height="420" class="pk pk-column" role="img" aria-label="Doric column"><title>Doric column</title><defs><filter id="pk-ink" x="-6%" y="-6%" width="112%" height="112%" color-interpolation-filters="sRGB">
+<feTurbulence type="fractalNoise" baseFrequency="0.018" numOctaves="2" seed="4" result="w"/>
+<feDisplacementMap in="SourceGraphic" in2="w" scale="3.5" xChannelSelector="R" yChannelSelector="G" result="d"/>
+<feTurbulence type="fractalNoise" baseFrequency="0.5" numOctaves="2" seed="9" result="g"/>
+<feColorMatrix in="g" type="matrix" values="0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 -3.2 0 0 0 2.75" result="ga"/>
+<feComposite in="d" in2="ga" operator="in"/></filter>
+<filter id="pk-wash" x="-6%" y="-6%" width="112%" height="112%" color-interpolation-filters="sRGB">
+<feTurbulence type="fractalNoise" baseFrequency="0.012" numOctaves="2" seed="21" result="w"/>
+<feDisplacementMap in="SourceGraphic" in2="w" scale="7" xChannelSelector="G" yChannelSelector="R" result="d"/>
+<feTurbulence type="fractalNoise" baseFrequency="0.03 0.5" numOctaves="2" seed="2" result="g"/>
+<feColorMatrix in="g" type="matrix" values="0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 -.7 0 0 0 1.2" result="ga"/>
+<feComposite in="d" in2="ga" operator="in"/></filter></defs><g class="pk-fill" filter="url(#pk-wash)" transform="translate(2.5 2)"><path d="M8 22H142V40H8Z" fill="#ea872f"/><path d="M100 60C104 160 104 300 102 378H118C116 300 116 160 120 58Z" fill="#c1ddd0"/><path d="M20 380H130V396H20ZM12 396H138V412H12Z" fill="#c1ddd0"/></g><g class="pk-line" filter="url(#pk-ink)" fill="none" stroke="#12233f" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M8 22H142V40H8Z"/><path d="M14 40H136L128 58H22Z"/><path d="M30 58C34 160 34 300 32 380H118C116 300 116 160 120 58Z"/><path d="M20 380H130V396H20ZM12 396H138V412H12Z"/><path d="M48 66C49 160 49 290 48 374" stroke-width="1.3"/><path d="M64 66C65 160 65 290 64 374" stroke-width="1.3"/><path d="M80 66C81 160 81 290 80 374" stroke-width="1.3"/><path d="M96 66C97 160 97 290 96 374" stroke-width="1.3"/><path d="M110 66C111 160 111 290 110 374" stroke-width="1.3"/><path d="M38 210l10 8-4 10 8 6" stroke-width="1.2"/><path d="M20 30H130" stroke-width="1.2"/></g></svg>

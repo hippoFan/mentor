@@ -25,6 +25,10 @@ const STATIC = [
   [/^\/test\/(forge-harness\.js)$/, m => new URL(`test/${m[1]}`, AGENT)],
   [/^\/vendor\/three\/(build\/three\.(?:module|core)\.js|examples\/jsm\/[A-Za-z0-9_]+(?:\/[A-Za-z0-9_]+)*\.js)$/, m => new URL(`node_modules/three/${m[1]}`, AGENT)],
   [/^\/fonts\/([A-Za-z0-9-]+\.(?:woff2|ttf|otf))$/, m => first(new URL(`fonts/${m[1]}`, AGENT), new URL(`fonts/${m[1]}`, PREVIEW)) || new URL(`fonts/${m[1]}`, AGENT)],
+  [/^\/vendor\/gsap\/((?:utils\/)?[A-Za-z0-9-]+\.js)$/, m => new URL(`node_modules/gsap/${m[1]}`, AGENT)],
+  [/^\/vendor\/rough\/(rough\.esm\.js)$/, m => new URL(`node_modules/roughjs/bundled/${m[1]}`, AGENT)],
+  [/^\/vendor\/rough-notation\/(rough-notation\.esm\.js)$/, m => new URL(`node_modules/rough-notation/lib/${m[1]}`, AGENT)],
+  [/^\/vendor\/perfect-freehand\/(index\.mjs)$/, m => new URL(`node_modules/perfect-freehand/dist/esm/${m[1]}`, AGENT)],
   [/^\/design\/(ornaments\.(?:svg|css))$/, m => first(new URL(`twin/${m[1]}`, AGENT), new URL(m[1], PREVIEW)) || new URL(m[1], PREVIEW)],
 ];
 const HTML = new URL('test/forge-harness.html', AGENT);

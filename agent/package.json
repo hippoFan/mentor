@@ -32,8 +32,12 @@
     "@livekit/rtc-node": "0.13.35",
     "@mediapipe/tasks-vision": "1.2.0",
     "@napi-rs/canvas": "1.1.1",
+    "gsap": "3.15.1",
     "onnxruntime-node": "1.31.1",
     "openscad-wasm-prebuilt": "1.2.0",
+    "perfect-freehand": "1.2.3",
+    "rough-notation": "0.5.1",
+    "roughjs": "4.6.6",
     "three": "0.186.1",
     "ws": "^8.23.0"
   },

@@ -251,9 +251,10 @@ subscribe(e => {
   if (e.kind === 'refine' && e.state === 'done' && e.design?.id) M.asked.set(e.design.id, M.asked.get(`job:${e.jobId}`) || e.summary || '');
   if (e.kind === 'design' || (e.kind === 'refine' && (e.state === 'done' || e.state === 'failed'))) { clearTimeout(M.t); M.t = setTimeout(() => { void loadAll(); if (page() === 'main') void loadUsage(true); }, 400); }
 });
-onPage(p => { if (p === 'main') { void loadAll(); void loadUsage(); } });
+onPage(p => { if (p === 'main' || p === 'settings') { void loadAll(); void loadUsage(); } });
+addEventListener('ody:provider', () => { if (!M.editing) renderKeys(); });
 setInterval(() => { if (page() === 'main' && !document.hidden) renderStatus(); }, 15_000);
-setInterval(() => { if (page() === 'main' && !document.hidden && !M.editing) void loadAll(); }, 30_000);
+setInterval(() => { if ((page() === 'main' || page() === 'settings') && !document.hidden && !M.editing) void loadAll(); }, 30_000);
 
 renderStatus(); renderUsage(); renderKeys(); renderInts();
 void loadAll(); void loadUsage(true);

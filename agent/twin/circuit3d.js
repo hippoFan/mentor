@@ -35,7 +35,7 @@ function canvasTex(w, h, draw) {
   const c = document.createElement('canvas'); c.width = w; c.height = h; draw(c.getContext('2d'), w, h);
   const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = 4; return t;
 }
-const FONT = 'Inter, "Inter Ody", ui-sans-serif, system-ui, sans-serif';
+const FONT = '"Cooper Hewitt", ui-sans-serif, system-ui, sans-serif';
 
 /** Adds a mesh to g with its hologram tint. */
 function part(g, geom, mat, holo, name, x = 0, y = 0, z = 0) {

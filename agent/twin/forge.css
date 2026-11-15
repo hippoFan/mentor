@@ -211,3 +211,72 @@
   .forge-relics{grid-template-columns:1fr}
   .forge-import{width:100%}
 }
+
+/* =========================== v3: parchment, hand-drawn on papyrus (overrides the v2 rules above) =========================== */
+.forge{--f-pad:var(--pad-x,40px)}
+.forge-page{background:var(--papyrus),var(--paper,#fdf5cc);color:var(--text,#12233f);font:400 var(--fs-md,18px)/1.5 var(--f-body)}
+.forge-sky,.forge-ink,.forge-flank,.forge-glow,.forge-anvil{display:none}
+.forge-head{align-items:flex-start;padding-top:clamp(20px,4vh,40px);max-width:1240px;margin:0 auto}
+.forge-head-row{gap:0}
+.forge-title{font:400 var(--fs-4xl,56px)/1 var(--f-title);color:var(--text,#12233f);letter-spacing:-.01em}
+.forge-sub{margin-top:10px;color:var(--text-2,#34445e);font:400 var(--fs-lg,20px)/1.4 var(--f-body)}
+.forge-scroll{top:clamp(130px,17vh,160px);padding-bottom:110px;scrollbar-color:#12233f40 transparent;
+  -webkit-mask-image:linear-gradient(#000 calc(100% - 90px),transparent);mask-image:linear-gradient(#000 calc(100% - 90px),transparent)}
+.forge-scroll > *{max-width:1240px;margin-left:auto;margin-right:auto}
+.forge-bar{margin:12px auto 20px}
+.forge-sect{font:600 var(--fs-lg,20px)/1.2 var(--f-body);color:var(--text,#12233f)}
+.forge-sect svg{color:var(--accent-ink,#9c4c0c)}
+.forge-n{border-radius:var(--r-pill,999px);background:#12233f14;font-size:14px}
+.forge-filter[aria-pressed=true] .forge-n{background:var(--parchment,#fdf5cc);color:var(--navy,#12233f)}
+.forge-relics{grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:22px}
+.forge-relic{background:var(--papyrus) 31px 7px,var(--paper-3,#fffbe6);color:var(--text,#12233f);border-radius:var(--r-lg,20px);box-shadow:var(--shadow-1);isolation:isolate;
+  transition:transform var(--dur-2,250ms) var(--ease),box-shadow var(--dur-2,250ms) var(--ease)}
+.forge-relic::before{content:none}
+.forge-relic::after{content:"";position:absolute;inset:0;border:1.6px solid #12233fb3;border-radius:inherit;pointer-events:none;filter:url(#ody-wobble)}
+.forge-relic:hover{transform:translateY(-3px);box-shadow:var(--shadow-2)}
+.forge-relic-star{top:20px;right:20px;color:var(--torch,#ea872f);filter:none}
+.forge-well{margin:10px 10px 0;height:180px;border-radius:var(--r-md,14px);background:radial-gradient(55% 65% at 50% 70%,#173a5c 0%,#0f2442 60%,#0a1830 100%)}
+.forge-well-note{color:#c9d6e8;font-size:15px}
+.forge-txt{padding:14px 18px 18px}
+.forge-relic-name{font:600 var(--fs-xl,24px)/1.15 var(--f-body)}
+.forge-relic-meta{color:var(--text-3,#56627a);font:500 var(--fs-sm,16px)/1.3 var(--f-body)}
+.forge-open:focus-visible::after{outline:2.5px solid var(--navy,#12233f);border-radius:var(--r-lg,20px);outline-offset:-4px}
+.forge-badge{border-radius:var(--r-pill,999px);font-size:14px;border-width:1.5px;min-height:26px}
+.forge-badge.is-estimate{background:var(--demo-fill,#ecd2c4);border-color:transparent;color:var(--danger,#983a34)}
+.forge-badge.is-outside{background:var(--navy,#12233f);border-color:var(--navy,#12233f);color:var(--parchment,#fdf5cc)}
+.forge-badge.is-caveat{color:var(--text-2,#34445e)}
+.forge-badge.is-session{background:var(--ok-fill,#c1ddd0);border-color:transparent;color:var(--teal-ink,#1b5a63)}
+.forge-chain li>span,.forge-chain-btn{border-radius:8px;box-shadow:inset 0 0 0 1.5px #12233f40;color:var(--text,#12233f)}
+.forge-chain li.is-current>span{background:var(--accent,#ea872f)}
+.forge-chain-arrow,.forge-chain-more{color:var(--text-3,#56627a)}
+.forge-chain-btn:hover{background:#12233f0d}
+.forge-empty{color:var(--text-2,#34445e)}
+.forge-hearth{height:120px}
+.forge-sea{opacity:.55;height:34px}
+.forge-btn{min-height:48px;border-radius:var(--r-md,14px);font:600 var(--fs-md,18px)/1 var(--f-body);letter-spacing:0}
+.forge-torch{background:var(--accent,#ea872f);color:var(--navy,#12233f);box-shadow:inset 0 0 0 1.5px var(--navy,#12233f),0 3px 0 var(--navy,#12233f)}
+.forge-torch:hover:not(:disabled){transform:translateY(-1px);box-shadow:inset 0 0 0 1.5px var(--navy,#12233f),0 4px 0 var(--navy,#12233f)}
+.forge-torch:active:not(:disabled){transform:translateY(2px);box-shadow:inset 0 0 0 1.5px var(--navy,#12233f),0 1px 0 var(--navy,#12233f)}
+.forge-quiet{color:var(--text,#12233f);box-shadow:inset 0 0 0 1.5px var(--line-2,#12233f5c)}
+.forge-quiet:hover{box-shadow:inset 0 0 0 1.5px var(--navy,#12233f);background:#12233f0d}
+.forge-quiet[aria-pressed=true]{background:var(--navy,#12233f);color:var(--parchment,#fdf5cc)}
+.forge-small,.forge-filter{min-height:44px;font-size:var(--fs-sm,16px);border-radius:var(--r-pill,999px)}
+.forge-on-light,.forge-ink-btn{background:var(--navy,#12233f);color:var(--parchment,#fdf5cc);box-shadow:0 3px 0 #0a1426}
+.forge-viewer{top:clamp(110px,15vh,140px)}
+.forge-kiln,.forge-side{background:var(--papyrus),var(--paper-3,#fffbe6);border-radius:var(--r-lg,20px);box-shadow:var(--shadow-1),inset 0 0 0 1.5px #12233f40}
+.forge-kiln{padding:12px}
+.forge-kiln::before,.forge-side::before{content:none}
+.forge-side{padding:20px}
+.forge-stage{border-radius:var(--r-md,14px);background:radial-gradient(60% 70% at 50% 78%,#173a5c 0%,#0f2442 55%,#0a1830 100%)}
+.forge-tools .forge-quiet{background:#0a1830cc;color:var(--parchment,#fdf5cc);box-shadow:inset 0 0 0 1.5px #fdf5cc66}
+.forge-tools .forge-quiet[aria-pressed=true]{background:var(--parchment,#fdf5cc);color:var(--navy,#12233f)}
+.forge-v-meta{color:var(--text-3,#56627a)}
+.forge-v-note,.forge-refusal,.forge-confirm{background:var(--paper-2,#f6ebbb);border-radius:var(--r-sm,10px)}
+.forge-side-h{font:600 var(--fs-sm,16px)/1.2 var(--f-body);color:var(--text-2,#34445e);letter-spacing:0}
+.forge-side .forge-quiet{color:var(--navy,#12233f)}
+.forge-toast{border-radius:var(--r-md,14px);background:var(--navy,#12233f);border-top:0;box-shadow:var(--shadow-2)}
+.forge-toast.is-error{background:var(--cork,#983a34)}
+.forge-drop{background:#fdf5cce6}
+.forge-drop::before{outline-color:var(--navy,#12233f);border-radius:var(--r-lg,20px)}
+.forge-drop p{color:var(--navy,#12233f)}
+html.reduce-motion .forge *,html.reduce-motion .forge *::before,html.reduce-motion .forge *::after{animation:none!important;transition-duration:1ms!important}

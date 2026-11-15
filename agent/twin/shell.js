@@ -96,7 +96,7 @@ function stageMessage(p) {
   const [h, sub] = p === 'reconnecting' ? ['Reconnecting to the call feed.', 'This laptop lost the call’s stream. It retries by itself; nothing is lost.']
     : p === 'live' ? ['Show Ody your board.', 'Or hold anything up and say “scan this”.']
     : p === 'ended' ? (S.done ? ['Home. You made it to Ithaca.', 'The recap is saved. Everything Ody marked stays here to review.'] : ['The call has ended.', 'The recap is saved. Call Ody again to start a new voyage.'])
-    : ['Every Telemachus deserves a Mentor.', 'FaceTime Ody, then hold your board up to the camera.'];
+    : ['Waiting for a call.', 'FaceTime Ody to start, then hold your board up to the camera.'];
   const key = h + sub;
   if (key === lastMsg) return;
   lastMsg = key;

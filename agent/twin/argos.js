@@ -11,34 +11,34 @@ import { subscribe } from './shell.js';
 
 // Tokens come from /twin/odyssey.css; the fallbacks keep the panel readable on a page server without it.
 const css = `
-#argos-btn{position:fixed;right:calc(var(--tab-w,64px) + 40px);bottom:56px;z-index:60;width:96px;height:96px;border-radius:50%;border:0;padding:0;
+#argos-btn{position:fixed;right:calc(var(--gutter,24px) + 28px);bottom:calc(var(--gutter,24px) + 40px);z-index:60;width:76px;height:76px;border-radius:50%;border:0;padding:0;
   background:var(--brick,#983a34);color:var(--bone,#fdf5cc);cursor:pointer;display:grid;place-items:center;
-  box-shadow:0 0 0 4px var(--pitch,#191a16),0 0 0 7px var(--torch,#ea872f),0 14px 28px #000a;transition:transform var(--t-hover,160ms) var(--ease-out,ease-out)}
+  box-shadow:0 0 0 3px var(--parchment,#fdf5cc),0 0 0 5px var(--navy,#12233f),0 14px 28px #12233f80;transition:transform var(--t-hover,160ms) var(--ease-out,ease-out)}
 #argos-btn:hover{transform:translateY(-3px)}
 #argos-btn:active{transform:translateY(1px);transition-duration:var(--t-press,90ms)}
 #argos-btn:focus-visible{outline:3px solid var(--torch,#ea872f);outline-offset:10px}
-#argos-btn svg{width:70px;height:48px;margin-top:-6px}
-#argos-btn .argos-name{position:absolute;bottom:-16px;left:50%;transform:translateX(-50%);padding:6px 10px 5px;background:var(--torch,#ea872f);color:var(--pitch,#191a16);
-  font:700 16px/1 var(--f-caps,Georgia,serif);letter-spacing:.04em;white-space:nowrap}
-#argos-btn[aria-expanded="true"]{box-shadow:0 0 0 4px var(--pitch,#191a16),0 0 0 7px var(--bone,#fdf5cc),0 14px 28px #000a}
-#argos-panel{position:fixed;right:calc(var(--tab-w,64px) + 24px);bottom:168px;z-index:61;width:min(460px,calc(100vw - 32px));height:min(560px,calc(100vh - 300px));min-height:320px;
-  display:flex;flex-direction:column;background:var(--pitch,#191a16);color:var(--bone,#fdf5cc);border-radius:var(--r-slab,14px);overflow:hidden;
-  font:400 18px/1.4 var(--f-body,Arial,sans-serif);box-shadow:0 0 0 3px var(--torch,#ea872f),0 18px 44px #000c}
+#argos-btn svg{width:54px;height:38px;margin-top:-4px}
+#argos-btn .argos-name{position:absolute;bottom:-14px;left:50%;transform:translateX(-50%);padding:5px 10px;border-radius:999px;background:var(--torch,#ea872f);color:var(--navy,#12233f);
+  font:600 14px/1 var(--f-body,Arial,sans-serif);white-space:nowrap;box-shadow:0 0 0 1.5px var(--navy,#12233f)}
+#argos-btn[aria-expanded="true"]{box-shadow:0 0 0 3px var(--parchment,#fdf5cc),0 0 0 5px var(--torch,#ea872f),0 14px 28px #12233f80}
+#argos-panel{position:fixed;right:var(--gutter,24px);bottom:calc(var(--gutter,24px) + 140px);z-index:61;width:min(460px,calc(100vw - 32px));height:min(560px,calc(100vh - 260px));min-height:300px;
+  display:flex;flex-direction:column;background:var(--navy,#12233f);color:var(--bone,#fdf5cc);border-radius:var(--r-lg,20px);overflow:hidden;
+  font:400 18px/1.4 var(--f-body,Arial,sans-serif);box-shadow:0 0 0 1.5px var(--navy,#12233f),0 24px 48px -16px #12233fcc}
 #argos-panel[hidden]{display:none}
-#argos-panel::before{content:"";flex:none;height:14px;background:var(--o-checker,#8d5666) 0 0/16px 16px repeat-x;border-bottom:3px solid var(--plum,#8d5666)}
+
 .argos-head{display:flex;align-items:center;gap:10px;padding:10px 12px 8px 16px}
-.argos-head h2{flex:1;margin:0;font:700 22px/1 var(--f-caps,Georgia,serif);color:var(--torch,#ea872f);letter-spacing:.03em}
+.argos-head h2{flex:1;margin:0;font:400 26px/1 var(--f-title,Georgia,serif);color:var(--bone,#fdf5cc)}
 .argos-head label{font:600 16px/1 var(--f-body,Arial,sans-serif);color:var(--mist,#c9d6e8)}
-#argos-panel select{font:500 17px/1.2 var(--f-body,Arial,sans-serif);min-height:40px;border:0;border-radius:0;background:var(--bone,#fdf5cc);color:var(--pitch,#191a16);padding:4px 8px;max-width:100%}
+#argos-panel select{font:500 17px/1.2 var(--f-body,Arial,sans-serif);min-height:40px;border:0;border-radius:10px;background:var(--bone,#fdf5cc);color:var(--pitch,#191a16);padding:4px 8px;max-width:100%}
 #argos-close{min-width:44px;min-height:44px;border:0;background:transparent;color:var(--bone,#fdf5cc);font:400 30px/1 var(--f-title,Georgia,serif);cursor:pointer}
 .argos-tabs{display:grid;grid-template-columns:1fr 1fr;gap:var(--gap,8px);padding:0 12px 8px}
-.argos-tabs button{min-height:44px;border:0;background:transparent;color:var(--bone,#fdf5cc);box-shadow:inset 0 0 0 2px #fdf5cc80;font:700 17px/1 var(--f-caps,Georgia,serif);letter-spacing:.03em;cursor:pointer}
+.argos-tabs button{min-height:44px;border:0;background:transparent;color:var(--bone,#fdf5cc);box-shadow:inset 0 0 0 1.5px #fdf5cc80;border-radius:999px;font:600 17px/1 var(--f-body,Arial,sans-serif);cursor:pointer}
 .argos-tabs button[aria-selected="true"]{background:var(--torch,#ea872f);color:var(--pitch,#191a16);box-shadow:none}
 .argos-row{display:flex;gap:10px;align-items:center;padding:0 12px 8px;font:500 17px/1.3 var(--f-body,Arial,sans-serif);color:var(--mist,#c9d6e8)}
 .argos-row[hidden]{display:none}
 .argos-row select{flex:1;min-width:0}
 #argos-multi{width:22px;height:22px;accent-color:var(--torch,#ea872f);flex:none}
-#argos-log{flex:1;overflow:auto;padding:10px 12px;display:flex;flex-direction:column;gap:8px;background:#0f100d;border-top:2px solid #2a2b26}
+#argos-log{flex:1;overflow:auto;padding:10px 12px;display:flex;flex-direction:column;gap:8px;background:#0b172b;border-top:1px solid #fdf5cc22}
 .argos-msg{max-width:90%;padding:8px 12px;white-space:pre-wrap;word-break:break-word;font:500 18px/1.35 var(--f-body,Arial,sans-serif)}
 .argos-msg.me{align-self:flex-end;background:var(--bone,#fdf5cc);color:var(--pitch,#191a16)}
 .argos-msg.dog{align-self:flex-start;background:var(--stone,#dfd3c7);color:var(--pitch,#191a16)}
@@ -46,18 +46,18 @@ const css = `
 .argos-msg.step.failed{border-color:var(--live,#ff6b5e)}
 .argos-msg.err{background:var(--brick,#983a34);color:var(--bone,#fdf5cc)}
 .argos-msg a{display:inline-flex;align-items:center;min-height:36px;margin:6px 8px 0 0;padding:0 12px;background:var(--pitch,#191a16);color:var(--bone,#fdf5cc);
-  font:700 16px/1 var(--f-caps,Georgia,serif);text-decoration:none;letter-spacing:.03em}
+  font:600 16px/1 var(--f-body,Arial,sans-serif);text-decoration:none;border-radius:999px}
 .argos-msg a:focus-visible{outline:3px solid var(--pitch,#191a16);outline-offset:2px}
 .argos-note{font:500 16px/1.35 var(--f-body,Arial,sans-serif);color:var(--mist,#c9d6e8);padding:8px 12px 0}
 .argos-in{display:flex;gap:8px;padding:10px 12px 12px}
-#argos-text{flex:1;resize:none;height:52px;font:500 18px/1.3 var(--f-body,Arial,sans-serif);border:0;border-radius:0;padding:8px 10px;background:var(--bone,#fdf5cc);color:var(--pitch,#191a16)}
+#argos-text{flex:1;resize:none;height:52px;font:500 18px/1.3 var(--f-body,Arial,sans-serif);border:0;border-radius:12px;padding:8px 10px;background:var(--bone,#fdf5cc);color:var(--pitch,#191a16)}
 #argos-text::placeholder{color:#5d5a4c}
 #argos-mic{flex:none;width:52px;height:52px;border-radius:50%;border:0;background:var(--brick,#983a34);color:var(--bone,#fdf5cc);cursor:pointer;display:grid;place-items:center;
   box-shadow:0 0 0 3px var(--pitch,#191a16),0 0 0 5px var(--torch,#ea872f)}
 #argos-mic svg{width:26px;height:26px}
 #argos-mic[aria-pressed="true"]{background:var(--live,#ff6b5e);color:var(--pitch,#191a16)}
-.argos-send{flex:none;min-height:52px;padding:0 16px;border:0;background:var(--torch,#ea872f);color:var(--pitch,#191a16);font:700 17px/1 var(--f-caps,Georgia,serif);
-  letter-spacing:.03em;cursor:pointer;box-shadow:0 4px 0 var(--torch-edge,#9a5418)}
+.argos-send{flex:none;min-height:52px;padding:0 18px;border:0;border-radius:14px;background:var(--torch,#ea872f);color:var(--navy,#12233f);font:600 17px/1 var(--f-body,Arial,sans-serif);
+  cursor:pointer;box-shadow:0 3px 0 #0a1426}
 .argos-send:active{transform:translateY(3px);box-shadow:0 1px 0 var(--torch-edge,#9a5418)}
 #argos-panel :focus-visible{outline:3px solid var(--torch,#ea872f);outline-offset:2px}
 #argos-text:focus-visible,#argos-panel select:focus-visible{outline-offset:0}

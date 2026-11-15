@@ -7,7 +7,6 @@
 <link rel="icon" href="data:,">
 <script type="importmap">{"imports":{"three":"/vendor/three/build/three.module.js","three/addons/":"/vendor/three/examples/jsm/"}}</script>
 <style>
-  @font-face { font-family: "Inter Ody"; src: local("Inter Variable"), local("Inter"), url("/fonts/InterVariable.ttf") format("truetype"); font-weight: 100 900; font-display: swap; }
   :root {
     /* Homer's wine-dark sea at night: the ground. The hologram's light is the only cyan; Ody's own things are gold. */
     --app-bg: #120E1C;          /* page */
@@ -22,8 +21,8 @@
     --live: #FF453A;         /* only a connected live call */
     --amber: #FF9F0A;        /* only reconnecting */
     --stage: #04070B;
-    --display: "Instrument Serif", "Iowan Old Style", "Palatino Linotype", Palatino, "URW Palladio L", Georgia, serif;
-    --ui: "Inter Ody", Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+    --display: "GFS Theokritos", Georgia, serif;
+    --ui: "Cooper Hewitt", system-ui, sans-serif;
     --pip-w: clamp(118px, min(12.5vw, 19vh), 188px);
     --app-gutter: 16px;
     /* one motion system: quick feedback, state changes, arrivals */
@@ -33,11 +32,11 @@
   /* the three-page shell (Argo, Main, The Forge). Without /twin/app.css (an older page server) the page stays the
      one-page Argo app: the wrappers vanish from layout and the other pages and decorations stay hidden. */
   #pages, #page-argo { display: contents; }
-  html:not(.v2) .v2-only, html:not(.v2) .page:not(#page-argo), html:not(.v2) .pager, html:not(.v2) .edge-tab { display: none !important; }
+  html:not(.v2) .v2-only, html:not(.v2) .page:not(#page-argo), html:not(.v2) .appbar, html:not(.v2) .menu { display: none !important; }
   * { box-sizing: border-box; }
   html, body { margin: 0; height: 100%; }
   body {
-    background: var(--app-bg); color: var(--ink); font: 400 15px/1.45 var(--ui); font-feature-settings: "cv11", "ss01";
+    background: var(--app-bg); color: var(--ink); font: 400 15px/1.45 var(--ui); 
     -webkit-font-smoothing: antialiased; display: grid; grid-template-rows: auto minmax(0, 1fr); height: 100dvh; overflow: hidden;
   }
   button { font: inherit; color: inherit; }
@@ -607,27 +606,33 @@
 <!-- The Odyssey look (design guide v2): shared tokens, then this page's layer over the styles above. -->
 <link rel="preload" href="/fonts/CooperHewitt-500.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="stylesheet" href="/twin/odyssey.css">
+<link rel="stylesheet" href="/twin/paper.css">
 <link rel="stylesheet" href="/twin/app.css">
+<link rel="stylesheet" href="/twin/motion.css">
 </head>
 <body class="holo ody" data-phase="connecting">
 <div id="ody-sprite" hidden></div>
-<nav class="pager" aria-label="Pages">
-  <a href="#argo" data-go="argo"><svg class="o" aria-hidden="true"><use href="#o-star"/></svg><i>I</i>Argo</a>
-  <a href="#main" data-go="main"><svg class="o" aria-hidden="true"><use href="#o-star"/></svg><i>II</i>Main</a>
-  <a href="#forge" data-go="forge"><svg class="o" aria-hidden="true"><use href="#o-star"/></svg><i>III</i>The Forge</a>
-</nav>
-<a class="edge-tab right" href="#main" data-go="main" data-on="argo" aria-label="Go to Main" hidden><span class="chev" aria-hidden="true">›</span><svg class="o" aria-hidden="true"><use href="#o-temple"/></svg><span class="lbl">Main</span></a>
-<a class="edge-tab left" href="#argo" data-go="argo" data-on="main" aria-label="Go to Argo" hidden><span class="chev" aria-hidden="true">‹</span><svg class="o" aria-hidden="true"><use href="#o-ship-icon"/></svg><span class="lbl">Argo</span></a>
-<a class="edge-tab right" href="#forge" data-go="forge" data-on="main" aria-label="Go to The Forge" hidden><span class="chev" aria-hidden="true">›</span><svg class="o" aria-hidden="true"><use href="#o-anvil-icon"/></svg><span class="lbl">The Forge</span></a>
-<a class="edge-tab left" href="#main" data-go="main" data-on="forge" aria-label="Go to Main" hidden><span class="chev" aria-hidden="true">‹</span><svg class="o" aria-hidden="true"><use href="#o-temple"/></svg><span class="lbl">Main</span></a>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false"><defs>
+  <filter id="ody-wobble" x="-2%" y="-2%" width="104%" height="104%"><feTurbulence type="fractalNoise" baseFrequency=".035" numOctaves="2" seed="5" result="n"/><feDisplacementMap in="SourceGraphic" in2="n" scale="2.6" xChannelSelector="R" yChannelSelector="G"/></filter>
+</defs></svg>
+<header class="appbar" role="banner">
+  <a class="brand" href="#main" data-go="main" aria-label="Ody home"><svg class="logo" aria-hidden="true" focusable="false" xmlns="http://www.w3.org/2000/svg" viewBox="-80 -900 1880 1160"><defs><clipPath id="qw"><path d="M146 -327A165 290 0 1 0 476 -327A165 290 0 1 0 146 -327Z"/></clipPath></defs><path d="M261 -640V-736H361V-640Z" fill="#1b5a63"/><rect x="231" y="-772" width="160" height="38" rx="17" fill="#1b5a63"/><path d="M273 -776V-822C273 -836 349 -836 349 -822V-776Z" fill="#983a34"/><path d="M599 -331C599 -378 560 -454 482 -557C427 -630 371 -666 314 -666H313C254 -666 197 -630 142 -557C63 -454 24 -378 24 -331C24 -305 36 -268 61 -220C84 -175 110 -135 139 -98C160 -71 186 -47 217 -26C253 -1 285 12 313 12C340 12 372 -1 409 -27C439 -48 464 -72 485 -98C514 -135 539 -175 562 -220C587 -268 599 -305 599 -331Z M146 -327A165 290 0 1 0 476 -327A165 290 0 1 0 146 -327Z" fill="#1b5a63" fill-rule="evenodd"/><g clip-path="url(#qw)"><path d="M146 -327A165 290 0 1 0 476 -327A165 290 0 1 0 146 -327Z" fill="#12233f"/><path d="M100 -200C150 -218 190 -218 240 -202S330 -184 380 -202 470 -218 520 -200V0H100Z" fill="#1b5a63"/><path d="M250 -96H330M300 -64H350" stroke="#c1ddd0" stroke-width="11" stroke-linecap="round"/><path transform="translate(368.7 -531.3) scale(2.609)" d="M12 .5C12.9 7.6 16.4 11.1 23.5 12 16.4 12.9 12.9 16.4 12 23.5 11.1 16.4 7.6 12.9 .5 12 7.6 11.1 11.1 7.6 12 .5Z" fill="#ea872f"/><path transform="translate(331.3 -582.7) scale(1.391)" d="M12 .5C12.9 7.6 16.4 11.1 23.5 12 16.4 12.9 12.9 16.4 12 23.5 11.1 16.4 7.6 12.9 .5 12 7.6 11.1 11.1 7.6 12 .5Z" fill="#ea872f"/><g transform="translate(134.9 -302.2) scale(1.42)"><path d="M120 -50 28 24M120 -50 214 44" stroke="#c1ddd0" stroke-width="2" fill="none"/><path d="M80 78 62 106M104 78 86 106M128 78 110 106M152 78 134 106M176 78 158 106" stroke="#ea872f" stroke-width="5" stroke-linecap="round" fill="none"/><path d="M117 -56h6v118h-6z" fill="#ea872f"/><path d="M123 -56 150 -48 123 -40Z" fill="#ea872f"/><path d="M64 -12 178 -25 184 36C152 46 96 48 60 40Z" fill="#fdf5cc"/><path d="M62.6 6 179.9 -6 181.2 8 61.5 20Z" fill="#ea872f"/><path d="M56 -12 186 -27" stroke="#ea872f" stroke-width="7" stroke-linecap="round"/><path d="M30 62C12 52 8 28 24 20 38 13 46 30 37 36 31 40 25 33 30 30" fill="none" stroke="#ea872f" stroke-width="8" stroke-linecap="round"/><path d="M207 60C215 54 217 46 213 38" fill="none" stroke="#ea872f" stroke-width="7" stroke-linecap="round"/><path d="M22 58H206L240 72 214 76C202 88 186 92 170 92H66C46 90 30 80 22 58Z" fill="#ea872f"/><path d="M30 65H210" stroke="#191a16" stroke-width="3" opacity=".9"/><ellipse cx="200" cy="74" rx="7" ry="4.4" fill="#fdf5cc"/><circle cx="201" cy="74" r="3" fill="#191a16"/></g></g><path transform="translate(615.0 0.0)" d="M539 -23C541 -27 539 -30 533 -31C528 -32 523 -31 519 -26C516 -23 509 -24 497 -29C486 -34 480 -42 479 -53C478 -142 477 -234 478 -329C478 -389 479 -457 481 -534C482 -605 483 -643 483 -650C483 -693 465 -714 430 -714C402 -714 390 -701 386 -701C385 -701 365 -716 345 -715C326 -714 315 -703 310 -683C307 -667 309 -658 317 -657C335 -655 321 -688 347 -688C360 -688 367 -676 367 -652L369 -512C365 -524 333 -548 304 -551C252 -556 203 -536 156 -492C117 -456 85 -416 59 -373C35 -332 22 -298 19 -271C16 -230 42 -171 99 -95C151 -25 213 10 286 11C304 11 322 7 340 -1C358 -9 367 -13 366 -13C370 -13 389 2 412 1C427 0 443 -5 462 -16C465 -16 486 2 506 1C518 0 527 -4 532 -9C534 -11 536 -16 539 -23ZM370 -440C369 -265 367 -158 366 -119C365 -89 354 -63 334 -42C317 -25 302 -16 287 -16C236 -16 203 -50 189 -117C183 -145 180 -198 181 -277C181 -335 182 -369 183 -379C190 -467 221 -518 285 -518C290 -518 296 -517 303 -516C318 -514 333 -504 347 -487C358 -472 365 -457 370 -440Z" fill="#12233f"/><path transform="translate(1140.0 0.0)" d="M593 -501C590 -526 575 -540 547 -543C530 -544 516 -541 504 -534C493 -527 481 -526 470 -533C459 -540 450 -543 441 -543C406 -542 388 -528 388 -501C388 -484 393 -475 403 -475C407 -475 409 -478 409 -484C408 -493 409 -498 410 -501C413 -508 418 -512 426 -512C436 -512 444 -507 451 -496C454 -491 457 -486 459 -480C466 -460 464 -437 454 -411L366 -166L255 -431C245 -455 241 -474 244 -487C247 -503 255 -512 268 -514C280 -515 288 -510 293 -498C298 -484 303 -477 307 -477C315 -477 318 -485 316 -502C315 -527 291 -544 264 -543C247 -542 230 -525 229 -525C226 -525 207 -543 172 -543C159 -543 146 -540 132 -533C119 -526 118 -521 98 -533C89 -540 79 -543 69 -543C33 -542 14 -528 11 -503C8 -480 26 -460 39 -460C44 -460 47 -463 47 -468C47 -473 34 -486 34 -491C34 -500 50 -509 59 -508C74 -507 85 -497 94 -478C208 -239 278 -85 305 -17L257 89C254 98 247 103 238 103C227 103 220 98 216 88C203 59 178 42 150 42C114 42 92 60 84 95C83 101 82 107 82 113C82 157 121 188 165 188C211 188 250 164 281 115C295 92 333 0 395 -161C446 -297 481 -392 500 -446C514 -487 529 -509 546 -512C562 -514 570 -509 571 -496C572 -483 576 -477 581 -476C588 -476 594 -486 593 -501Z" fill="#12233f"/></svg></a>
+  <nav class="pager" aria-label="Pages">
+    <a href="#argo" data-go="argo"><svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M3.5 15.5h17l-2.2 3.4a2 2 0 0 1-1.7.9H7.4a2 2 0 0 1-1.7-.9z"/><path d="M12 3.5v12M12 4.5l6.5 8.6H12M12 6.5 6.8 13.1H12"/></svg>Argo</a>
+    <a href="#main" data-go="main"><svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M4 10.6 12 4l8 6.6V19a1 1 0 0 1-1 1h-4.5v-5.5h-5V20H5a1 1 0 0 1-1-1z"/></svg>Home</a>
+    <a href="#forge" data-go="forge"><svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M3.5 9.5h13.5c0 2.6-2 4.5-4.6 4.5H9.8l1.2 3H8l1-3H7.4A3.9 3.9 0 0 1 3.5 10z"/><path d="M6 20h9M16.5 6.5c.4-1.2 1.4-1.8 1.4-3 1.6 1 2.6 2.4 2.1 4.1-.3 1-1.1 1.6-2 1.6"/></svg>The Forge</a>
+  </nav>
+  <div class="bar-right">
+    <a class="callpill" id="callpill" href="#argo" data-go="argo" hidden>Live</a>
+    <button class="avatar guest" id="profile-btn" type="button" aria-haspopup="menu" aria-expanded="false" aria-controls="profile-menu" aria-label="Profile and settings"></button>
+  </div>
+</header>
+<div class="menu" id="profile-menu" role="menu" aria-labelledby="profile-btn" hidden></div>
 <div id="pages">
 <section id="page-argo" class="page" data-page="argo" aria-labelledby="argo-h">
-<div class="argo-sky sky v2-only" aria-hidden="true">
-  <svg class="o cloud" style="left:-56px;top:18px"><use href="#o-cloud"/></svg>
-  <svg class="o star" style="left:196px;top:64px;width:26px;height:26px;--d:.2s"><use href="#o-star"/></svg>
-  <svg class="o star" style="left:232px;top:96px;width:14px;height:14px;--d:1.1s"><use href="#o-star"/></svg>
-</div>
+<div class="argo-rip v2-only" data-rip aria-hidden="true"></div>
 <header>
+  <button class="btn quiet small rail-toggle v2-only" id="rail-toggle" type="button" aria-expanded="false" aria-controls="rail">Call panel</button>
   <h1 class="t-page v2-only" id="argo-h">Argo</h1>
   <span class="mark" aria-hidden="true"></span>
   <span class="wordmark">Ody</span>
@@ -666,7 +671,7 @@
         <button class="an-close" id="analysisClose" type="button" aria-label="Close the analysis">×</button>
         <div class="an-body"></div>
       </div>
-      <div class="waiting" id="waiting"><h2 id="waitTitle">Every Telemachus deserves a Mentor.</h2><p id="waitSub">FaceTime Ody, then hold your board up to the camera.</p></div>
+      <div class="waiting" id="waiting"><h2 id="waitTitle">Waiting for a call.</h2><p id="waitSub">FaceTime Ody to start, then hold your board up to the camera.</p></div>
       <div class="labelkey" id="labelkey" hidden><button class="chip" id="labelkeyBtn" type="button" aria-expanded="false" aria-controls="labelkeyList">Labels</button><ol id="labelkeyList" hidden></ol></div>
       <div class="tooltip" id="tip" role="tooltip" hidden><strong></strong><span></span></div>
       <canvas class="handlayer" id="handlayer" aria-hidden="true"></canvas>
@@ -708,9 +713,7 @@
     <div class="toast" id="toast" role="status" aria-live="polite" hidden></div>
   </section>
 
-  <div class="lintel v2-only" aria-hidden="true"></div>
-  <div class="pilaster pl v2-only" aria-hidden="true"></div><div class="pilaster pr v2-only" aria-hidden="true"></div>
-  <aside class="rail" aria-label="The call">
+  <aside class="rail" id="rail" aria-label="The call">
     <section class="now" id="stepbox" aria-live="polite">
       <p class="mood" id="mood">No call yet</p>
       <h2 id="step">Call Ody to set sail.</h2>
@@ -812,68 +815,95 @@
   </aside>
 </main>
 
-<div class="argo-sea v2-only" aria-hidden="true">
-  <div class="sea-band"></div>
-  <svg class="o ship bob" viewBox="0 0 240 100" style="left:300px;width:168px;height:70px;--d:-1.5s"><use href="#o-ship"/></svg>
-  <svg class="o ship bob" viewBox="0 0 240 100" style="left:500px;width:112px;height:47px;bottom:22px;--d:-3.8s"><use href="#o-ship"/></svg>
-</div>
+<div class="deco argo-deco-sea v2-only" data-slot="argo-sea" aria-hidden="true"></div>
 </section>
 
-<section id="page-main" class="page" data-page="main" aria-labelledby="main-h" hidden>
-  <div class="sky" style="inset:0" aria-hidden="true">
-    <svg class="o cloud" style="left:-30px;top:64px"><use href="#o-cloud"/></svg>
-    <svg class="o star" style="left:110px;top:112px;width:26px;height:26px;--d:.4s"><use href="#o-star"/></svg>
-    <svg class="o star" style="left:72px;top:146px;width:14px;height:14px;--d:1.3s"><use href="#o-star"/></svg>
-    <svg class="o star" style="right:118px;top:96px;width:30px;height:30px;--d:.9s"><use href="#o-star"/></svg>
-    <svg class="o star" style="right:156px;top:132px;width:16px;height:16px;--d:2s"><use href="#o-star"/></svg>
-    <svg class="o cloud" style="right:-24px;top:150px"><use href="#o-cloud"/></svg>
-  </div>
-  <div class="main-sheet">
-  <div class="ink" aria-hidden="true"></div>
-  <div class="skyline back" aria-hidden="true"></div><div class="skyline" aria-hidden="true"></div>
-  <header class="main-head">
-    <svg class="o flank-l" viewBox="0 0 80 112" aria-hidden="true"><use href="#o-kylix"/></svg>
-    <h1 id="main-h" class="t-hero rise">Ody</h1>
-    <svg class="o flank-r" viewBox="0 0 80 112" aria-hidden="true" style="transform:scaleX(-1)"><use href="#o-kylix"/></svg>
+<section id="page-main" class="page paper" data-page="main" aria-labelledby="main-h" hidden>
+  <div class="pk-layer pk-sky parallax" data-depth="0.2" aria-hidden="true"></div>
+  <div class="pk-layer pk-sprig-l parallax" data-depth="0.5" aria-hidden="true"></div>
+  <div class="pk-layer pk-sprig-r parallax" data-depth="0.5" aria-hidden="true"></div>
+  <a class="edge-tab edge-argo" href="#argo" data-go="argo" aria-label="Go to Argo, the ship"><span class="edge-art" aria-hidden="true"></span><span class="lbl">Argo</span></a>
+  <a class="edge-tab edge-forge" href="#forge" data-go="forge" aria-label="Go to The Forge"><span class="edge-art" aria-hidden="true"></span><span class="lbl">The Forge</span></a>
+  <div class="page-wrap">
+  <header class="page-head rise">
+    <p class="eyebrow" id="main-greet">Welcome aboard</p>
+    <h1 id="main-h" class="t-hero" data-ink="underline" data-ink-color="orange">Your workshop</h1>
+    <p class="lede">Call Ody, build on Argo, keep what you make in The Forge.</p>
   </header>
-  <div class="cols">
-    <div class="col">
-      <section class="rise" style="--i:1" aria-labelledby="h-status">
-        <h2 class="t-sect" id="h-status"><svg class="o" aria-hidden="true"><use href="#o-compass"/></svg>Status</h2>
-        <div id="m-status" role="status" aria-live="polite"></div>
-      </section>
-      <section class="rise" style="--i:2" aria-labelledby="h-credits">
-        <h2 class="t-sect" id="h-credits"><svg class="o" aria-hidden="true"><use href="#o-star"/></svg>Credits and usage</h2>
-        <div id="m-usage"></div>
-      </section>
-      <section class="rise" style="--i:3" aria-labelledby="h-plan">
-        <h2 class="t-sect" id="h-plan"><svg class="o" aria-hidden="true"><use href="#o-star"/></svg>Plan</h2>
-        <div class="row"><div class="tile key">Plan</div><div class="tile state c-plum">Demo</div><div class="tile">Demo: Explorer plan. No billing, nothing is charged.</div></div>
-      </section>
-    </div>
-    <div class="col">
-      <section class="rise" style="--i:2" aria-labelledby="h-keys">
-        <h2 class="t-sect" id="h-keys"><svg class="o" aria-hidden="true"><use href="#o-star"/></svg>Models and keys</h2>
-        <div id="m-keys"></div>
-      </section>
-      <section class="rise" style="--i:3" aria-labelledby="h-int">
-        <h2 class="t-sect" id="h-int"><svg class="o" aria-hidden="true"><use href="#o-star"/></svg>Integrations</h2>
-        <div id="m-ints"></div>
-      </section>
-      <section class="rise" style="--i:4" aria-labelledby="h-voice">
-        <h2 class="t-sect" id="h-voice"><svg class="o" aria-hidden="true"><use href="#o-star"/></svg>Voice input</h2>
-        <div class="voice"><span class="mic" aria-hidden="true"><svg class="o"><use href="#o-mic"/></svg></span>
-          <p class="t-body"><b>Argos’s record button</b> uses ElevenLabs Scribe. <b>Wispr Flow</b> needs no setup: it types into the box you’re in.
-            <a href="https://wisprflow.ai" target="_blank" rel="noopener noreferrer">wisprflow.ai</a></p></div>
-        <div id="m-voicekey"></div>
-      </section>
-    </div>
+  <div class="bento">
+    <section class="sheet card c-status rise" style="--i:1" data-ink="box" data-ink-wash="sea" aria-labelledby="h-status">
+      <h2 class="t-sect" id="h-status">Status</h2>
+      <div id="m-status" role="status" aria-live="polite"></div>
+    </section>
+    <section class="sheet card c-usage rise" style="--i:2" data-ink="box" aria-labelledby="h-credits">
+      <h2 class="t-sect" id="h-credits">Credits and usage</h2>
+      <div id="m-usage"></div>
+    </section>
+    <section class="sheet card c-int rise" style="--i:3" data-ink="box" aria-labelledby="h-int">
+      <h2 class="t-sect" id="h-int">Hand a design to your coding agent</h2>
+      <div id="m-ints"></div>
+    </section>
+    <section class="sheet card c-plan rise" style="--i:4" data-ink="box" aria-labelledby="h-plan">
+      <h2 class="t-sect" id="h-plan">Plan</h2>
+      <div class="row"><div class="tile key">Plan</div><div class="tile state c-plum">Demo</div><div class="tile">Demo: Explorer plan. No billing, nothing is charged.</div></div>
+      <p class="t-note">Models, keys and voice input are in <a href="#settings" data-go="settings">Settings</a>.</p>
+    </section>
   </div>
   </div>
-  <div class="ody-toasts" id="m-toasts" aria-live="polite"></div>
+  <div class="vase-band" aria-hidden="true"><div class="vase-figs" data-depth="0.4"></div></div>
+  <div class="sea-foot" aria-hidden="true">
+    <div class="pk-waves-back" data-depth="0.3"></div>
+    <div class="pk-ship s1 bob" data-depth="0.7"></div>
+    <div class="pk-ship s2 bob" data-depth="0.5" style="--d:-2.4s"></div>
+    <div class="pk-waves-front" data-depth="0.9"></div>
+  </div>
 </section>
 
-<section id="page-forge" class="page" data-page="forge" aria-labelledby="forge-h" hidden></section>
+<section id="page-profile" class="page paper aux" data-page="profile" aria-labelledby="profile-h" hidden>
+  <div class="pk-layer pk-column cl parallax" data-depth="0.4" aria-hidden="true"></div>
+  <div class="pk-layer pk-column cr parallax" data-depth="0.4" aria-hidden="true"></div>
+  <div class="page-wrap narrow">
+  <header class="page-head rise">
+    <p class="eyebrow">Your profile</p>
+    <h1 id="profile-h" class="t-hero" data-ink="underline" data-ink-color="orange">Profile</h1>
+  </header>
+  <div class="sheet card rise" style="--i:1" id="profile-card" data-ink="box"></div>
+  </div>
+</section>
+
+<section id="page-settings" class="page paper aux" data-page="settings" aria-labelledby="settings-h" hidden>
+  <div class="pk-layer pk-column cl parallax" data-depth="0.4" aria-hidden="true"></div>
+  <div class="pk-layer pk-column cr parallax" data-depth="0.4" aria-hidden="true"></div>
+  <div class="page-wrap narrow">
+  <header class="page-head rise">
+    <p class="eyebrow">This laptop</p>
+    <h1 id="settings-h" class="t-hero" data-ink="underline" data-ink-color="orange">Settings</h1>
+  </header>
+  <section class="sheet card rise" style="--i:1" aria-labelledby="h-keys" data-ink="box">
+    <h2 class="t-sect" id="h-keys">Models and keys</h2>
+    <div class="field set-provider"><label for="set-provider">Default model for Argos</label><select id="set-provider"></select></div>
+    <div id="m-keys"></div>
+  </section>
+  <section class="sheet card rise" style="--i:2" aria-labelledby="h-voice" data-ink="box">
+    <h2 class="t-sect" id="h-voice">Voice input</h2>
+    <p class="t-body"><b>Argos’s record button</b> uses ElevenLabs Scribe. <b>Wispr Flow</b> needs no setup: it types into the box you’re in.
+      <a href="https://wisprflow.ai" target="_blank" rel="noopener noreferrer">wisprflow.ai</a></p>
+    <div id="m-voicekey"></div>
+    <p class="t-body set-wake"><b>Wake word.</b> When the agent runs with <code>MENTOR_WAKE=1</code>, Ody only acts on sentences that start with its name: “Ody, scan this.”</p>
+  </section>
+  <section class="sheet card rise" style="--i:3" aria-labelledby="h-look" data-ink="box">
+    <h2 class="t-sect" id="h-look">Appearance and motion</h2>
+    <div id="set-look"></div>
+  </section>
+  <section class="sheet card rise" style="--i:4" aria-labelledby="h-priv" data-ink="box">
+    <h2 class="t-sect" id="h-priv">Privacy</h2>
+    <p class="t-body">Calls, keys and your profile stay on this laptop. Hand tracking runs here; video never leaves it.</p>
+    <p><a class="btn quiet small" href="/privacy">Read the privacy notice</a></p>
+  </section>
+  </div>
+</section>
+
+<section id="page-forge" class="page paper" data-page="forge" aria-labelledby="forge-h" hidden></section>
 </div>
 
 <aside class="panel" id="panel" aria-labelledby="panelTitle" hidden>
@@ -937,11 +967,13 @@
     </dl>
   </div>
 </div>
+<div class="ody-toasts" id="m-toasts" aria-live="polite"></div>
 <p class="sr" id="announce" aria-live="polite"></p>
 <script type="module" src="/twin/shell.js"></script>
 <script type="module" src="/twin/app.js"></script>
 <script type="module" src="/twin/argos.js"></script>
 <script type="module" src="/twin/pages.js"></script>
 <script type="module" src="/twin/main.js"></script>
+<script type="module" src="/twin/account.js"></script>
 </body>
 </html>

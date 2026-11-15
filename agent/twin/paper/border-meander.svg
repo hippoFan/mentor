@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 384 40" width="384" height="40" class="pk pk-border-meander" role="img" aria-label="Greek key border"><title>Greek key border</title><defs><filter id="pk-ink" x="-6%" y="-6%" width="112%" height="112%" color-interpolation-filters="sRGB">
+<feTurbulence type="fractalNoise" baseFrequency="0.018" numOctaves="2" seed="4" result="w"/>
+<feDisplacementMap in="SourceGraphic" in2="w" scale="3.5" xChannelSelector="R" yChannelSelector="G" result="d"/>
+<feTurbulence type="fractalNoise" baseFrequency="0.5" numOctaves="2" seed="9" result="g"/>
+<feColorMatrix in="g" type="matrix" values="0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 -3.2 0 0 0 2.75" result="ga"/>
+<feComposite in="d" in2="ga" operator="in"/></filter>
+<filter id="pk-wash" x="-6%" y="-6%" width="112%" height="112%" color-interpolation-filters="sRGB">
+<feTurbulence type="fractalNoise" baseFrequency="0.012" numOctaves="2" seed="21" result="w"/>
+<feDisplacementMap in="SourceGraphic" in2="w" scale="7" xChannelSelector="G" yChannelSelector="R" result="d"/>
+<feTurbulence type="fractalNoise" baseFrequency="0.03 0.5" numOctaves="2" seed="2" result="g"/>
+<feColorMatrix in="g" type="matrix" values="0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 -.7 0 0 0 1.2" result="ga"/>
+<feComposite in="d" in2="ga" operator="in"/></filter></defs><g class="pk-line" filter="url(#pk-ink)" fill="none" stroke="#12233f" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M-20 2H404" stroke-width="2"/><path d="M-48 32V8H-12V26H-32V16H-22M0 32V8H36V26H16V16H26M48 32V8H84V26H64V16H74M96 32V8H132V26H112V16H122M144 32V8H180V26H160V16H170M192 32V8H228V26H208V16H218M240 32V8H276V26H256V16H266M288 32V8H324V26H304V16H314M336 32V8H372V26H352V16H362M384 32V8H420V26H400V16H410M-12 32H0M36 32H48M84 32H96M132 32H144M180 32H192M228 32H240M276 32H288M324 32H336M372 32H384"/><path d="M-20 38H404" stroke-width="2"/></g></svg>

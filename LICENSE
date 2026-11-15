@@ -27,3 +27,7 @@ agent/twin/models/hand_landmarker.task is Google's MediaPipe Hand Landmarker mod
 agent/data/parts/ holds pin-position data from wokwi-elements (MIT) and Fritzing parts (CC-BY-SA 3.0); see
 agent/data/parts/LICENSES.md for per-file sources and attribution.
 - Argos's OpenSCAD refinement uses the `openscad-wasm-prebuilt` npm package (OpenSCAD, GPL-2.0), installed as a dependency and not included in this repository.
+- The app's motion and hand-drawn ink (agent/twin/motion.js, agent/twin/ink.js) use npm packages installed as dependencies and
+  served locally, not included in this repository: `gsap` 3.15.1 including SplitText, DrawSVGPlugin, MorphSVGPlugin, Flip and
+  CustomEase (GreenSock "Standard 'No Charge'" licence, https://gsap.com/standard-license); `roughjs` 4.6.6, `rough-notation`
+  0.5.1 and `perfect-freehand` 1.2.3 (MIT). agent/twin/paper/ is the CC0 papyrus ink kit (see agent/twin/paper/LICENSES.md).

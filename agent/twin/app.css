@@ -1,226 +1,477 @@
-/* The laptop app's Odyssey layer (design guide v2) over twin.html's own styles: the three-page shell, Argo restyled
-   into the temple-framed stage, and Main. Loaded after /twin/odyssey.css. --ody-v2 tells twin/pages.js this sheet
-   is here; without it (an older page server) the page stays the one-page app and nothing below applies. */
+/* The laptop app's v3 layer (parchment, hand-drawn on papyrus) over twin.html's own styles: the shell under the app
+   bar, Argo (the 3D stage fills the window; the call panel docks at 1280 px and wider, and is a drawer below that),
+   Home, Profile and Settings. Loaded after /twin/odyssey.css. --ody-v2 tells twin/pages.js this sheet is here; without
+   it (an older page server) the page stays the one-page app and nothing below applies. */
 :root{--ody-v2:1}
 
-/* ---------- legacy tokens re-pointed at the deck palette (twin.html's rules keep working, in the new colours) ---------- */
+/* ---------- legacy tokens: dark for the 3D stage, the tester drawer and sheets; the rail re-points them light ---------- */
 html.v2{
-  --app-bg:var(--night); --ink:var(--bone); --app-muted:var(--mist); --quiet:var(--muted); --line:#3a4660; --deck:var(--pitch);
-  --athena:var(--torch); --wine:var(--sail); --amber:var(--gold); --stage:#070d1b; --app-gutter:16px;
-  --display:var(--f-body); --ui:var(--f-body);
-  --rail-w:360px;
+  --app-bg:var(--navy); --ink:var(--parchment); --app-muted:#c9d6e8; --quiet:#9aa3ad; --line:#2d4466; --deck:#0d1a30;
+  --athena:var(--torch); --wine:var(--seaglass); --amber:var(--gold); --stage:#081428; --app-gutter:16px;
+  --display:var(--f-title); --ui:var(--f-body);
+  --rail-w:360px; --pip:clamp(116px,11vw,168px);
 }
-html.v2 body{display:block;height:100dvh;overflow:hidden;background:var(--night);color:var(--bone);font:400 18px/1.45 var(--f-body)}
-html.v2 #pages{display:block;position:fixed;inset:0;overflow:hidden}
-html.v2 #pages > .page{position:absolute;inset:0;overflow:hidden}
+html.v2 body{display:block;height:100dvh;overflow:hidden;background:var(--papyrus),var(--paper);color:var(--text);font:400 var(--fs-md)/1.5 var(--f-body)}
+html.v2 #pages{display:block;position:fixed;top:var(--bar-h);left:0;right:0;bottom:0;overflow:hidden}
+html.v2 #pages > .page{position:absolute;inset:0;overflow:hidden;will-change:auto}
 html.v2 #pages > .page[hidden]{display:none}
+html.v2 #pages > .page.leaving{pointer-events:none;z-index:0}
 html.v2 #page-argo.off{visibility:hidden;pointer-events:none}
-html.v2 .page h1[tabindex="-1"]:focus{outline:none}   /* a page switch moves focus to its title for screen readers; no ring on a heading */
-html.v2 kbd{font:600 15px/1 var(--f-body);border-radius:0;opacity:.85;padding:3px 5px;min-width:20px}
+html.v2 .page h1[tabindex="-1"]:focus{outline:none}
+html.v2 kbd{font:600 14px/1 var(--f-body);border-radius:5px;opacity:.85;padding:3px 5px;min-width:20px}
 
 /* =========================== ARGO =========================== */
-html.v2 #page-argo{display:grid;grid-template-rows:auto minmax(0,1fr);padding:0 calc(var(--tab-w) + 32px) 0 32px}
-html.v2 .argo-sky{position:absolute;inset:0;z-index:0}
-
-/* header: the title left, the call's state and the app's buttons right */
-html.v2 #page-argo > header{position:relative;z-index:5;display:flex;align-items:center;gap:12px;padding:58px 0 10px;min-width:0}
+html.v2 #page-argo{display:grid;grid-template-rows:auto minmax(0,1fr);padding:0 var(--gutter) var(--gutter);gap:12px}
+html.v2 #page-argo > header{position:relative;z-index:5;display:flex;align-items:center;gap:10px;padding:14px 0 0;min-width:0;flex-wrap:nowrap}
 html.v2 #page-argo > header .mark,html.v2 #page-argo > header .wordmark,html.v2 #page-argo > header .tagline{display:none}
-html.v2 #argo-h{margin-right:auto}
-html.v2 #page-argo .status{margin-left:0;border:0;border-radius:0;background:var(--pitch);color:var(--bone);font:600 18px/1 var(--f-body);min-height:44px;padding:0 16px 0 14px}
-html.v2 #page-argo .status .dot{width:12px;height:12px;background:var(--muted)}
-html.v2 #page-argo .status .brain{color:var(--mist)}
-html.v2 body[data-phase="live"] #page-argo .status{background:var(--brick);color:var(--bone)}
-html.v2 body[data-phase="live"] #page-argo .status .dot{background:var(--bone);box-shadow:none}
-html.v2 body[data-phase="live"] #page-argo .status .brain{color:var(--bone)}
-html.v2 body[data-phase="reconnecting"] #page-argo .status{background:var(--pitch);color:var(--gold);box-shadow:inset 0 0 0 2px var(--gold)}
-html.v2 body[data-replay] #page-argo .status{background:var(--plum)}
-html.v2 #page-argo .replay{margin-left:0;border:0;border-radius:0;background:var(--plum);color:var(--bone);font:600 17px/1 var(--f-body);min-height:44px;padding:0 14px;max-width:300px}
-html.v2 #page-argo .consent{border:0;border-radius:0;background:var(--slate-deep);color:var(--bone);font:600 17px/1 var(--f-body);min-height:44px;display:inline-flex;align-items:center;padding:0 14px}
-html.v2 #page-argo .consent[data-state="declined"]{background:var(--pitch);color:var(--gold)}
+html.v2 #argo-h{margin-right:auto;font-size:var(--fs-2xl);white-space:nowrap}
+html.v2 #page-argo .status{margin-left:0;border:0;border-radius:var(--r-pill);background:var(--paper-3);color:var(--text);font:600 var(--fs-sm)/1 var(--f-body);min-height:40px;padding:0 16px 0 14px;box-shadow:inset 0 0 0 1.5px var(--line-2)}
+html.v2 #page-argo .status .dot{width:10px;height:10px;background:var(--text-3)}
+html.v2 #page-argo .status .brain{color:var(--text-3)}
+html.v2 body[data-phase="live"] #page-argo .status{background:var(--cork);color:var(--parchment);box-shadow:none}
+html.v2 body[data-phase="live"] #page-argo .status .dot{background:var(--parchment);box-shadow:none}
+html.v2 body[data-phase="live"] #page-argo .status .brain{color:#fdf5ccd9}
+html.v2 body[data-phase="reconnecting"] #page-argo .status{background:var(--warn-fill);color:var(--navy);box-shadow:inset 0 0 0 1.5px var(--accent-ink)}
+html.v2 body[data-replay] #page-argo .status{background:var(--demo-fill);color:var(--navy)}
+html.v2 #page-argo .replay{margin-left:0;border:0;border-radius:var(--r-pill);background:var(--demo-fill);color:var(--danger);font:600 var(--fs-sm)/1 var(--f-body);min-height:40px;padding:0 14px;max-width:300px}
+html.v2 #page-argo .consent{border:0;border-radius:var(--r-pill);background:var(--ok-fill);color:var(--teal-ink);font:600 var(--fs-sm)/1 var(--f-body);min-height:40px;display:inline-flex;align-items:center;padding:0 14px}
+html.v2 #page-argo .consent[data-state="declined"]{background:var(--warn-fill);color:var(--navy)}
 html.v2 #page-argo .consent[hidden]{display:none}
-html.v2 .btn-top{border:0;border-radius:0;min-height:44px;padding:0 14px;background:transparent;color:var(--bone);box-shadow:inset 0 0 0 2px #fdf5cc99;
-  font:700 16px/1 var(--f-caps);letter-spacing:.03em;transition:transform var(--t-hover) var(--ease-out)}
-html.v2 a.btn-top{color:var(--bone)}
-html.v2 .btn-top:hover{background:transparent;box-shadow:inset 0 0 0 2px var(--bone);transform:translateY(-2px)}
-html.v2 .btn-top[aria-expanded="true"]{background:var(--bone);color:var(--pitch)}
+html.v2 .btn-top{border:0;border-radius:var(--r-md);min-height:40px;padding:0 14px;background:transparent;color:var(--text);box-shadow:inset 0 0 0 1.5px var(--line-2);
+  font:600 var(--fs-sm)/1 var(--f-body);transition:background var(--dur-1) var(--ease),transform var(--dur-1) var(--ease)}
+html.v2 a.btn-top{color:var(--text)}
+html.v2 .btn-top:hover{background:#12233f0d;box-shadow:inset 0 0 0 1.5px var(--navy)}
+html.v2 .btn-top:active{transform:scale(.97)}
+html.v2 .btn-top[aria-expanded="true"]{background:var(--navy);color:var(--parchment)}
 html.v2 .btn-top kbd{font-family:var(--f-body)}
+html.v2 .panel .btn-top,html.v2 .ks-card .btn-top{color:var(--parchment);box-shadow:inset 0 0 0 1.5px #fdf5cc80}
+html.v2 .rail-toggle{display:none}
 
-/* the temple: rail | gap | pilaster | sea stage | pilaster, a palmette lintel over the stage */
-html.v2 #page-argo > main{position:relative;z-index:2;display:grid;padding:0;gap:0;min-height:0;
-  grid-template-columns:var(--rail-w) 20px 30px minmax(0,1fr) 30px;grid-template-rows:48px minmax(0,1fr)}
-html.v2 #page-argo .lintel{grid-column:3/6;grid-row:1;background:linear-gradient(var(--plum),var(--plum)) left bottom/100% 8px no-repeat,var(--o-frieze) 0 0/40px 40px repeat-x,var(--stone)}
-html.v2 #page-argo .pilaster{grid-row:2;position:relative;background:linear-gradient(90deg,#0002,transparent 30%,transparent 70%,#0002),var(--stone)}
-html.v2 #page-argo .pilaster::before{content:"";position:absolute;left:0;right:0;top:0;height:16px;background:var(--o-checker) 0 0/16px 16px;border-bottom:3px solid var(--plum)}
-html.v2 #page-argo .pl{grid-column:3}
-html.v2 #page-argo .pr{grid-column:5}
-html.v2 #page-argo .theatre{grid-column:4;grid-row:2;border-radius:0;box-shadow:none;background:radial-gradient(60% 55% at 50% 52%,#173457 0%,#0c1830 55%,#070d1b 100%)}
+/* the workspace: the call panel | the 3D stage, which takes every pixel left */
+html.v2 #page-argo > main{position:relative;z-index:2;display:grid;padding:0;gap:16px;min-height:0;grid-template-columns:var(--rail-w) minmax(0,1fr);grid-template-rows:minmax(0,1fr)}
+html.v2 #page-argo .theatre{grid-column:2;grid-row:1;border-radius:var(--r-lg);background:radial-gradient(70% 60% at 50% 52%,#173a5c 0%,#0f2442 55%,#0a1830 100%);
+  box-shadow:0 0 0 1.5px var(--navy),0 3px 0 var(--navy),0 24px 48px -24px #12233f99}
+html.v2 #page-argo .theatre::after{content:"";position:absolute;inset:-1px;border:2px solid var(--navy);border-radius:inherit;pointer-events:none;filter:url(#ody-wobble);z-index:20}
 html.v2 #page-argo .stage{background:transparent}
-html.v2 #page-argo .stage:focus-visible{border-radius:0;outline:3px solid var(--torch);outline-offset:-3px}
-html.v2 #page-argo .vignette{background:radial-gradient(120% 90% at 50% 45%,transparent 60%,rgba(4,8,16,.6) 100%)}
+html.v2 #page-argo .stage:focus-visible{border-radius:var(--r-lg);outline:3px solid var(--torch);outline-offset:-3px}
+html.v2 #page-argo .vignette{background:radial-gradient(120% 90% at 50% 45%,transparent 60%,rgba(6,14,28,.55) 100%)}
 
-/* the stage's own furniture: name top left, the caller's phone top right, view modes beside it, tools above the sea */
-html.v2 #page-argo .stage-head{left:20px;top:16px;right:calc(var(--pip) + 48px)}
-html.v2 #page-argo{--pip:150px}
-html.v2 #page-argo .stage-head h2{font:400 34px/1.05 var(--f-title);color:var(--holo);max-width:16ch}
-html.v2 body:not(.has-part) #page-argo .stage-head h2{color:var(--mist)}
-html.v2 #page-argo .stage-head p{font:500 17px/1.35 var(--f-body);color:var(--mist)}
-html.v2 #page-argo .pointing{border-radius:0;background:var(--pitch);border:2px solid var(--torch);font:600 16px/1.2 var(--f-body)}
-html.v2 #page-argo .estimate{border-radius:0;font:600 16px/1 var(--f-body);padding:5px 8px}
-html.v2 #page-argo .modes{top:auto;bottom:156px;right:16px;border-radius:0;background:var(--pitch);border:0;padding:4px}
-html.v2 #page-argo .modes button{border-radius:0;font:700 16px/1 var(--f-caps);color:var(--bone);min-height:40px;padding:0 12px}
-html.v2 #page-argo .modes button[aria-selected="true"]{background:var(--bone);color:var(--pitch)}
-html.v2 #page-argo .phone{left:auto;right:16px;top:16px;bottom:auto;width:var(--pip);border-radius:0;padding:0;background:#000;box-shadow:0 0 0 2px var(--bone),0 10px 24px #0008}
-html.v2 #page-argo .phone .screen{border-radius:0}
+/* the stage's furniture: name top left, the caller's phone top right, view modes beside it, tools at the bottom */
+html.v2 #page-argo .stage-head{left:22px;top:18px;right:calc(var(--pip) + 48px)}
+html.v2 #page-argo .stage-head h2{font:400 var(--fs-2xl)/1.05 var(--f-title);color:var(--holo);max-width:18ch}
+html.v2 body:not(.has-part) #page-argo .stage-head h2{color:#c9d6e8}
+html.v2 #page-argo .stage-head p{font:500 var(--fs-sm)/1.35 var(--f-body);color:#c9d6e8}
+html.v2 #page-argo .pointing{border-radius:var(--r-pill);background:#0a1830e6;border:1.5px solid var(--torch);font:600 var(--fs-sm)/1.2 var(--f-body)}
+html.v2 #page-argo .estimate{border-radius:var(--r-pill);font:600 14px/1 var(--f-body);padding:5px 10px}
+html.v2 #page-argo .modes{top:auto;bottom:84px;right:16px;border-radius:var(--r-pill);background:#0a1830e0;border:1px solid #fdf5cc29;padding:4px;backdrop-filter:blur(8px)}
+html.v2 #page-argo .modes button{border-radius:var(--r-pill);font:600 var(--fs-sm)/1 var(--f-body);color:var(--parchment);min-height:36px;padding:0 14px}
+html.v2 #page-argo .modes button[aria-selected="true"]{background:var(--parchment);color:var(--navy)}
+html.v2 #page-argo .phone{left:auto;right:16px;top:16px;bottom:auto;width:var(--pip);border-radius:var(--r-md);padding:3px;background:#000;box-shadow:0 0 0 1.5px #fdf5cc8c,0 12px 28px #0009}
+html.v2 #page-argo .phone .screen{border-radius:calc(var(--r-md) - 3px)}
 html.v2 #page-argo .phone .chip{right:6px;bottom:6px}
-html.v2 #page-argo .waiting{left:24px;right:calc(var(--pip) + 40px);bottom:170px}
-html.v2 #page-argo .waiting h2{font:600 40px/1.1 var(--f-body);color:var(--bone);max-width:20ch}
-html.v2 #page-argo .waiting p{font:500 19px/1.4 var(--f-body);color:var(--mist)}
+html.v2 #page-argo .waiting{left:24px;right:calc(var(--pip) + 40px);bottom:96px}
+html.v2 #page-argo .waiting h2{font:400 clamp(28px,3.2vw,var(--fs-3xl))/1.08 var(--f-title);color:var(--parchment);max-width:20ch}
+html.v2 #page-argo .waiting p{font:500 var(--fs-md)/1.4 var(--f-body);color:#c9d6e8}
 html.v2 body[data-phase="reconnecting"] #page-argo .waiting h2{color:var(--gold)}
-html.v2 #page-argo .consent-card{border-radius:var(--r-slab);background:var(--pitch);border:0;box-shadow:0 0 0 3px var(--torch)}
-html.v2 #page-argo .consent-card p{font:600 26px/1.15 var(--f-body)}
+html.v2 #page-argo .consent-card{border-radius:var(--r-lg);background:#0a1830f2;border:0;box-shadow:0 0 0 1.5px var(--torch)}
+html.v2 #page-argo .consent-card p{font:400 var(--fs-xl)/1.2 var(--f-title)}
 html.v2 #page-argo .consent-card .mark{display:none}
-html.v2 #page-argo .toolbar{left:16px;right:16px;transform:none;width:fit-content;margin:0 auto;bottom:98px;border-radius:0;border:0;background:var(--pitch);padding:4px;gap:4px;max-width:calc(100% - 32px);flex-wrap:wrap;justify-content:center}
-html.v2 #page-argo .tool{border-radius:0;font:600 16px/1 var(--f-body);color:var(--bone);min-height:44px;padding:0 12px}
-html.v2 #page-argo .tool:hover{background:#ffffff14}
-html.v2 #page-argo .tool[aria-pressed="true"]{background:var(--bone);color:var(--pitch)}
-html.v2 #page-argo .tool kbd{border-color:currentColor}
-html.v2 #page-argo .chip{border-radius:0;font:600 16px/1 var(--f-body);min-height:36px;background:var(--pitch);color:var(--bone);border:2px solid #fdf5cc99}
-html.v2 #page-argo .tag span{font:600 15px/1 var(--f-body);border-radius:0}
-html.v2 #page-argo .tag.part span{font-size:14px}
-html.v2 #page-argo .labelkey{bottom:150px}
+html.v2 #page-argo .toolbar{left:16px;right:16px;transform:none;width:fit-content;margin:0 auto;bottom:18px;border-radius:var(--r-pill);border:1px solid #fdf5cc29;background:#0a1830e0;
+  padding:4px;gap:2px;max-width:calc(100% - 32px);flex-wrap:wrap;justify-content:center;backdrop-filter:blur(8px)}
+html.v2 #page-argo .tool{border-radius:var(--r-pill);font:600 var(--fs-sm)/1 var(--f-body);color:var(--parchment);min-height:40px;padding:0 14px}
+html.v2 #page-argo .tool:hover{background:#fdf5cc1a}
+html.v2 #page-argo .tool[aria-pressed="true"]{background:var(--parchment);color:var(--navy)}
+html.v2 #page-argo .tool kbd{border-color:currentColor;font-size:12px}
+html.v2 #page-argo .chip{border-radius:var(--r-pill);font:600 14px/1 var(--f-body);min-height:32px;background:#0a1830e6;color:var(--parchment);border:1px solid #fdf5cc66}
+html.v2 #page-argo .tag span{font:600 14px/1 var(--f-body);border-radius:8px}
+html.v2 #page-argo .labelkey{bottom:84px}
+html.v2 #page-argo .handview{bottom:84px}
+html.v2 #page-argo .analysis-card{bottom:84px}
 
-/* swapped: the caller's camera is the hero, the hologram goes into the small window (above the sea) */
-html.v2 body.swapped #page-argo .phone{left:0;top:0;right:0;bottom:0;width:auto;box-shadow:none;z-index:1}
-html.v2 body.swapped #page-argo .stage{right:16px;bottom:100px;border-radius:0;box-shadow:0 0 0 2px var(--holo),0 10px 24px #0008}
+/* swapped: the caller's camera is the hero, the hologram goes into the small window */
+html.v2 body.swapped #page-argo .phone{left:0;top:0;right:0;bottom:0;width:auto;box-shadow:none;z-index:1;border-radius:var(--r-lg);padding:0}
+html.v2 body.swapped #page-argo .stage{right:16px;bottom:16px;border-radius:var(--r-md);box-shadow:0 0 0 1.5px var(--holo),0 12px 28px #0009}
 
-/* hands, coach and help cards: pitch slabs */
-html.v2 #page-argo .handview,html.v2 #page-argo .coach,html.v2 #page-argo .handhelp,html.v2 #page-argo .analysis-card{border-radius:var(--r-slab);background:var(--pitch);border:0;box-shadow:0 0 0 2px #fdf5cc55,0 12px 28px #000a}
-html.v2 #page-argo .coach h3,html.v2 #page-argo .handhelp h3{font:700 22px/1.15 var(--f-caps);color:var(--torch)}
+/* hands, coach and help cards: dark glass over the stage */
+html.v2 #page-argo .handview,html.v2 #page-argo .coach-card,html.v2 #page-argo .handhelp,html.v2 #page-argo .analysis-card{border-radius:var(--r-lg);background:#0a1830f2;border:0;box-shadow:0 0 0 1px #fdf5cc33,0 18px 40px #000a}
+html.v2 #page-argo .coach h3,html.v2 #page-argo .handhelp h3{font:400 var(--fs-xl)/1.15 var(--f-title);color:var(--parchment)}
 
-/* the rail: a pitch slab beside the temple, its sections headed in Cinzel. The rail is drawn 25% larger so every
-   line of the older 13-15px text reads at 16px or more from 2 m. */
-html.v2 #page-argo .rail{grid-column:1;grid-row:1/3;margin-bottom:56px;background:var(--pitch);border-radius:var(--r-slab);padding:0 14px 12px;
-  zoom:1.25;scrollbar-color:#4a4b42 transparent}
-html.v2 #page-argo .rail section{border-top-color:#34352e}
-html.v2 #page-argo .rail h3{font:700 14px/1.15 var(--f-caps);color:var(--torch);letter-spacing:.03em;margin-bottom:8px}
-html.v2 #page-argo .rail h3 .count{font-family:var(--f-body);color:var(--mist);font-weight:500}
-html.v2 #page-argo .rail .now{top:0;padding-top:10px;background:var(--pitch);box-shadow:0 12px 16px -14px #000}
-html.v2 #page-argo .rail .mood{color:var(--torch);font:600 13px/1.2 var(--f-body)}
-html.v2 #page-argo .rail #step{font:600 19px/1.2 var(--f-body);color:var(--bone)}
-html.v2 #page-argo .rail .empty,html.v2 #page-argo .rail .pins-hint,html.v2 #page-argo .rail .keys,html.v2 #page-argo .rail .privacy,html.v2 #page-argo .rail .caveat{color:var(--mist)}
-html.v2 #page-argo .rail .btn{border-radius:0;border:0;background:transparent;color:var(--bone);box-shadow:inset 0 0 0 2px #fdf5cc99;font:600 14px/1.1 var(--f-body);min-height:36px}
-html.v2 #page-argo .rail .btn.primary{background:var(--torch);color:var(--pitch);box-shadow:0 3px 0 var(--torch-edge);font:700 13px/1.1 var(--f-caps);letter-spacing:.03em}
-html.v2 #page-argo .rail .btn.primary:active{transform:translateY(2px);box-shadow:0 1px 0 var(--torch-edge)}
-html.v2 #page-argo .rail .keys-open{border-radius:0}
-html.v2 #page-argo .rail ul.list li button{border-radius:0}
+/* the rail: a papyrus sheet; the legacy tokens are re-pointed light inside it. Drawn 1.2× so its 13–15px text reads ≥ 16px. */
+html.v2 #page-argo .rail{grid-column:1;grid-row:1;--ink:var(--navy);--app-muted:var(--text-2);--quiet:var(--text-3);--line:#12233f26;--deck:var(--paper-2);--app-bg:var(--paper-3);
+  --athena:var(--accent-ink);--wine:var(--teal);
+  position:relative;background:var(--papyrus) 11px 29px,var(--paper-3);color:var(--navy);border-radius:var(--r-lg);padding:0 14px 12px;zoom:1.2;
+  box-shadow:var(--shadow-1),inset 0 0 0 1.5px #12233f40;scrollbar-color:#12233f40 transparent}
+html.v2 #page-argo .rail section{border-top:0;background:var(--ink-rule) top center/100% 6px no-repeat}
+html.v2 #page-argo .rail section:first-child{background:none}
+html.v2 #page-argo .rail h3{font:600 14px/1.2 var(--f-body);color:var(--text-2);margin-bottom:8px}
+html.v2 #page-argo .rail h3 .count{font-family:var(--f-body);color:var(--text-3);font-weight:500}
+html.v2 #page-argo .rail .now{top:0;padding-top:12px;background:var(--paper-3);box-shadow:0 12px 14px -14px #12233f80}
+html.v2 #page-argo .rail .mood{color:var(--accent-ink);font:600 13.5px/1.2 var(--f-body)}
+html.v2 #page-argo .rail #step{font:400 22px/1.15 var(--f-title);color:var(--navy)}
+html.v2 #page-argo .rail .empty,html.v2 #page-argo .rail .pins-hint,html.v2 #page-argo .rail .keys,html.v2 #page-argo .rail .privacy,html.v2 #page-argo .rail .caveat{color:var(--text-3)}
+html.v2 #page-argo .rail .btn{border-radius:var(--r-sm);border:0;background:transparent;color:var(--navy);box-shadow:inset 0 0 0 1.5px var(--line-2);font:600 14px/1.1 var(--f-body);min-height:38px}
+html.v2 #page-argo .rail .btn:hover{background:#12233f0d}
+html.v2 #page-argo .rail .btn.primary{background:var(--accent);color:var(--navy);box-shadow:inset 0 0 0 1.5px var(--navy),0 2px 0 var(--navy)}
+html.v2 #page-argo .rail .btn.primary:active{transform:translateY(2px);box-shadow:inset 0 0 0 1.5px var(--navy)}
+html.v2 #page-argo .rail ul.list li button{border-radius:var(--r-sm)}
+html.v2 #page-argo .rail ul.list li button:hover,html.v2 #page-argo .rail ul.list li button[aria-current="true"],html.v2 #page-argo .rail .pins [role="option"]:hover{background:#12233f0f}
+html.v2 #page-argo .rail .route .water{stroke:#c1ddd099}
+html.v2 #page-argo .rail .route .isle{fill:var(--paper-3)}
+html.v2 #page-argo .rail .line.you .text,html.v2 #page-argo .rail .route li.done,html.v2 #page-argo .rail .ck-why,html.v2 #page-argo .rail .ck-pins{color:var(--text-2)}
+html.v2 #page-argo .rail .estimate{color:var(--teal-ink);background:#c1ddd066;border-color:#1b5a6366}
+html.v2 #page-argo .rail .sketch pre{background:var(--paper-2);color:var(--navy)}
+html.v2 #page-argo .rail .tray .restore,html.v2 #page-argo .rail .row-act{background:var(--paper-2);color:var(--navy)}
 
-/* the sea along the bottom, two galleys riding it (decoration: never in the way of a click) */
-html.v2 .argo-sea{position:absolute;left:0;right:0;bottom:0;height:110px;z-index:4;pointer-events:none}
-html.v2 .argo-sea .ship{position:absolute;bottom:12px}
+/* decoration slots on Argo stay behind everything and never take a click */
+html.v2 .argo-deco-l{left:-20px;bottom:-10px;width:180px;height:220px}
+html.v2 .argo-deco-sea{left:0;right:0;bottom:0;height:60px;z-index:1}
 
-/* tester drawer and shortcut sheet: pitch slabs, read from 2 m */
-html.v2 .panel{border-radius:var(--r-slab) 0 0 var(--r-slab);right:0;top:70px;bottom:20px;background:var(--pitch);border:0;box-shadow:-3px 0 0 var(--torch),0 18px 44px #000c;zoom:1.2;z-index:70}
-html.v2 .panel h2{font:700 20px/1 var(--f-caps);color:var(--torch)}
-html.v2 .panel h3{font:700 13px/1.15 var(--f-caps);color:var(--torch);letter-spacing:.03em}
-html.v2 .keysheet{z-index:80;background:#070d1bcc}
-html.v2 .ks-card{border-radius:var(--r-slab);background:var(--pitch);border:0;box-shadow:0 0 0 3px var(--torch);zoom:1.2}
-html.v2 .ks-card h2{font:400 34px/1 var(--f-title);color:var(--torch)}
-html.v2 .ks-card h3{font:700 14px/1.15 var(--f-caps);color:var(--torch)}
-html.v2 .ks-card .btn{border-radius:0}
-html.v2 .toast-item{border-radius:0;background:var(--pitch);border:0;border-top:2px solid var(--torch);font:500 17px/1.35 var(--f-body)}
+/* tester drawer and shortcut sheet: navy sheets */
+html.v2 .panel{border-radius:var(--r-lg) 0 0 var(--r-lg);right:0;top:calc(var(--bar-h) + 12px);bottom:16px;background:var(--navy);border:0;box-shadow:var(--shadow-2);zoom:1.15;z-index:70}
+html.v2 .panel h2{font:400 var(--fs-xl)/1 var(--f-title);color:var(--parchment)}
+html.v2 .panel h3{font:600 13px/1.2 var(--f-body);color:#c9d6e8}
+html.v2 .keysheet{z-index:80;background:#12233f99;backdrop-filter:blur(4px)}
+html.v2 .ks-card{border-radius:var(--r-lg);background:var(--navy);border:0;box-shadow:var(--shadow-2);zoom:1.15}
+html.v2 .ks-card h2{font:400 var(--fs-2xl)/1 var(--f-title);color:var(--parchment)}
+html.v2 .ks-card h3{font:600 13px/1.2 var(--f-body);color:#c9d6e8}
+html.v2 .ks-card .btn{border-radius:var(--r-sm);min-height:40px;background:transparent;color:var(--parchment);box-shadow:inset 0 0 0 1.5px #fdf5cc80}
+html.v2 .toast-item{border-radius:var(--r-pill);background:var(--parchment);color:var(--navy);border:0;font:500 var(--fs-sm)/1.35 var(--f-body)}
 
-@media (prefers-reduced-motion:no-preference){
-  html.v2 #page-argo.enter > header,html.v2 #page-argo.enter > main{animation:ody-rise var(--t-enter) var(--ease-out) both}
-  html.v2 #page-argo.enter > main{animation-delay:calc(140ms + var(--stagger))}
+/* below 1280 px the call panel becomes a drawer over the stage; the stage keeps the whole width */
+@media (max-width:1279px){
+  html.v2 .rail-toggle{display:inline-flex;min-height:40px}
+  html.v2 #page-argo > main{grid-template-columns:minmax(0,1fr)}
+  html.v2 #page-argo .theatre{grid-column:1}
+  html.v2 #page-argo .rail{position:absolute;left:0;top:0;bottom:0;z-index:30;width:min(var(--rail-w),calc(100vw - 48px));overflow-y:auto;
+    box-shadow:var(--shadow-2),inset 0 0 0 1.5px #12233f40;transform:translateX(calc(-100% - 40px));visibility:hidden;
+    transition:transform var(--dur-3) var(--ease),visibility 0s linear var(--dur-3)}
+  html.v2 #page-argo.rail-open .rail{transform:none;visibility:visible;transition:transform var(--dur-3) var(--ease),visibility 0s}
+  html.v2 #page-argo .rail{zoom:1}
+  html.v2 #page-argo .rail{font-size:17px}
+}
+@media (max-width:1100px){
+  html.v2 #page-argo .status .brain{display:none}
+  html.v2 #page-argo > header .btn-top kbd{display:none}
+}
+@media (max-width:900px){
+  html.v2 #page-argo{--pip:96px}
+  html.v2 #argo-h{font-size:var(--fs-xl)}
 }
 
-/* =========================== MAIN =========================== */
-html.v2 #page-main{padding:0 var(--pad-x);overflow-x:hidden;overflow-y:auto;scrollbar-width:thin;scrollbar-color:#4a4b42 transparent}
-#page-main .main-sheet{position:relative;min-height:100%;padding-bottom:88px}
-#page-main .ink{top:58px;bottom:44px;left:calc(-1 * var(--pad-x));right:calc(-1 * var(--pad-x))}
-#page-main .skyline{left:calc(-1 * var(--pad-x));right:calc(-1 * var(--pad-x));z-index:1}
-#page-main .main-head{position:relative;z-index:2;display:flex;align-items:center;justify-content:center;gap:28px;padding-top:80px;height:160px}
-#page-main .main-head svg{width:58px;height:82px}
-#page-main .cols{position:relative;z-index:2;display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:36px;margin-top:6px}
-#page-main section + section{margin-top:18px}
-#page-main .row{grid-template-columns:132px 128px minmax(0,1fr)}
-#page-main .row .tile:last-child{overflow-wrap:anywhere}
-#page-main .tile.state.dash{font:600 17px/1.1 var(--f-body)}
-#page-main .voice-row{grid-template-columns:132px minmax(0,1fr)}
-#page-main .meter-tile{flex-direction:column;align-items:stretch;gap:4px;justify-content:center}
+/* =========================== HOME, PROFILE, SETTINGS: papyrus pages of hand-inked sheets =========================== */
+html.v2 #page-main,html.v2 #page-profile,html.v2 #page-settings{overflow-x:hidden;overflow-y:auto;scrollbar-width:thin;scrollbar-color:#12233f40 transparent}
+.page-wrap{position:relative;z-index:1;max-width:1240px;margin:0 auto;padding:clamp(24px,4vh,48px) var(--pad-x) 72px}
+.page-wrap.narrow{max-width:860px;display:flex;flex-direction:column;gap:20px}
+.page-head{margin-bottom:28px}
+.page-wrap.narrow .page-head{margin-bottom:4px}
+.eyebrow{margin:0 0 8px;font:600 var(--fs-md)/1.2 var(--f-body);color:var(--accent-ink)}
+.lede{margin:12px 0 0;max-width:46ch;font:400 var(--fs-lg)/1.45 var(--f-body);color:var(--text-2)}
+.card{padding:22px 24px 24px}
+.card .t-sect{margin-bottom:10px}
+.t-note{margin:10px 0 0;font:500 var(--fs-sm)/1.4 var(--f-body);color:var(--text-3)}
+.t-note a,.page .t-body a{color:var(--accent-ink);font-weight:600;text-underline-offset:3px}
+.bento{display:grid;gap:20px;grid-template-columns:repeat(12,minmax(0,1fr))}
+.c-status{grid-column:span 7}
+.c-usage{grid-column:span 5}
+.c-int{grid-column:span 8}
+.c-plan{grid-column:span 4}
+html.v2 .main-deco-l{left:0;bottom:0;width:min(18vw,240px);height:min(42vh,360px)}
+html.v2 .main-deco-r{right:0;bottom:0;width:min(18vw,240px);height:min(42vh,360px)}
+
+#page-main .row{grid-template-columns:96px 124px minmax(0,1fr)}
+#page-main .row .tile:last-child{overflow-wrap:anywhere;color:var(--text-2)}
+#page-main .c-plan .row{grid-template-columns:auto auto;row-gap:6px}
+#page-main .c-plan .row .tile:last-child{grid-column:1/-1}
+#page-main .voice-row{grid-template-columns:96px minmax(0,1fr)}
+#page-main .meter-tile{flex-direction:column;align-items:stretch;gap:6px;justify-content:center}
 #page-main .meter-top{display:flex;gap:8px}
 #page-main .meter-top .sp{flex:1}
 #page-main .meter{display:flex;gap:3px}
-#page-main .meter i{flex:1;height:14px;background:var(--torch)}
-#page-main .meter i.left{background:transparent;box-shadow:inset 0 0 0 2px #191a1655}
-#page-main .tile.dash .sub{color:var(--mist);font:500 17px/1.25 var(--f-body)}
-#page-main .usage{display:grid;grid-template-columns:repeat(4,1fr);gap:var(--gap)}
-#page-main .tile.dash.wide{margin-top:var(--gap);min-height:52px;gap:12px}
-#page-main .tile.dash.wide small{font:500 16px/1.25 var(--f-body)}
+#page-main .meter i{flex:1;height:10px;border-radius:3px;background:var(--accent)}
+#page-main .meter i.left{background:transparent;box-shadow:inset 0 0 0 1.5px var(--line-2)}
+#page-main .tile.dash .sub{color:var(--text-3);font:500 var(--fs-sm)/1.3 var(--f-body)}
+#page-main .usage{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;margin-top:12px}
+#page-main .usage .tile{flex-direction:column;align-items:flex-start;justify-content:center;min-height:84px;padding:12px 14px;gap:4px;border-radius:var(--r-md);background:var(--paper);box-shadow:inset 0 0 0 1px var(--line)}
+#page-main .usage .t-num{font-size:var(--fs-2xl)}
+#page-main .usage small{font:500 var(--fs-sm)/1.2 var(--f-body);color:var(--text-3)}
+#page-main .tile.dash.wide{margin-top:10px;min-height:52px;gap:12px;padding:10px 14px;border-radius:var(--r-md);box-shadow:inset 0 0 0 1.5px var(--line-2);flex-wrap:wrap}
+#page-main .tile.dash.wide small{font:500 var(--fs-sm)/1.3 var(--f-body);color:var(--text-3)}
 #page-main .tile.dash.stack{flex-direction:column;align-items:flex-start;justify-content:center;gap:2px}
-#page-main .tile.dash .nt{font:600 19px/1.15 var(--f-body);white-space:nowrap}
-#page-main .usage .tile{flex-direction:column;align-items:flex-start;justify-content:center;min-height:72px;padding:6px 10px;gap:2px}
-#page-main .usage .t-num{font-size:34px}
-#page-main .usage .nt{font:600 19px/1.15 var(--f-body)}
-#page-main .usage small{font:500 16px/1.1 var(--f-body)}
-#page-main .t-note{margin:6px 0 0;font:500 16px/1.35 var(--f-body);color:var(--mist)}
+#page-main .tile.dash .nt{font:600 var(--fs-md)/1.15 var(--f-body);white-space:nowrap}
 
-#page-main .keyrow{display:grid;grid-template-columns:132px minmax(0,1fr) 128px;gap:var(--gap);margin-bottom:var(--gap)}
-#page-main .keyrow .btn{min-height:52px;padding:0 10px}
-#page-main .tile.key.long{font-size:19px;line-height:1.05}
-#page-main .keyrow .tile .kt{overflow-wrap:anywhere}
-#page-main .keyrow .badge{white-space:nowrap}
-#page-main .badge.default{color:var(--slate-deep)}
-#page-main button.badge{background:transparent;cursor:pointer;color:var(--slate-deep);min-height:36px;padding:4px 8px;transition:transform var(--t-hover) var(--ease-out)}
-#page-main button.badge:hover{transform:translateY(-2px)}
-#page-main button.badge:focus-visible{outline:3px solid var(--pitch);outline-offset:2px}
-#page-main .key-edit{background:var(--bone);color:var(--pitch);padding:12px 16px 14px;margin:-2px 0 var(--gap);display:grid;gap:10px;box-shadow:inset 0 4px 0 var(--torch)}
-#page-main .kf{display:grid;grid-template-columns:96px minmax(0,1fr);align-items:center;gap:10px}
-#page-main .kf label{font:600 17px/1.2 var(--f-body)}
-#page-main .kf input{min-height:46px;border:2px solid var(--pitch);border-radius:0;background:#fffdf0;color:var(--pitch);font:500 18px/1.2 var(--f-body);padding:0 10px;min-width:0}
-#page-main .kf input:focus-visible{outline:3px solid var(--torch);outline-offset:1px}
-#page-main .kf-acts{display:flex;gap:10px;flex-wrap:wrap}
-#page-main .key-edit .btn.quiet{color:var(--pitch);box-shadow:inset 0 0 0 2px var(--pitch)}
-#page-main .key-edit :focus-visible{outline-color:var(--pitch)}
-#page-main .kf-note{margin:0;font:500 16px/1.35 var(--f-body);color:#4a4636}
+/* the key rows (Settings) */
+.keyrow{display:grid;grid-template-columns:150px minmax(0,1fr) auto;gap:12px;align-items:center;padding:12px 0;border-bottom:1px dashed var(--line)}
+.keyrow .btn{min-height:44px;padding:0 16px}
+.keyrow .tile.key.long{line-height:1.15}
+.keyrow .tile .kt{overflow-wrap:anywhere;color:var(--text-2)}
+.keyrow .tile{gap:10px;flex-wrap:wrap}
+.keyrow .badge{white-space:nowrap}
+.keyrow button.badge{background:transparent;cursor:pointer;color:var(--teal-ink);min-height:32px;transition:transform var(--dur-1) var(--ease)}
+.keyrow button.badge:hover{background:#c1ddd066}
+.key-edit{background:var(--paper-2);color:var(--navy);padding:16px;margin:4px 0 8px;border-radius:var(--r-md);display:grid;gap:12px;box-shadow:inset 0 0 0 1.5px var(--line-2)}
+.kf{display:grid;grid-template-columns:96px minmax(0,1fr);align-items:center;gap:10px}
+.kf label{font:600 var(--fs-sm)/1.2 var(--f-body)}
+.kf-acts{display:flex;gap:10px;flex-wrap:wrap}
+.kf-note{margin:0;font:500 var(--fs-sm)/1.35 var(--f-body);color:var(--text-3)}
+.set-provider{margin:4px 0 8px;max-width:420px}
+.set-wake{margin-top:12px}
+.set-wake code{font:600 15px/1 ui-monospace,monospace;background:var(--paper-2);padding:2px 6px;border-radius:6px}
 
-#page-main .int-card{flex-direction:column;align-items:stretch;gap:10px;padding:12px 16px 14px}
+/* export to agent */
+#page-main .int-card{flex-direction:column;align-items:stretch;gap:12px;padding:0}
 #page-main .int-top{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
-#page-main .int-top h3{margin:0;font:600 21px/1.1 var(--f-body);flex:1}
-#page-main .badge.frontier{color:var(--plum)}
-#page-main .int-pick{display:grid;grid-template-columns:auto minmax(0,1fr) auto minmax(0,1.4fr);gap:8px 10px;align-items:center}
-#page-main .int-pick label{font:600 17px/1 var(--f-body)}
-#page-main .int-pick select{min-height:44px;min-width:0;border:2px solid var(--pitch);border-radius:0;background:#fffdf0;color:var(--pitch);font:500 17px/1.2 var(--f-body);padding:0 6px}
-#page-main .int-card :focus-visible{outline-color:var(--pitch)}
-#page-main .int-how{margin:0;font:500 17px/1.35 var(--f-body)}
-#page-main .int-foot{display:flex;align-items:center;gap:14px}
-#page-main .int-back{margin:0;flex:1;font:500 16px/1.3 var(--f-body);color:var(--brick)}
+#page-main .int-top h3{margin:0;font:600 var(--fs-md)/1.2 var(--f-body);flex:1}
+#page-main .int-pick{display:grid;grid-template-columns:auto minmax(0,1fr) auto minmax(0,1.4fr);gap:10px 12px;align-items:center}
+#page-main .int-pick label{font:600 var(--fs-sm)/1 var(--f-body);color:var(--text-2)}
+#page-main .int-how{margin:0;font:400 var(--fs-md)/1.45 var(--f-body);color:var(--text-2)}
+#page-main .int-foot{display:flex;align-items:center;gap:16px;flex-wrap:wrap}
+#page-main .int-back{margin:0;flex:1;min-width:220px;font:500 var(--fs-sm)/1.35 var(--f-body);color:var(--text-3)}
 #page-main .int-foot .btn{white-space:nowrap}
 
-#page-main .voice{display:flex;align-items:center;gap:16px;margin-bottom:10px}
-#page-main .mic{flex:none;width:64px;height:64px;border-radius:50%;background:var(--brick);color:var(--bone);display:grid;place-items:center;box-shadow:0 0 0 4px var(--pitch),0 0 0 6px var(--torch)}
-#page-main .mic svg{width:34px;height:34px}
-#page-main .voice p{margin:0;font-size:19px}
-#page-main .voice b{color:var(--bone);font-weight:600}
-#page-main .voice a{color:var(--torch);font-weight:600;text-underline-offset:3px}
-#page-main .ody-toasts{position:fixed}
+/* profile */
+.pf-head{display:flex;align-items:center;gap:20px;margin-bottom:16px}
+.pf-head .t-sect{margin:0 0 6px;font-size:var(--fs-xl)}
+.pf-note{margin:0;max-width:48ch;font:500 var(--fs-sm)/1.4 var(--f-body);color:var(--text-2)}
+.pf-form{display:grid;gap:18px;margin-top:16px;max-width:520px}
+.pf-err{margin:0;font:600 var(--fs-sm)/1.3 var(--f-body);color:var(--danger)}
+.pf-err[hidden]{display:none}
+.pf-colours{border:0;padding:0;margin:0}
+.pf-colours legend{padding:0;margin-bottom:8px}
+.swatches{display:flex;gap:10px;flex-wrap:wrap}
+.swatches input,.segs input{position:absolute;opacity:0;width:1px;height:1px}
+.swatch{width:44px;height:44px;border-radius:14px;background:var(--c);cursor:pointer;box-shadow:0 0 0 2px var(--paper-3),0 0 0 3px var(--line-2);transition:transform var(--dur-1) var(--spring)}
+.swatch:hover{transform:translateY(-2px)}
+.swatches input:checked + .swatch{box-shadow:0 0 0 3px var(--paper-3),0 0 0 5.5px var(--navy);transform:scale(1.04)}
+.swatches input:focus-visible + .swatch{outline:2.5px solid var(--accent);outline-offset:6px}
+.pf-acts{display:flex;gap:12px;flex-wrap:wrap}
+.sr{position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap}
+
+/* settings: segmented control */
+.seg{border:0;padding:0;margin:0 0 12px}
+.seg legend{padding:0;margin-bottom:8px}
+.segs{display:inline-flex;flex-wrap:wrap;gap:4px;padding:4px;border-radius:var(--r-pill);background:#12233f0a;box-shadow:inset 0 0 0 1px var(--line)}
+.segs label{min-height:40px;display:inline-flex;align-items:center;padding:0 16px;border-radius:var(--r-pill);font:500 var(--fs-sm)/1 var(--f-body);color:var(--text-2);cursor:pointer;transition:background var(--dur-1) var(--ease),color var(--dur-1) var(--ease)}
+.segs label:hover{color:var(--text);background:#12233f0d}
+.segs input:checked + label{background:var(--navy);color:var(--parchment);font-weight:600}
+.segs input:focus-visible + label{outline:2.5px solid var(--accent);outline-offset:2px}
 
 /* =========================== THE FORGE (container + fallback; the page itself is twin/forge.js + forge.css) =========================== */
-html.v2 #page-forge{padding:0 var(--pad-x);background:var(--night)}
 #page-forge .forge-fallback{margin-top:40px}
-#page-forge > h1.t-hero{text-align:center;padding-top:72px}
+#page-forge > h1.t-hero{text-align:center;padding-top:48px}
 
-/* =========================== small screens: the pages stack their columns =========================== */
 @media (max-width:1100px){
-  html.v2 #page-argo{--rail-w:300px}
-  #page-main .cols{grid-template-columns:minmax(0,1fr)}
+  .c-status,.c-usage,.c-int,.c-plan{grid-column:span 12}
+  #page-main .usage{grid-template-columns:repeat(4,1fr)}
 }
 @media (max-width:820px){
-  html.v2 #page-argo{padding:0 16px;grid-template-rows:auto auto}
-  html.v2 #page-argo{overflow-y:auto}
-  html.v2 #page-argo > main{grid-template-columns:minmax(0,1fr);grid-template-rows:auto 60vh auto}
-  html.v2 #page-argo .lintel,html.v2 #page-argo .pilaster{display:none}
-  html.v2 #page-argo .theatre{grid-column:1;grid-row:2}
-  html.v2 #page-argo .rail{grid-column:1;grid-row:3;margin-top:12px}
-  html.v2 .edge-tab{width:44px;height:180px}
+  .appbar{grid-template-columns:auto 1fr auto}
+  .pager a{padding:0 12px}
+  .pager a svg{display:none}
+  #page-main .usage{grid-template-columns:repeat(2,1fr)}
+  #page-main .int-pick{grid-template-columns:auto minmax(0,1fr)}
+  .keyrow{grid-template-columns:1fr auto}
+  .keyrow .tile:nth-child(2){grid-column:1/-1;grid-row:2}
 }
+
+/* =========================== the papyrus ink kit (twin/paper.css): grounds and decoration layers =========================== */
+html.v2 body,html.v2 .paper,html.v2 .forge-page{background:var(--clay),var(--paper)}
+.appbar{background:var(--clay),var(--paper)}
+.pk-layer{position:absolute;pointer-events:none;z-index:0;background-repeat:no-repeat}
+#page-main .pk-sky{right:6%;top:18px;width:300px;height:150px;background-image:var(--pk-stars);background-size:contain;opacity:.9}
+#page-main .pk-sprig-l{left:-24px;bottom:40px;width:150px;height:245px;background-image:var(--pk-olive-sprig-l);background-size:contain}
+#page-main .pk-sprig-r{right:-24px;bottom:40px;width:150px;height:245px;background-image:var(--pk-olive-sprig-r);background-size:contain}
+#page-main .pk-waves-back{left:0;right:0;bottom:0;height:90px;background:var(--pk-waves-back) 0 100%/auto 90px repeat-x;opacity:.8}
+#page-main .pk-waves-front{left:0;right:0;bottom:-8px;height:70px;background:var(--pk-waves-front) 120px 100%/auto 70px repeat-x}
+#page-main .pk-ship{right:12%;bottom:34px;width:150px;height:96px;background-image:var(--pk-ship);background-size:contain}
+#page-main .page-wrap{padding-bottom:140px}
+#page-profile .pk-cypress{right:4%;bottom:0;width:120px;height:320px;background-image:var(--pk-tree-cypress);background-size:contain;background-position:bottom}
+#page-settings .pk-column{right:3%;bottom:0;width:110px;height:310px;background-image:var(--pk-column);background-size:contain;background-position:bottom}
+@media (max-width:1180px){ #page-profile .pk-cypress,#page-settings .pk-column,#page-main .pk-sprig-l,#page-main .pk-sprig-r{display:none} }
+/* Argos: the kit's ink hound on a papyrus disc */
+html.v2 #argos-btn{background:var(--pk-argos) 54% 46%/58% auto no-repeat,var(--clay),var(--parchment)}
+html.v2 #argos-btn > svg{visibility:hidden}
+/* The Forge: the kit's forge over ink waves at the foot of the page, a sun in the sky */
+.forge-hearth{height:150px}
+.forge-hearth::before{content:"";position:absolute;left:50%;bottom:18px;width:150px;height:132px;margin-left:-75px;background:var(--pk-forge) center bottom/contain no-repeat;z-index:1}
+.forge-sea{height:60px;opacity:1;background:var(--pk-waves) 0 100%/auto 60px repeat-x}
+.forge-page::before{content:"";position:absolute;right:5%;top:24px;width:110px;height:110px;background:var(--pk-sun) center/contain no-repeat;pointer-events:none;opacity:.9}
+.forge.is-viewing .forge-page::before{display:none}
+/* sheets: a lighter leaf of papyrus laid over the page (the page's fibres show through faintly) */
+.sheet{background:#fffbe6d1}
+html.v2 #page-argo .rail{background:#fffbe6e0}
+html.v2 #page-argo .rail .now{background:#fffbe6}
+.menu{background:#fffbe6f5}
+.forge-relic,.forge-kiln,.forge-side{background:#fffbe6d1}
+header.page-head{display:block;padding:0}
+.bento{align-items:start}
+
+/* =========================== Argo: under the torn papyrus, the modern ship's bridge =========================== */
+:root{--torn-r:url("data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 width=%2724%27 height=%27600%27 viewBox=%270 0 24 600%27%3E%3Cpath d=%27M0 0 L5.1 0.0 L8.9 3.7 L6.4 10.8 L7.3 14.5 L6.5 22.0 L11.6 29.4 L10.4 33.3 L9.1 38.9 L5.9 47.9 L14.4 51.0 L7.0 56.5 L8.6 61.4 L7.1 70.2 L10.8 74.5 L14.5 80.8 L8.6 88.8 L13.4 93.0 L5.3 102.0 L13.7 109.4 L7.2 116.3 L12.3 124.0 L11.4 128.2 L5.4 132.5 L8.3 137.5 L11.5 142.9 L14.6 150.9 L14.9 159.8 L8.1 167.5 L11.2 171.6 L11.7 177.9 L6.9 181.4 L11.0 190.0 L6.0 197.1 L14.1 202.5 L14.9 209.4 L9.5 213.6 L9.4 221.4 L10.6 229.1 L6.0 232.8 L6.2 241.7 L8.4 245.9 L13.5 253.2 L10.0 259.0 L7.8 266.8 L11.1 272.0 L5.4 278.8 L6.4 282.5 L11.9 289.8 L12.7 298.7 L12.7 303.2 L8.5 312.1 L8.8 315.2 L6.8 319.9 L6.2 323.2 L5.5 331.3 L7.1 338.0 L13.2 342.2 L6.8 347.0 L11.9 352.7 L13.6 358.9 L10.2 364.3 L9.6 371.6 L9.7 378.9 L6.2 382.7 L12.4 390.4 L11.9 399.0 L6.7 405.5 L6.2 413.6 L6.4 419.2 L8.1 424.5 L12.1 430.0 L7.4 436.3 L12.4 443.9 L5.3 451.9 L14.0 458.6 L7.0 463.1 L8.6 471.0 L13.2 476.4 L7.0 481.7 L8.5 486.0 L8.7 493.2 L5.7 500.8 L11.2 505.3 L10.0 511.2 L7.8 519.8 L5.3 523.9 L8.0 529.8 L5.1 535.6 L8.8 538.6 L8.0 546.2 L10.8 554.7 L12.8 560.1 L11.1 564.5 L10.4 572.6 L6.0 577.5 L6.9 583.9 L10.4 589.2 L11.7 597.8 L5.1 600.0 L0 600Z%27/%3E%3C/svg%3E");--torn:url("data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 width=%2764%27 height=%27640%27 viewBox=%270 0 64 640%27%3E%3Cpath d=%27M64 0 L23.6 0.0 L9.7 8.4 L13.2 13.9 L12.6 18.0 L5.9 23.8 L14.0 31.0 L10.4 38.4 L17.2 46.1 L20.8 52.9 L13.6 60.4 L9.9 67.4 L18.6 73.2 L15.1 78.9 L14.4 83.0 L7.2 87.2 L12.3 90.4 L11.8 98.3 L13.9 103.1 L9.3 109.3 L19.9 117.1 L18.1 121.5 L19.2 128.0 L8.3 136.9 L20.5 140.0 L22.0 148.9 L23.3 155.1 L20.9 160.2 L8.9 164.3 L23.8 168.5 L9.6 172.8 L17.5 176.8 L16.3 181.3 L15.2 187.0 L21.7 194.9 L19.7 200.4 L10.1 207.2 L19.1 212.7 L17.2 219.0 L13.0 225.8 L14.2 233.8 L16.1 237.2 L15.7 241.6 L15.1 247.3 L16.8 252.6 L11.9 260.8 L13.8 264.9 L17.7 268.3 L15.9 275.5 L14.6 281.6 L22.5 285.2 L19.9 291.1 L11.0 297.8 L15.0 302.9 L12.9 307.9 L15.0 315.8 L9.4 320.3 L13.8 324.7 L9.3 330.7 L15.6 334.4 L13.7 342.5 L22.6 347.0 L18.0 350.3 L12.1 355.5 L17.7 359.0 L9.6 366.1 L15.2 374.6 L18.9 383.4 L14.4 386.5 L15.8 393.9 L20.7 400.3 L15.2 407.0 L11.4 410.8 L12.9 415.0 L17.6 421.7 L14.0 427.3 L19.8 434.8 L24.6 443.1 L15.0 446.9 L7.9 454.9 L18.8 462.2 L11.0 466.5 L15.9 471.4 L12.3 477.9 L17.1 482.8 L20.0 486.9 L16.2 495.7 L19.0 501.2 L16.8 510.1 L19.1 513.5 L6.0 518.8 L23.1 524.1 L16.0 531.4 L13.8 535.4 L15.5 541.9 L8.8 545.7 L15.8 549.5 L19.1 556.2 L9.8 562.4 L10.5 571.3 L17.4 577.3 L18.6 582.0 L18.4 589.8 L20.3 593.7 L12.1 600.7 L11.5 609.5 L10.9 613.0 L22.2 620.3 L12.2 626.4 L19.3 635.3 L19.7 639.5 L23.6 640.0 L64 640Z%27/%3E%3Ccircle cx=%278.8%27 cy=%27614.0%27 r=%270.9%27/%3E%3Ccircle cx=%2711.8%27 cy=%27101.1%27 r=%270.7%27/%3E%3Ccircle cx=%2718.4%27 cy=%27140.6%27 r=%271.4%27/%3E%3Ccircle cx=%278.6%27 cy=%27628.3%27 r=%270.6%27/%3E%3Ccircle cx=%2720.3%27 cy=%27168.3%27 r=%270.8%27/%3E%3Ccircle cx=%2713.6%27 cy=%27357.1%27 r=%270.7%27/%3E%3Ccircle cx=%2717.8%27 cy=%2754.2%27 r=%270.7%27/%3E%3Ccircle cx=%2713.4%27 cy=%27550.8%27 r=%271.1%27/%3E%3Ccircle cx=%2713.9%27 cy=%27497.0%27 r=%271.2%27/%3E%3Ccircle cx=%2717.3%27 cy=%27115.7%27 r=%271.1%27/%3E%3Ccircle cx=%2715.7%27 cy=%27200.8%27 r=%271.3%27/%3E%3Ccircle cx=%277.1%27 cy=%276.6%27 r=%271.1%27/%3E%3Ccircle cx=%2712.7%27 cy=%27447.2%27 r=%271.2%27/%3E%3Ccircle cx=%277.0%27 cy=%27610.5%27 r=%270.7%27/%3E%3Ccircle cx=%2716.6%27 cy=%27289.4%27 r=%271.1%27/%3E%3Ccircle cx=%277.3%27 cy=%27570.6%27 r=%271.2%27/%3E%3C/svg%3E");--brass:#c98a3e;--brass-hi:#f0c27a;--steel:#7f97a8;--bridge:#0a1830}
+/* the chart-plotter ground: navy with a teal grid and soft sonar light */
+html.v2 #page-argo{background:radial-gradient(60% 70% at 55% 45%,#123058 0%,#0a1830 70%) 0 0/100% 100%,var(--bridge);
+  background-image:linear-gradient(#c1ddd012 1px,transparent 1px),linear-gradient(90deg,#c1ddd012 1px,transparent 1px),radial-gradient(60% 70% at 55% 45%,#123058 0%,#0a1830 75%);
+  background-size:48px 48px,48px 48px,100% 100%;padding-right:calc(var(--gutter) + 46px);color:var(--parchment)}
+/* the rip: the papyrus that covers Home is torn away at Argo's right edge, fibres and a soft shadow on the ship beneath */
+html.v2 #page-argo .argo-rip{position:absolute;top:-8px;bottom:0;right:0;width:64px;z-index:6;pointer-events:none;
+  background:var(--clay),var(--paper);-webkit-mask:var(--torn) 0 0/64px 640px repeat-y;mask:var(--torn) 0 0/64px 640px repeat-y;
+  filter:drop-shadow(-5px 0 6px #0009) drop-shadow(-1px 0 0 #6b5a2a)}
+html.v2 #argo-h{color:var(--parchment)}
+html.v2 #page-argo > header .btn-top{color:var(--parchment);box-shadow:inset 0 0 0 1.5px #c1ddd066}
+html.v2 #page-argo > header .btn-top:hover{background:#c1ddd01a;box-shadow:inset 0 0 0 1.5px var(--seaglass)}
+html.v2 #page-argo > header .btn-top[aria-expanded="true"]{background:var(--seaglass);color:var(--navy)}
+html.v2 #page-argo > header .rail-toggle{color:var(--parchment);box-shadow:inset 0 0 0 1.5px #c1ddd066}
+/* status as an instrument readout: a lit LED in a brass bezel, tabular digits */
+html.v2 #page-argo .status{background:#06101f;color:var(--seaglass);font-variant-numeric:tabular-nums;letter-spacing:.02em;
+  box-shadow:inset 0 1px 3px #000c,0 0 0 1.5px var(--brass),0 0 0 3px #06101f,0 0 0 4px #c98a3e66}
+html.v2 #page-argo .status .dot{background:#56627a;box-shadow:0 0 0 2px #0a1830}
+html.v2 body[data-phase="live"] #page-argo .status{background:#06101f;color:#ffd9d4}
+html.v2 body[data-phase="live"] #page-argo .status .dot{background:var(--live);box-shadow:0 0 8px var(--live),0 0 0 2px #0a1830}
+html.v2 #page-argo .status .brain{color:#c1ddd0b3}
+/* the call panel: a riveted instrument panel in a brass bezel */
+html.v2 #page-argo .rail{--ink:var(--parchment);--app-muted:#c9d6e8;--quiet:#9aa3ad;--line:#2d4466;--deck:#0d1a30;--app-bg:#0d1d36;--athena:var(--torch);--wine:var(--seaglass);
+  background:radial-gradient(circle at 10px 10px,var(--brass-hi) 0 2px,#6b4a1c 2.6px,transparent 3.2px),radial-gradient(circle at calc(100% - 10px) 10px,var(--brass-hi) 0 2px,#6b4a1c 2.6px,transparent 3.2px),
+    linear-gradient(#0f2140,#0b1a33);color:var(--parchment);
+  box-shadow:inset 0 0 0 1px #c98a3e80,0 0 0 3px #06101f,0 0 0 4.5px var(--brass),0 18px 40px -18px #000c}
+html.v2 #page-argo .rail section{background:linear-gradient(90deg,transparent,#c1ddd033 12%,#c1ddd033 88%,transparent) top/100% 1px no-repeat}
+html.v2 #page-argo .rail section:first-child{background:none}
+html.v2 #page-argo .rail .now{background:#0f2140;box-shadow:0 12px 14px -14px #000}
+html.v2 #page-argo .rail h3{color:var(--seaglass);letter-spacing:.06em;text-transform:uppercase;font-size:12px}
+html.v2 #page-argo .rail h3 .count{color:var(--brass-hi)}
+html.v2 #page-argo .rail .mood{color:var(--torch)}
+html.v2 #page-argo .rail #step{color:var(--parchment)}
+html.v2 #page-argo .rail .empty,html.v2 #page-argo .rail .pins-hint,html.v2 #page-argo .rail .keys,html.v2 #page-argo .rail .privacy,html.v2 #page-argo .rail .caveat{color:#b7c4d6}
+html.v2 #page-argo .rail .btn{color:var(--parchment);box-shadow:inset 0 0 0 1.5px #c1ddd066}
+html.v2 #page-argo .rail .btn:hover{background:#c1ddd01a}
+html.v2 #page-argo .rail .btn.primary{color:var(--navy);box-shadow:inset 0 0 0 1.5px var(--brass-hi),0 2px 0 #06101f}
+html.v2 #page-argo .rail ul.list li button:hover,html.v2 #page-argo .rail ul.list li button[aria-current="true"],html.v2 #page-argo .rail .pins [role="option"]:hover{background:#c1ddd014}
+html.v2 #page-argo .rail .route .water{stroke:#16304f}
+html.v2 #page-argo .rail .route .isle{fill:#0d1d36}
+html.v2 #page-argo .rail .line.you .text,html.v2 #page-argo .rail .route li.done,html.v2 #page-argo .rail .ck-why,html.v2 #page-argo .rail .ck-pins{color:#c9d6e8}
+html.v2 #page-argo .rail .estimate{color:#bdf1ff;background:#3bd8ff1a;border-color:#3bd8ff59}
+html.v2 #page-argo .rail .sketch pre{background:#06101f;color:#d9e3ef}
+html.v2 #page-argo .rail .tray .restore,html.v2 #page-argo .rail .row-act{background:#0d1a30;color:var(--parchment)}
+/* the stage: a sonar display in a steel-and-brass bezel, range rings and a compass rose under the hologram */
+html.v2 #page-argo .theatre{background:repeating-radial-gradient(circle at 50% 55%,transparent 0 86px,#3bd8ff14 86px 87px),
+  conic-gradient(from 0deg at 50% 55%,transparent 0 89.6deg,#3bd8ff1f 89.6deg 90.4deg,transparent 90.4deg 179.6deg,#3bd8ff1f 179.6deg 180.4deg,transparent 180.4deg 269.6deg,#3bd8ff1f 269.6deg 270.4deg,transparent 270.4deg 359.6deg,#3bd8ff1f 359.6deg),
+  radial-gradient(70% 60% at 50% 55%,#123a5e 0%,#0b2240 55%,#071428 100%);
+  box-shadow:inset 0 0 0 1px #3bd8ff33,inset 0 0 60px #000a,0 0 0 4px #0d1a30,0 0 0 6px var(--steel),0 0 0 7.5px #2b3b4c,0 0 0 9px var(--brass),0 26px 50px -22px #000}
+html.v2 #page-argo .theatre::after{content:none}
+html.v2 #page-argo .toolbar,html.v2 #page-argo .modes{background:#06101fe6;border:1px solid #c98a3e80;box-shadow:inset 0 1px 0 #ffffff10}
+html.v2 #page-argo .tool[aria-pressed="true"],html.v2 #page-argo .modes button[aria-selected="true"]{background:var(--seaglass);color:var(--navy)}
+html.v2 #page-argo .phone{box-shadow:0 0 0 2px #0d1a30,0 0 0 3.5px var(--steel),0 12px 28px #0009}
+html.v2 #page-argo .stage-head h2{font-family:var(--f-body);font-weight:600;letter-spacing:-.01em}
+html.v2 #page-argo .waiting h2{font:600 clamp(26px,2.6vw,36px)/1.1 var(--f-body);letter-spacing:-.01em}
+@media (max-width:1279px){ html.v2 #page-argo .rail{box-shadow:inset 0 0 0 1px #c98a3e80,0 0 0 3px #06101f,0 0 0 4.5px var(--brass),0 30px 60px -10px #000e} }
+
+/* =========================== Home: the two sides stick out at the edges (a prow on the left, embers on the right) =========================== */
+#page-main .edge-tab{position:absolute;top:50%;z-index:3;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;width:76px;height:260px;
+  margin-top:-130px;text-decoration:none;font:600 var(--fs-sm)/1 var(--f-body);transition:transform var(--dur-2) var(--spring)}
+#page-main .edge-tab .lbl{writing-mode:vertical-rl;white-space:nowrap;letter-spacing:.04em}
+#page-main .edge-tab .edge-art{width:58px;height:58px;border-radius:50%;flex:none}
+#page-main .edge-argo{left:0;width:92px;color:var(--parchment);padding-right:18px;
+  background:linear-gradient(#c1ddd014 1px,transparent 1px) 0 0/16px 16px,linear-gradient(90deg,#c1ddd014 1px,transparent 1px) 0 0/16px 16px,var(--bridge);
+  -webkit-mask:var(--torn-r) right 0/24px 600px repeat-y,linear-gradient(#000,#000) 0 0/calc(100% - 23px) 100% no-repeat;mask:var(--torn-r) right 0/24px 600px repeat-y,linear-gradient(#000,#000) 0 0/calc(100% - 23px) 100% no-repeat;
+  filter:drop-shadow(3px 0 5px #12233f66);transform:translateX(-10px)}
+#page-main .edge-argo .lbl{transform:rotate(180deg)}
+#page-main .edge-argo .edge-art{background:radial-gradient(circle,transparent 0 9px,#3bd8ff66 9.5px 10.5px,transparent 11px 18px,#3bd8ff4d 18.5px 19.5px,transparent 20px),
+  conic-gradient(from 45deg,var(--torch) 0 8deg,transparent 8deg 82deg,var(--seaglass) 82deg 98deg,transparent 98deg 172deg,var(--seaglass) 172deg 188deg,transparent 188deg 262deg,var(--seaglass) 262deg 278deg,transparent 278deg 352deg,var(--torch) 352deg);
+  box-shadow:0 0 0 2px var(--brass);margin-right:-4px}
+#page-main .edge-argo:hover{transform:translateX(0)}
+#page-main .edge-forge{right:0;color:var(--parchment);padding-left:4px;border-radius:18px 0 0 18px;
+  background:radial-gradient(90% 60% at 100% 50%,#ea872f99,transparent 70%),linear-gradient(#2a1a12,#191a16);
+  box-shadow:-2px 0 0 #983a34,0 0 28px #ea872f66,inset 0 0 0 1px #ea872f55;transform:translateX(10px)}
+#page-main .edge-forge .edge-art{background:var(--pk-forge) center/80% no-repeat,radial-gradient(circle,#f8d9a8,#ea872f);box-shadow:0 0 0 2px #191a16,0 0 16px #ea872fb3}
+#page-main .edge-forge:hover{transform:translateX(0)}
+#page-main .edge-tab:active{transform:translateX(0) scale(.97)}
+#page-main .edge-tab:focus-visible{outline:2.5px solid var(--accent);outline-offset:3px}
+#page-main .page-wrap{padding-left:max(var(--pad-x),96px);padding-right:max(var(--pad-x),96px)}
+@media (prefers-reduced-motion:no-preference){ #page-main .edge-forge{animation:ody-ember 3.2s var(--ease-sea) infinite alternate} }
+@keyframes ody-ember{to{box-shadow:-2px 0 0 #983a34,0 0 40px #ea872f99,inset 0 0 0 1px #ea872f88}}
+html.ody-paused #page-main .edge-forge{animation-play-state:paused}
+
+/* =========================== The Forge: papyrus stained by the fire, soot-dark iron for the cards =========================== */
+html.v2 .forge-page{background:radial-gradient(120% 90% at 50% 38%,#ea872f2e 0%,#ea872f55 45%,#983a3499 85%,#4a1d14cc 100%),var(--clay),#f2c47e}
+html.v2 .forge-title{color:#191a16}
+html.v2 .forge-sub{color:#2a1a12}
+html.v2 .forge-sect{color:#191a16}
+html.v2 .forge-relic{background:linear-gradient(#983a34,#983a34) top/100% 6px no-repeat,linear-gradient(#24201a,#191a16);color:var(--parchment);box-shadow:0 2px 0 #00000055,0 18px 34px -18px #191a16}
+html.v2 .forge-relic::after{border-color:#ea872f59}
+html.v2 .forge-relic-meta{color:#f2c47e}
+html.v2 .forge-well{background:radial-gradient(55% 65% at 50% 75%,#7a2e18 0%,#3a1810 55%,#120c08 100%)}
+html.v2 .forge-badge.is-caveat{color:#f2c47e}
+html.v2 .forge-chain li>span,html.v2 .forge-chain-btn{color:var(--parchment);box-shadow:inset 0 0 0 1.5px #fdf5cc55}
+html.v2 .forge-chain li.is-current>span{color:#191a16}
+html.v2 .forge-chain-arrow,html.v2 .forge-chain-more{color:#f2c47e}
+html.v2 .forge-chain-btn:hover{background:#fdf5cc1a}
+html.v2 .forge-open:focus-visible::after{outline-color:var(--torch)}
+html.v2 .forge-kiln,html.v2 .forge-side{background:linear-gradient(#24201a,#191a16);color:var(--parchment);box-shadow:inset 0 0 0 1.5px #ea872f40,0 18px 34px -18px #191a16}
+html.v2 .forge-side :focus-visible,html.v2 .forge .forge-side .forge-btn:focus-visible{outline-color:var(--torch)}
+html.v2 .forge-side .forge-quiet,html.v2 .forge-side-h{color:var(--parchment)}
+html.v2 .forge-side .forge-quiet{box-shadow:inset 0 0 0 1.5px #fdf5cc80}
+html.v2 .forge-side .forge-quiet:hover{background:#fdf5cc14;box-shadow:inset 0 0 0 1.5px var(--parchment)}
+html.v2 .forge-v-meta{color:#f2c47e}
+html.v2 .forge-v-note,html.v2 .forge-refusal,html.v2 .forge-confirm{background:#983a34;color:var(--parchment)}
+html.v2 .forge-stage{background:radial-gradient(60% 70% at 50% 78%,#7a2e18 0%,#3a1810 52%,#120c08 100%)}
+html.v2 .forge-stage[data-look=holo]{background:radial-gradient(60% 55% at 50% 52%,#173a5c 0%,#0f2442 55%,#0a1830 100%)}
+html.v2 .forge-filter{background:#fdf5cc99}
+html.v2 .forge-empty{color:#2a1a12}
+
+html.v2 .forge-filter[aria-pressed=true]{background:var(--navy);color:var(--parchment)}
+/* Home bento: status and plan stacked beside usage, the hand-off across the bottom */
+.bento{grid-template-columns:minmax(0,7fr) minmax(0,5fr);grid-template-areas:"status usage" "plan usage" "int int"}
+.c-status{grid-area:status}.c-usage{grid-area:usage}.c-plan{grid-area:plan}.c-int{grid-area:int}
+.c-status,.c-usage,.c-plan,.c-int{grid-column:auto}
+.c-usage{align-self:stretch}
+#page-main .pk-sky{width:220px;height:110px;opacity:.85}
+@media (max-width:1100px){ .bento{grid-template-columns:minmax(0,1fr);grid-template-areas:"status" "usage" "plan" "int"} }
+.keyrow .tile:not(.key){background:transparent;box-shadow:none;padding:0;min-height:36px}
+.keyrow .tile.key{font-size:var(--fs-md)}
+.avatar.big svg{width:44px;height:44px}
+#page-main .c-plan .tile.key{display:none}
+#page-main .c-plan .row{grid-template-columns:auto minmax(0,1fr);column-gap:14px}
+#page-main .c-plan .row .tile:last-child{grid-column:auto}
+/* once ink.js has drawn a sheet's border (Rough.js), the CSS wobble border steps aside */
+.sheet:has(> .ink-overlay)::after{content:none}
+
+/* =========================== Greek clay: terracotta warmth, meander structure, black-figure band, galleys on the wave line =========================== */
+html.v2 body,html.v2 .paper{background:radial-gradient(130% 70% at 50% -10%,transparent 55%,#b9583a1f 100%),var(--clay),var(--paper)}
+.appbar{background:linear-gradient(#b9583a12,transparent),var(--clay),var(--paper)}
+.appbar::after{bottom:-15px;height:15px;background:linear-gradient(var(--paper),var(--paper)) 0 0/100% 100%;-webkit-mask:var(--pk-border-meander) 0 0/auto 100% repeat-x;mask:var(--pk-border-meander) 0 0/auto 100% repeat-x;background:var(--navy)}
+.page-head::after{content:"";display:block;height:20px;max-width:380px;margin-top:22px;background:var(--navy);
+  -webkit-mask:var(--pk-border-meander) 0 0/auto 100% repeat-x;mask:var(--pk-border-meander) 0 0/auto 100% repeat-x;opacity:.85}
+html.v2 .sheet{background:radial-gradient(140% 120% at 50% 0%,transparent 70%,#b9583a14),#fffbe6d1}
+/* the vase band: terracotta between two meanders, rowers and a torchbearer in black-figure silhouette */
+.vase-band{position:relative;z-index:1;margin:8px 0 0;height:132px;background:var(--clay),linear-gradient(#c4653f,#b9583a)}
+.vase-band::before,.vase-band::after{content:"";position:absolute;left:0;right:0;height:18px;background:var(--ink-black);
+  -webkit-mask:var(--pk-border-meander) 0 0/auto 100% repeat-x;mask:var(--pk-border-meander) 0 0/auto 100% repeat-x}
+.vase-band::before{top:6px}.vase-band::after{bottom:6px}
+.vase-figs{position:absolute;left:-10%;right:-10%;top:28px;bottom:28px;background:var(--ink-black);
+  -webkit-mask:var(--pk-figure-rower) 0 50%/auto 100% space no-repeat;mask:var(--pk-figure-rower) 0 50%/auto 100% space no-repeat;
+  -webkit-mask-repeat:space no-repeat;mask-repeat:space no-repeat}
+/* the sea foot: galleys riding the wave line */
+.sea-foot{position:relative;height:150px;margin-top:-2px;overflow:hidden}
+#page-main .sea-foot > div{position:absolute;pointer-events:none}
+#page-main .sea-foot .pk-waves-back{left:-40%;right:-40%;bottom:24px;height:90px;background:var(--pk-waves-back) 0 100%/auto 90px repeat-x;opacity:.85}
+#page-main .sea-foot .pk-waves-front{left:-40%;right:-40%;bottom:-6px;height:74px;background:var(--pk-waves-front) 90px 100%/auto 74px repeat-x}
+#page-main .sea-foot .pk-ship{bottom:42px;background:var(--pk-ship) center/contain no-repeat}
+#page-main .sea-foot .s1{left:16%;width:200px;height:127px}
+#page-main .sea-foot .s2{right:20%;width:130px;height:83px;bottom:58px}
+#page-main .page-wrap{padding-bottom:28px}
+/* columns frame the Profile and Settings sheets */
+.pk-column{bottom:0;width:96px;height:300px;background-image:var(--pk-column);background-size:contain;background-position:bottom;background-repeat:no-repeat}
+.pk-column.cl{left:3%}.pk-column.cr{right:3%}
+#page-settings .pk-column.cr{right:3%}
+/* The Forge: deep terracotta clay, ember-dark toward the edges */
+html.v2 .forge-page{background:radial-gradient(120% 95% at 50% 30%,#e0844f33 0%,#b9583a66 50%,#7a2e1fcc 92%,#3a1610ee 100%),var(--clay),#d07a4c}
+html.v2 .forge-title,html.v2 .forge-sect{color:#191a16}
+html.v2 .forge-sub,html.v2 .forge-empty{color:#191a16}
+html.v2 .forge-bar{padding-top:18px;position:relative}
+html.v2 .forge-bar::before{content:"";position:absolute;left:0;right:0;top:0;height:16px;background:#191a16;-webkit-mask:var(--pk-border-meander) 0 0/auto 100% repeat-x;mask:var(--pk-border-meander) 0 0/auto 100% repeat-x;opacity:.8}
+html.v2 .forge-filter{background:#fdf5ccb3}
+/* clay mottling: a few large soft warm patches (not tiled, so no seams) under the fine grain */
+html.v2 body,html.v2 .paper{background:radial-gradient(130% 70% at 50% -10%,transparent 55%,#b9583a1f 100%),var(--clay),
+  radial-gradient(40% 30% at 18% 30%,#e9c99a40,transparent 70%),radial-gradient(35% 28% at 80% 62%,#e0b88a38,transparent 70%),radial-gradient(30% 25% at 45% 85%,#e9c99a33,transparent 70%),var(--paper)}
+/* the side tabs stay on the window edges while Home scrolls */
+#page-main .edge-tab{position:fixed;top:calc(50% + var(--bar-h) / 2)}
+.page-head h1{width:fit-content}
+.sheet[data-ink]{border-radius:6px}

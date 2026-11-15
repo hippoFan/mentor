@@ -23,11 +23,15 @@ const CHROME = process.env.MENTOR_CHROME || join(homedir(), '.cache/ms-playwrigh
 const HERE = fileURLToPath(new URL('..', import.meta.url));
 const only = opt('--only', '');
 
-const TYPES = { js: 'text/javascript; charset=utf-8', json: 'application/json; charset=utf-8', ttf: 'font/ttf', html: 'text/html; charset=utf-8' };
+const TYPES = { js: 'text/javascript; charset=utf-8', mjs: 'text/javascript; charset=utf-8', json: 'application/json; charset=utf-8', ttf: 'font/ttf', html: 'text/html; charset=utf-8' };
 const STATIC = [   // fixed patterns, as live.mjs: nothing outside these folders can be named
   [/^\/twin\/([a-z0-9-]+\.js)$/, m => join(HERE, 'twin', m[1])],
   [/^\/vendor\/three\/(build\/three\.(?:module|core)\.js|examples\/jsm\/[A-Za-z0-9_]+(?:\/[A-Za-z0-9_]+)*\.js)$/, m => join(HERE, 'node_modules/three', m[1])],
   [/^\/fonts\/(InterVariable\.ttf)$/, m => join(HERE, 'fonts', m[1])],
+  [/^\/vendor\/gsap\/((?:utils\/)?[A-Za-z0-9-]+\.js)$/, m => join(HERE, 'node_modules/gsap', m[1])],
+  [/^\/vendor\/rough\/(rough\.esm\.js)$/, m => join(HERE, 'node_modules/roughjs/bundled', m[1])],
+  [/^\/vendor\/rough-notation\/(rough-notation\.esm\.js)$/, m => join(HERE, 'node_modules/rough-notation/lib', m[1])],
+  [/^\/vendor\/perfect-freehand\/(index\.mjs)$/, m => join(HERE, 'node_modules/perfect-freehand/dist/esm', m[1])],
 ];
 async function loadCases() {
   if (!existsSync(CASES)) return [];
