@@ -153,7 +153,7 @@ All settings are environment variables in `mentor/.env` (see [`env.example`](env
 | `MENTOR_EFFORT` | no | Claude effort, `low` (default, fastest) or `medium` |
 | `MENTOR_GEMINI_MODELS` | no | Gemini models to try in order (default `gemini-3.5-flash,gemini-3.5-flash-lite,gemini-2.5-flash`); on a rate limit or overload Mentor moves to the next |
 | `MENTOR_GEMINI_THINKING` | no | `LOW` (default) or `MINIMAL` (faster) |
-| `MENTOR_OUT_SCALE` | no | `1` = 640×360 video back into the call (default), `2` = 1280×720 |
+| `MENTOR_OUT` | no | `portrait` (default, 540×960, fills the caller's phone) or `landscape` (640×360 × `MENTOR_OUT_SCALE`) |
 | `MENTOR_GREETING` | no | The first line Mentor says |
 | `CHERT_API_KEY`, `CHERT_PROJECT_ID` | for recap/status | Project API key (`ftk_…`) from the Chert Developer page |
 | `MENTOR_RECAP_TO` | for recap | Phone number to text the recap to (must be verified on the project) |
@@ -193,6 +193,10 @@ mentor/
   blocks, so the history stays valid and the cache keeps hitting.
 - **Looks like it belongs on a phone.** Thin yellow rings with a soft shadow, solid labels that never overlap (each tries
   left, right, above and below its mark and takes the first free spot), and the step as a floating pill. Inter, bundled.
+- **AR wires.** When a wire or cable has to go somewhere, Mentor draws it in place on your video: a bowed cable from
+  where it starts to the hole it goes into, with light flowing toward the target.
+- **Works on your camera, not FaceTime's frame.** The incoming picture arrives with black bars; Mentor finds the real
+  image, crops to it (a bigger, clearer view for the brain) and sends portrait video back so it fills your screen.
 - **Marks fade.** Arrows clear after 25 seconds of silence, so stale arrows never point at a spot the camera has
   moved away from. If your camera turns off, Mentor drops the old frame instead of judging an old view.
 - **Greets on time.** FaceTime hangs up on an agent that stays silent for 10 seconds after connecting, so the greeting

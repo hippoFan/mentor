@@ -14,7 +14,7 @@ import {
 import { createBrain } from './brain.mjs';
 import { runAgent } from './chert-rooms.mjs';
 import { greetOnBridgeReady } from './greet.mjs';
-import { FPS, HEIGHT, WIDTH, frameJpeg, outJpeg, render, rotate, snapshotPng } from './overlay.mjs';
+import { FPS, HEIGHT, WIDTH, contentBox, crop, frameJpeg, outJpeg, render, rotate, snapshotPng } from './overlay.mjs';
 import { startLive } from './live.mjs';
 
 // Accept the common alternative names for the same keys.
@@ -60,11 +60,16 @@ const agent = defineAgent({
     let upright = null;      // cached RGBA upright version of `raw`
     let uprightOf = null;
     let currentSid = null;   // only the newest video track is read; older loops exit
+    let box = null, boxAge = 0;   // where the caller's real picture sits inside the FaceTime frame
     const getLatest = () => {
       if (!raw) return null;
       if (uprightOf !== raw) {
         const rgba = raw.frame.convert(VideoBufferType.RGBA);
-        upright = rotate({ data: rgba.data, width: rgba.width, height: rgba.height }, raw.rotation);
+        const up = rotate({ data: rgba.data, width: rgba.width, height: rgba.height }, raw.rotation);
+        if (!box || ++boxAge > 30 || box.fw !== up.width || box.fh !== up.height) {
+          box = { ...contentBox(up), fw: up.width, fh: up.height }; boxAge = 0;
+        }
+        upright = crop(up, box);
         uprightOf = raw;
       }
       return upright;
@@ -109,6 +114,17 @@ const agent = defineAgent({
     frame();
     await ctx.room.localParticipant.publishTrack(track, { source: TrackSource.SOURCE_CAMERA });
     const timer = setInterval(frame, 1000 / FPS);
+    // "Tester" snapshots: what Mentor saw and what it sent, every 3 s, saved locally in runs/<call>/frames/ for review.
+    await mkdir(`${runDir}frames`, { recursive: true });
+    let shot = 0;
+    const shotTimer = setInterval(async () => {
+      const now = getLatest(); if (!now) return;
+      const n = String(++shot).padStart(3, '0');
+      try {
+        await writeFile(`${runDir}frames/${n}-in.jpg`, (await frameJpeg(now, 720)).jpeg);
+        await writeFile(`${runDir}frames/${n}-out.jpg`, await outJpeg(80));
+      } catch { /* best effort */ }
+    }, 3000);
     let pushing = false;   // the monitor gets the same picture as the caller, twice a second
     const monitorTimer = setInterval(() => {
       if (pushing) return;
@@ -122,7 +138,10 @@ const agent = defineAgent({
     let turnSeq = 0, stepNo = 0;
     const recap = [];
     const session = VOICE ? new voice.AgentSession({
-      stt: new elevenlabs.STT({ model: 'scribe_v2_realtime', languageCode: 'en' }),
+      // Snappier turns in a noisy room: commit after 0.5 s of silence, and ignore quieter (farther) voices.
+      stt: new elevenlabs.STT({ model: 'scribe_v2_realtime', languageCode: 'en',
+        serverVad: { vadSilenceThresholdSecs: 0.5, vadThreshold: 0.6, minSpeechDurationMs: 150, minSilenceDurationMs: 300 } }),
+      turnDetection: 'vad', minEndpointingDelay: 0.4, maxEndpointingDelay: 2.0,
       tts: new elevenlabs.TTS({
         model: 'eleven_flash_v2_5',
         ...(process.env.ELEVEN_VOICE_ID ? { voiceId: process.env.ELEVEN_VOICE_ID } : {}),
@@ -136,6 +155,7 @@ const agent = defineAgent({
       if (ended || !text) return;
       live.send({ type: 'say', text, ms });
       if (!session) { console.log(`[say:muted] ${text}`); return; }
+      console.log(`[speak] ${text.slice(0, 80)}`);
       try { session.say(text); } catch (error) { console.error('[mentor] say failed', error?.message || error); }
     };
     // Saves brain requests (the free Gemini tier is ~20/day/model): a bare acknowledgement gets no model call.
@@ -174,6 +194,7 @@ const agent = defineAgent({
       ended = true;
       clearInterval(timer);
       clearInterval(monitorTimer);
+      clearInterval(shotTimer);
       live.send({ type: 'call', state: 'ended' });
       ctx.room.off(RoomEvent.TrackSubscribed, maybeVideo);
       ctx.room.off(RoomEvent.TrackUnsubscribed, lostVideo);
@@ -218,7 +239,7 @@ const agent = defineAgent({
     });
 
     // The Mac hangs up if it hears nothing within 10 s of bridge_ready: greet then, with a fixed line (no model wait).
-    const stopGreeting = greetOnBridgeReady(ctx.room, () => { caption = 'Show me your project'; live.send({ type: 'step', text: caption }); say(GREETING); });
+    const stopGreeting = greetOnBridgeReady(ctx.room, () => { console.log('[mentor] FaceTime ready: greeting'); caption = 'Show me your project'; live.send({ type: 'step', text: caption }); say(GREETING); });
     ctx.addShutdownCallback(async () => stopGreeting());
   },
 });

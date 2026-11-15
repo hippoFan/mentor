@@ -20,6 +20,10 @@ export const pointingRules = units => `Pointing: "marks" are drawn on their live
 Point at the exact spot (the hole, port, LED, or pin header
 region). Prefer marking a region you are sure of over a single pin you are not. Leave "marks" empty when nothing
 needs pointing at, or when the image is missing or unclear. Use kind "circle" to highlight, "arrow" to direct.
+To show where a wire or cable goes, use kind "wire": x,y is where it starts (the part or pin it comes from) and x2,y2 is
+the hole or pin it goes into; Mentor draws the wire in place on their video. For non-wire marks set x2 and y2 to -1.
+First identify the exact board or part from what you see (e.g. Arduino UNO R3 vs UNO R4 WiFi: different USB ports,
+USB-B vs USB-C, and LED positions) and point at that board's real parts, never a generic layout.
 "step" is a short title for the current step (max 8 words). Set "done" true only when the whole task is finished.
 "note" is one line for the after-call recap (what was done or decided this turn), or empty.`;
 
@@ -36,12 +40,14 @@ export const SCHEMA = {
       items: {
         type: 'object',
         additionalProperties: false,
-        required: ['label', 'x', 'y', 'kind'],
+        required: ['label', 'x', 'y', 'kind', 'x2', 'y2'],
         properties: {
           label: { type: 'string' },
           x: { type: 'integer' },
           y: { type: 'integer' },
-          kind: { type: 'string', enum: ['arrow', 'circle'] },
+          kind: { type: 'string', enum: ['arrow', 'circle', 'wire'] },
+          x2: { type: 'integer' },   // wire only: where the wire goes in; -1 otherwise
+          y2: { type: 'integer' },
         },
       },
     },
@@ -124,7 +130,7 @@ export class ClaudeBrain {
     const w = image?.width || 1, h = image?.height || 1;
     out.marks = image
       ? (out.marks || []).slice(0, 3)
-          .map(m => ({ ...m, x: m.x / w, y: m.y / h }))
+          .map(m => ({ ...m, x: m.x / w, y: m.y / h, x2: m.x2 >= 0 ? m.x2 / w : -1, y2: m.y2 >= 0 ? m.y2 / h : -1 }))
           .filter(m => m.x >= 0 && m.x <= 1 && m.y >= 0 && m.y <= 1)
       : [];
     out.ms = ms;

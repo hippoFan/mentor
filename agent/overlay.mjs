@@ -6,9 +6,12 @@ import { createCanvas, GlobalFonts, ImageData } from '@napi-rs/canvas';
 
 GlobalFonts.registerFromPath(fileURLToPath(new URL('./fonts/InterVariable.ttf', import.meta.url)), 'Inter');
 
-const K = Number(process.env.MENTOR_OUT_SCALE || 1);   // 1 = 640x360 (Chert starter size); 2 = 1280x720
-export const WIDTH = 640 * K;
-export const HEIGHT = 360 * K;
+// The caller holds a phone upright, so by default Mentor sends portrait video that fills their screen.
+// MENTOR_OUT=landscape restores the Chert starter's 640x360 (x MENTOR_OUT_SCALE).
+const PORTRAIT = (process.env.MENTOR_OUT || 'portrait') !== 'landscape';
+const K = PORTRAIT ? 1.5 : Number(process.env.MENTOR_OUT_SCALE || 1);
+export const WIDTH = PORTRAIT ? 540 : 640 * K;
+export const HEIGHT = PORTRAIT ? 960 : 360 * K;
 export const FPS = 15;
 
 const ACCENT = '#FFC845';   // Mentor yellow: only Mentor's own marks
@@ -24,7 +27,9 @@ let src = createCanvas(16, 16);   // holds the caller frame at its native size; 
  * @param {number} w source width  @param {number} h source height
  */
 export function fitRect(w, h) {
-  const s = Math.min(WIDTH / w, HEIGHT / h);
+  // Fill the screen when the shapes are close (crop at most ~15% a side); otherwise show the whole frame.
+  const cover = Math.max(WIDTH / w, HEIGHT / h), contain = Math.min(WIDTH / w, HEIGHT / h);
+  const s = cover / contain <= 1.35 ? cover : contain;
   const dw = w * s, dh = h * s;
   return { x: (WIDTH - dw) / 2, y: (HEIGHT - dh) / 2, w: dw, h: dh };
 }
@@ -60,8 +65,9 @@ export function render(frame, marks = [], opts = {}) {
 
   const pulse = 1 + 0.04 * Math.sin(tick * 0.35);   // a slight pulse so a mark reads as live, not painted on
   const pts = marks.map(m => ({ ...m, px: rect.x + m.x * rect.w, py: rect.y + m.y * rect.h }));
+  for (const m of pts) if (m.kind === 'wire' && m.x2 >= 0) drawWire(m.px, m.py, rect.x + m.x2 * rect.w, rect.y + m.y2 * rect.h, tick);
   for (const c of layoutCallouts(pts)) {
-    if (c.kind === 'circle') drawLeader(c.join, c.px, c.py);
+    if (c.kind === 'circle' || c.kind === 'wire') drawLeader(c.join, c.px, c.py);
     else drawArrow(c.px, c.py, c.join);
     drawRing(c.px, c.py, 15 * K * pulse);
     drawBox(c);
@@ -159,6 +165,24 @@ function drawArrow(x, y, tail) {
   shadow(false);
 }
 
+// AR wire: where a jumper goes, from (x1,y1) to (x2,y2): a curved cable with light flowing along it toward the
+// destination, an end ring at the destination, so the caller sees the wire "placed" before touching anything.
+function drawWire(x1, y1, x2, y2, tick) {
+  const mx = (x1 + x2) / 2, my = (y1 + y2) / 2, len = Math.hypot(x2 - x1, y2 - y1) || 1;
+  const bow = Math.min(90 * K, len * 0.28);                   // bow sideways like a real jumper wire
+  const cx = mx + (-(y2 - y1) / len) * bow, cy = my + ((x2 - x1) / len) * bow;
+  const path = () => { g.beginPath(); g.moveTo(x1, y1); g.quadraticCurveTo(cx, cy, x2, y2); };
+  shadow(true);
+  g.lineCap = 'round';
+  g.lineWidth = 6 * K; g.strokeStyle = 'rgba(255,200,69,0.35)'; path(); g.stroke();   // the cable body
+  shadow(false);
+  g.lineWidth = 2.5 * K; g.strokeStyle = ACCENT; g.setLineDash([10 * K, 12 * K]);
+  g.lineDashOffset = -tick * 2.2 * K; path(); g.stroke();                               // light flowing to the target
+  g.setLineDash([]);
+  g.fillStyle = ACCENT; g.beginPath(); g.arc(x1, y1, 4.5 * K, 0, Math.PI * 2); g.fill();   // start of the wire
+  drawRing(x2, y2, 12 * K * (1 + 0.08 * Math.sin(tick * 0.5)));                           // where it goes in
+}
+
 // The current step, as a floating dark pill centred near the bottom (the caller's view stays uncovered).
 function drawCaption(text) {
   g.font = FONT(600, 14);
@@ -210,6 +234,34 @@ export function rotate(f, quarterTurns) {
     o[di] = data[si]; o[di + 1] = data[si + 1]; o[di + 2] = data[si + 2]; o[di + 3] = data[si + 3];
   }
   return { data: o, width: ow, height: oh };
+}
+
+/**
+ * Finds the real picture inside a FaceTime frame (which arrives pillarboxed / letterboxed in black) so Mentor works on
+ * the caller's camera only: a bigger, clearer image for the brain and a screen-filling picture for the caller.
+ * @returns {{x:number,y:number,w:number,h:number}}
+ */
+export function contentBox(f) {
+  const { width: w, height: h, data } = f;
+  const lit = (x, y) => { const i = (y * w + x) * 4; return data[i] + data[i + 1] + data[i + 2] > 60; };
+  const colLit = x => { let n = 0; for (let y = 0; y < h; y += Math.max(1, h >> 5)) n += lit(x, y); return n > 3; };
+  const rowLit = y => { let n = 0; for (let x = 0; x < w; x += Math.max(1, w >> 5)) n += lit(x, y); return n > 3; };
+  let x0 = 0, x1 = w - 1, y0 = 0, y1 = h - 1;
+  while (x0 < x1 && !colLit(x0)) x0++;
+  while (x1 > x0 && !colLit(x1)) x1--;
+  while (y0 < y1 && !rowLit(y0)) y0++;
+  while (y1 > y0 && !rowLit(y1)) y1--;
+  const bw = x1 - x0 + 1, bh = y1 - y0 + 1;
+  if (bw < w * 0.25 || bh < h * 0.25) return { x: 0, y: 0, w, h };   // mostly dark scene: keep everything
+  return { x: x0, y: y0, w: bw, h: bh };
+}
+
+/** A copy of one rectangle of an RGBA frame. */
+export function crop(f, b) {
+  if (b.x === 0 && b.y === 0 && b.w === f.width && b.h === f.height) return f;
+  const o = new Uint8Array(b.w * b.h * 4);
+  for (let y = 0; y < b.h; y++) o.set(f.data.subarray(((b.y + y) * f.width + b.x) * 4, ((b.y + y) * f.width + b.x + b.w) * 4), y * b.w * 4);
+  return { data: o, width: b.w, height: b.h };
 }
 
 /** JPEG of the raw caller frame (no overlays), downscaled so the long side is at most `max` px, for the brain. */
