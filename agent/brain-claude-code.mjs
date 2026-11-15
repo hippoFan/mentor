@@ -12,7 +12,7 @@ import { createInterface } from 'node:readline';
 import { SCAN_SCHEMA, sanitizeScan, scanSystem } from './scan.mjs';
 import { RECAP_ASK, RECAP_SCHEMA, SCHEMA, SYSTEM, normalizeReply, sanitizeReply } from './brain.mjs';
 
-const MODEL = process.env.MENTOR_CLAUDE_CODE_MODEL || 'sonnet';
+const MODEL = process.env.MENTOR_CLAUDE_CODE_MODEL || 'claude-opus-5-5';   // owner testing: Opus 5.5 (smarter; a little slower than Sonnet)
 const BIN = process.env.MENTOR_CLAUDE_BIN || 'claude';
 
 function start(schema, system, dir, effort = 'low') {
