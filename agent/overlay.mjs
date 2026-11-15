@@ -12,7 +12,7 @@ const PORTRAIT = (process.env.MENTOR_OUT || 'portrait') !== 'landscape';
 const K = PORTRAIT ? 1.5 : Number(process.env.MENTOR_OUT_SCALE || 1);
 export const WIDTH = PORTRAIT ? 540 : 640 * K;
 export const HEIGHT = PORTRAIT ? 960 : 360 * K;
-export const FPS = 15;
+export const FPS = Number(process.env.MENTOR_FPS || 24);   // video back into the call (Chert starter used 15)
 
 const ACCENT = '#FFC845';   // Mentor yellow: only Mentor's own marks
 const INK = '#1D1D1F';

@@ -64,6 +64,7 @@ const agent = defineAgent({
     let uprightOf = null;
     let currentSid = null;   // only the newest video track is read; older loops exit
     let box = null, boxAge = 0;   // where the caller's real picture sits inside the FaceTime frame
+    const stats = { inFrames: 0, outFrames: 0, renderMs: 0, size: '' };   // logged every 5 s: is the lag ours or the network's?
     const getLatest = () => {
       if (!raw) return null;
       if (uprightOf !== raw) {
@@ -85,6 +86,7 @@ const agent = defineAgent({
         for await (const ev of new VideoStream(track)) {
           if (currentSid !== sid) break;
           raw = { frame: ev.frame, rotation: Number(ev.rotation) || 0 };
+          stats.inFrames++;
         }
       } catch (error) { console.error('[mentor] caller video stopped', error?.message || error); }
     };
@@ -113,12 +115,20 @@ const agent = defineAgent({
     const frame = () => {
       if (marks.length && Date.now() - marksAt > MARK_TTL_MS) marks = [];
       const latest = getLatest();
+      const t0 = performance.now();
       const px = render(latest, marks.length ? tracker.update(latest) : marks, { caption, tick: tick++, speaking });
       source.captureFrame(new VideoFrame(px, WIDTH, HEIGHT, VideoBufferType.RGBA));
+      stats.outFrames++; stats.renderMs += performance.now() - t0; if (latest) stats.size = `${latest.width}x${latest.height}`;
     };
     frame();
     await ctx.room.localParticipant.publishTrack(track, { source: TrackSource.SOURCE_CAMERA });
     const timer = setInterval(frame, 1000 / FPS);
+    const statsTimer = setInterval(() => {
+      if (!stats.outFrames) return;
+      const line = `[video] in ${(stats.inFrames / 5).toFixed(1)} fps (${stats.size || 'no camera'}) -> out ${(stats.outFrames / 5).toFixed(1)} fps, ${(stats.renderMs / stats.outFrames).toFixed(1)} ms/frame`;
+      console.log(line); live.send({ type: 'video', in: stats.inFrames / 5, out: stats.outFrames / 5, ms: stats.renderMs / stats.outFrames, size: stats.size });
+      stats.inFrames = 0; stats.outFrames = 0; stats.renderMs = 0;
+    }, 5000);
     // "Tester" snapshots: what Mentor saw and what it sent, every 3 s, saved locally in runs/<call>/frames/ for review.
     await mkdir(`${runDir}frames`, { recursive: true });
     let shot = 0;
@@ -224,6 +234,7 @@ const agent = defineAgent({
       clearInterval(monitorTimer);
       clearInterval(shotTimer);
       clearInterval(seeTimer);
+      clearInterval(statsTimer);
       live.send({ type: 'call', state: 'ended' });
       ctx.room.off(RoomEvent.TrackSubscribed, maybeVideo);
       ctx.room.off(RoomEvent.TrackUnsubscribed, lostVideo);
