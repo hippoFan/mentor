@@ -50,6 +50,12 @@ own testing only.
 - **Never for anyone else.** It must not serve judges, users or the public. Their calls use an API key
   (`ODY_BRAIN=gemini` or `claude`).
 
+## Caller consent and the page channel
+- Ody asks the caller to agree before any frame or snapshot is processed or saved (`consent.mjs`); "stop recording"
+  stops snapshots for the rest of the call. Call folders are deleted after 7 days. See [PRIVACY.md](PRIVACY.md).
+- The laptop page can send two things back to the agent: the parts on its 3D stage and "analyze this combo". Both are
+  Origin-checked, schema-validated (≤200 parts, names ≤60 chars) and rate-limited, and they never reach a shell or a URL.
+
 ## Secrets
 - Keys live in `.env`, which is git-ignored. Only `env.example` is committed.
 - `npm run check-keys` verifies keys without printing them and without spending model requests.

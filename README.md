@@ -7,7 +7,7 @@
 **FaceTime an AI that can see your project and point at it.**
 
 You call it from the normal FaceTime app. It looks through your camera, draws on *your own live video*,<br>
-talks you through the build one step at a time, and texts you a voyage log when you hang up.
+talks you through the build one step at a time, builds a 3D hologram twin on your laptop that you can take apart with your hands, and texts you a voyage log when you hang up.
 
 [![HackUTA 2026](https://img.shields.io/badge/HackUTA-2026-1D1D1F?style=flat-square)](#built-at-hackuta-2026)
 [![FaceTime via Chert](https://img.shields.io/badge/FaceTime-via%20Chert-1D1D1F?style=flat-square)](https://www.trychert.com)
@@ -76,6 +76,15 @@ Ody is that person, on a FaceTime call:
 | **Portrait, full-screen** | It finds your real picture inside FaceTime's frame, drops the self-view, and sends portrait video back that fills your phone. |
 | **Voyage log** | After the call: the steps as legs of a journey, each with its annotated picture, ending in "Home". It also writes `sketch.ino` and `diagram.json` for the Wokwi simulator. |
 | **Laptop screen + tester panel** | Judges see the call live. Press **T** to see what Ody sees, where it pointed, latency per answer, the model and the frame rate. |
+| **Asks first** | Before it sees anything, Ody says what it uses (Google, ElevenLabs, LiveKit) and waits for "yes". Nothing is sent to a model, scanned or saved until then; "stop recording" stops snapshots. Notice at [`PRIVACY.md`](PRIVACY.md) and `localhost:8790/privacy`. |
+| **Hears you, not the room** | Background-voice cancellation (Krisp, via LiveKit) keeps the closest speaker before speech-to-text. Optional wake word (`ODY_WAKE=1`): Ody only acts on sentences that start with "Ody, …". |
+| **Remembers your build** | Every turn carries the project so far: parts you added by voice and their pins, wiring progress, removed parts, edits, the confirmed model. Ask "where's my LED?" before plugging it in and Ody says it isn't plugged in yet and circles pin 6. |
+| **Voice circuit builder** | "Ody, add a distance sensor." It picks safe pins (no shorts, a resistor on every LED, one part per pin), shows the build on a 3D breadboard with neon jumpers, writes the Arduino sketch, and guides you one wire at a time ("done" → next). On your phone it draws the wire from the exact board pin to the breadboard hole. |
+| **Parts to get** | Ask for something Ody can't model yet ("add a buzzer") and it goes on a checklist with the suggested part and how to wire it. "I have the buzzer" ticks it off; "what do I still need?" reads the list. |
+| **Exact model + researched insides** | A scan guesses the exact model from visible cues ("Galaxy S23 Ultra, about 60% sure, from the four-lens column"); "it's actually an S24" corrects it. Ody then researches what's inside (public teardowns, sources kept) so the explode view shows the real layers in teardown order. Labelled "Researched estimate". |
+| **Take it apart, rebuild it** | After an explode, every part is real and movable (mouse or pinch). Remove parts ("remove the Wi-Fi module"), edit them ("change the tip to a brush", "make the clip gold"), then "combine": the rest snaps back together and Ody judges the new design: works or not, pros, cons, what it needs. **B** flips before/after. |
+| **Hand control** | MediaPipe on the laptop: a live hand cursor, pinch to grab and turn, two hands to zoom, flick to remove, thumbs-up to combine, fist to reset. Ignores people behind you. The hand video never leaves the laptop. |
+| **Backup demo + watchdog** | `npm run watchdog -- --arm 60` watches the hub, agent and line, and replays a real recorded call (honestly badged "Replay") if a live call can't happen. Every rehearsal call is recorded on the laptop. |
 | **Robust brain** | Gemini, Claude, or (owner testing only) Claude Code. On a rate limit it falls through Gemini models. Acknowledgements like "okay" skip the model. |
 
 <table>
@@ -148,6 +157,9 @@ FaceTime **Video** the number `chert dev` shows, and open **http://localhost:879
 <summary><b>Test without a phone</b></summary>
 
 ```sh
+npm run usage                                               # ElevenLabs characters used + per-call counts
+npm run watchdog -- --arm 60                                # judging: status board + automatic backup demo
+npm run replay -- logs/sessions/<file>.jsonl                # replay a recorded call into the laptop page
 npm run try-brain -- photo.jpg "where is the USB port?"   # one brain answer drawn on a photo
 ODY_TEST_TURN="what is this board?" npm start            # terminal 1
 npm run e2e -- photo.jpg ./e2e-out                          # terminal 2: a fake caller streams the photo, saves Ody's
@@ -178,6 +190,12 @@ Settings are named `ODY_*`. The older `MENTOR_*` names still work.
 | `ODY_SHOW_SPEAKING` | no | `1` shows Ody's voice bars on the caller's video |
 | `ODY_SCAN_EFFORT` | no | Effort for "scan this" 3D scans (default `medium`) |
 | `ODY_MAX_TURNS` | no | Brain calls per call before Ody wraps up (default 60) |
+| `ODY_CONSENT` | no | `1` (default): ask the caller to agree before anything is processed. `0` skips it (owner testing only) |
+| `ODY_WAKE` | no | `1`: Ody only answers sentences that start with "Ody, …" (recommended in noisy rooms) |
+| `ODY_NOISE` | no | `bvc` (default, background-voice cancellation), `nc` (noise only) or `off` |
+| `ODY_RESEARCH` / `ODY_RESEARCH_WEB` | no | Researched interiors after a scan (default on) / allow a web search for them (default off) |
+| `ODY_CIRCUIT` | no | Voice circuit builder (default on) |
+| `ODY_KEEP_DAYS` | no | Delete local call folders older than this (default 7) |
 | `ELEVEN_VOICE_ID`, `ODY_GREETING` | no | Ody's voice and first line |
 | `CHERT_API_KEY`, `CHERT_PROJECT_ID`, `ODY_RECAP_TO`, `ODY_PUBLIC_URL`, `ODY_SEND_RECAP=1` | for the iMessage recap | Off unless `ODY_SEND_RECAP=1` |
 </details>
@@ -197,7 +215,15 @@ agent/
   data/uno-pins.json   UNO header hole positions (from wokwi-elements, MIT)
   live.mjs, monitor.html   the laptop screen (local only, Origin/Host checked)
   recap.mjs, send-recap.mjs, serve-recaps.mjs   voyage log, Wokwi files, iMessage
-  check-keys.mjs, status.mjs   key + line checks
+  headers.mjs          custom PCBs: read headers on a 2.54 mm grid, snap to the real holes
+  scan.mjs, research.mjs   scan anything; exact model guess; researched interiors (cached)
+  circuit.mjs, connect.mjs   voice circuit builder; phone-side "how to connect it" wires
+  twin-voice.mjs, modify.mjs, combo.mjs, checklist.mjs, memory.mjs   voice part control, edits, build analysis, parts list, project memory
+  consent.mjs          the consent gate, "stop recording", 7-day retention
+  hub.mjs              always-on laptop page (token-gated publish, page -> agent channel)
+  watchdog.mjs, replay.mjs, record.mjs, build-backup.mjs   judging-day safety net
+  twin.html, twin/     the laptop app: hologram, parts, interiors, circuit, hands, edits
+  check-keys.mjs, status.mjs, usage.mjs   key, line and usage checks
   chert-rooms.mjs, greet.mjs   from Chert's video-agent starter
   test/                e2e fake caller, tracker, recap, dashboard mock
 docs/                  README media and the film
@@ -219,9 +245,10 @@ docs/                  README media and the film
 
 ## Security and privacy
 
-See **[SECURITY.md](SECURITY.md)**. In short:
+See **[SECURITY.md](SECURITY.md)** and the caller-facing **[PRIVACY.md](PRIVACY.md)**. In short:
+- Ody asks the caller to agree before anything is processed, and "stop recording" stops snapshots.
 - Audio and frames go to ElevenLabs and your chosen brain.
-- Everything else stays on the host laptop in `runs/`.
+- Everything else stays on the host laptop in `runs/`, deleted after 7 days.
 - The laptop screen accepts only its own page, and recap links expire after 24 h.
 - Model output is untrusted.
 - The `claude-code` brain is for the owner's own testing only.
@@ -232,13 +259,15 @@ See **[SECURITY.md](SECURITY.md)**. In short:
 - FaceTime routes the video through Chert's Mac and LiveKit, which adds roughly half a second each way.
 - Gemini's free tier allows about 20 requests a day per model. Use a paid key for a full demo day.
 - Pin-level pointing on tiny headers depends on how close and how sharp the camera is.
+- Scanned objects and researched interiors are estimates, and are labelled that way. Library boards are exact.
+- The circuit builder models about 10 common parts; anything else goes on the parts checklist.
 
 ## Built at HackUTA 2026
 
 Built for the theme *Homer's Odyssey*, for **Best Use of FaceTime (Chert)** and **Best Use of ElevenLabs**.
 
-**Built with:** Chert · LiveKit Agents · ElevenLabs (Scribe v2 realtime, Flash v2.5) · Gemini · Claude ·
-@napi-rs/canvas · Node.js · [HyperFrames](https://github.com/heygen-com/hyperframes) (the film)
+**Built with:** Chert · LiveKit Agents (+ Krisp background-voice cancellation) · ElevenLabs (Scribe v2 realtime, Flash v2.5) ·
+Gemini · Claude · three.js · MediaPipe Tasks Vision · @napi-rs/canvas · Node.js · [HyperFrames](https://github.com/heygen-com/hyperframes) (the film)
 
 ## License
 
