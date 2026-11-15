@@ -38,6 +38,30 @@ try {
   const ev = async e => (await cdp('Runtime.evaluate', { expression: e, awaitPromise: true, returnByValue: true })).result?.result?.value;
   await cdp('Runtime.enable'); await cdp('Page.enable');
   const only = process.argv[2];
+  if (only === 'v6') {   // floating pill + avatar, bigger motifs, rip stability: v6-*.png
+    const snap = async (name, clip) => { const r = await cdp('Page.captureScreenshot', { format: 'png', ...(clip ? { clip: { ...clip, scale: 1 } } : {}) }); await writeFile(join(SHOTS, `v6-${name}.png`), Buffer.from(r.result.data, 'base64')); };
+    const move = async (x, y) => cdp('Input.dispatchMouseEvent', { type: 'mouseMoved', x, y });
+    const rip = () => ev('(() => { const r = document.querySelector("#page-main .home-rip").getBoundingClientRect(); return [Math.round(r.x), Math.round(r.y), Math.round(r.width), Math.round(r.height)].join(","); })()');
+    for (const [w, h] of [[1440, 900], [1280, 800]]) {
+      await cdp('Emulation.setDeviceMetricsOverride', { width: w, height: h, deviceScaleFactor: 1, mobile: false });
+      await cdp('Page.navigate', { url: `http://localhost:${PORT}/#main` });
+      for (let i = 0; i < 60 && !(await ev('!!(window.odyPages && window.odyAccount && document.fonts.status === "loaded")')); i++) await sleep(200);
+      await move(w / 2, h / 2); await sleep(300); await snap(`pill-lifted-at-load-${w}x${h}`, { x: w / 2 - 260, y: 0, width: 520, height: 80 });
+      await sleep(2600); await snap(`pill-settled-${w}x${h}`, { x: w / 2 - 260, y: 0, width: 520, height: 80 });
+      await move(w / 2, 32); await sleep(400); await snap(`pill-hover-${w}x${h}`, { x: w / 2 - 260, y: 0, width: 520, height: 80 });
+      await move(w / 2, h / 2); await sleep(2600);
+      for (const p of ['main', 'argo', 'forge', 'settings']) { await ev(`window.odyPages.goTo(${JSON.stringify(p)})`); await sleep(3000); await snap(`${p}-${w}x${h}`); }
+      await ev('window.odyPages.goTo("main")'); await sleep(2000);
+      const r0 = await rip(); await ev('document.querySelector("#page-main .main-scroll").scrollTop = 600'); await sleep(300); const r1 = await rip();
+      await snap(`rip-scrolled-${w}x${h}`, { x: 0, y: 0, width: 300, height: h });
+      await cdp('Emulation.setDeviceMetricsOverride', { width: w - 180, height: h - 100, deviceScaleFactor: 1, mobile: false }); await sleep(500); const r2 = await rip();
+      await cdp('Emulation.setDeviceMetricsOverride', { width: w, height: h, deviceScaleFactor: 1, mobile: false }); await sleep(500); const r3 = await rip();
+      await snap(`rip-after-resize-${w}x${h}`, { x: 0, y: 0, width: 300, height: h });
+      console.log(w, 'rip rect top / scrolled / resized / back:', r0, '|', r1, '|', r2, '|', r3);
+      await ev('document.querySelector("#page-main .main-scroll").scrollTop = 0');
+    }
+    throw Object.assign(new Error('v6 done'), { done: true });
+  }
   if (only === 'v5') {   // the bar on every page and mid-move: v5-*.png
     const snap = async (name, clip) => { const r = await cdp('Page.captureScreenshot', { format: 'png', ...(clip ? { clip: { ...clip, scale: 1 } } : {}) }); await writeFile(join(SHOTS, `v5-${name}.png`), Buffer.from(r.result.data, 'base64')); };
     for (const [w, h] of [[1440, 900], [1280, 800]]) {
@@ -95,10 +119,10 @@ try {
       const s = await cdp('Page.captureScreenshot', { format: 'png' });
       await writeFile(join(SHOTS, `v3-${p}-${w}x${h}.png`), Buffer.from(s.result.data, 'base64'));
       if (p === 'main') {
-        await ev('document.getElementById("page-main").scrollTop = 1e6'); await sleep(400);
+        await ev('document.querySelector("#page-main .main-scroll").scrollTop = 1e6'); await sleep(400);
         const b = await cdp('Page.captureScreenshot', { format: 'png' });
         await writeFile(join(SHOTS, `v3-main-bottom-${w}x${h}.png`), Buffer.from(b.result.data, 'base64'));
-        await ev('document.getElementById("page-main").scrollTop = 0');
+        await ev('document.querySelector("#page-main .main-scroll").scrollTop = 0');
       }
     }
     if (!only || only === 'menu') {

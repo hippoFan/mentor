@@ -175,6 +175,15 @@ function callPill() {
   sync();
 }
 
+// float and settle: the nav pill and the avatar lift (shadow on) at load and after each move, then sink back over ~2 s
+function lift(...els) {
+  for (const el of els) {
+    if (!el) continue;
+    el.classList.add('lift'); void el.offsetWidth;
+    requestAnimationFrame(() => requestAnimationFrame(() => el.classList.remove('lift')));
+  }
+}
+
 function init() {
   root.classList.add('v2');
   for (const h of document.querySelectorAll('#pages > .page h1')) h.tabIndex = -1;
@@ -224,6 +233,8 @@ function init() {
   const first = location.hash.slice(1);
   goTo(PAGES.includes(first) ? first : 'main', { push: false });
   callPill();
+  lift(document.querySelector('.appbar .pager'), $('profile-btn'));
+  onPage(() => lift(document.querySelector('.appbar .pager')));
 }
 
 if (v2) init();

@@ -633,7 +633,6 @@
 <section id="page-argo" class="page" data-page="argo" aria-labelledby="argo-h">
 <header>
   <button class="btn quiet small rail-toggle v2-only" id="rail-toggle" type="button" aria-expanded="false" aria-controls="rail">Call panel</button>
-  <h1 class="t-page v2-only" id="argo-h">Argo</h1>
   <span class="mark" aria-hidden="true"></span>
   <span class="wordmark">Ody</span>
   <span class="replay" id="replayBadge" role="status" hidden></span>
@@ -644,6 +643,7 @@
 </header>
 <main>
   <section class="theatre" aria-label="Your project in 3D, and the caller’s camera">
+    <h1 class="t-page argo-title v2-only" id="argo-h">Argo</h1>
     <div class="stage" id="stage" tabindex="0" role="application" aria-roledescription="3D view" aria-describedby="stagekeys"
       aria-label="3D twin of your project">
       <canvas id="view" aria-hidden="true"></canvas>
@@ -818,11 +818,12 @@
 </section>
 
 <section id="page-main" class="page paper" data-page="main" aria-labelledby="main-h" hidden>
+  <a class="home-rip" href="#argo" data-go="argo" data-rip aria-label="Go to Argo" title="Go to Argo"><span class="rip-sea" aria-hidden="true"></span><span class="rip-fibres" aria-hidden="true"></span></a>
+  <a class="home-column" href="#forge" data-go="forge" aria-label="Go to The Forge" title="Go to The Forge"><span class="col-body" aria-hidden="true"><span class="col-ember"></span></span></a>
+  <div class="main-scroll">
   <div class="pk-layer pk-sky parallax" data-depth="0.2" aria-hidden="true"></div>
   <div class="pk-layer pk-sprig-l parallax" data-depth="0.5" aria-hidden="true"></div>
   <div class="pk-layer pk-sprig-r parallax" data-depth="0.5" aria-hidden="true"></div>
-  <a class="home-rip" href="#argo" data-go="argo" data-rip aria-label="Go to Argo" title="Go to Argo"><span class="rip-sea" aria-hidden="true"></span><span class="rip-fibres" aria-hidden="true"></span></a>
-  <a class="home-column" href="#forge" data-go="forge" aria-label="Go to The Forge" title="Go to The Forge"><span class="col-body" aria-hidden="true"><span class="col-ember"></span></span></a>
   <div class="page-wrap">
   <header class="page-head rise">
     <p class="eyebrow" id="main-greet">Welcome aboard</p>
@@ -855,6 +856,7 @@
     <div class="pk-ship s1 bob" data-depth="0.7"></div>
     <div class="pk-ship s2 bob" data-depth="0.5" style="--d:-2.4s"></div>
     <div class="pk-waves-front" data-depth="0.9"></div>
+  </div>
   </div>
 </section>
 

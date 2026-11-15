@@ -636,3 +636,73 @@ html.v2 #page-argo .rail .ck-row input{accent-color:var(--walnut)}
 html.v2 #page-argo .rail :focus-visible{outline-color:var(--oak-text)}
 @media (max-width:1279px){ html.v2 #page-argo .rail{box-shadow:inset 0 0 0 1px #c99a5f55,inset 0 0 24px #2a170b66,0 0 0 3px var(--espresso),0 0 0 5px var(--walnut),0 30px 60px -10px #000e} }
 html.v2 #page-argo .rail .voyage.empty .route{opacity:.9}
+
+/* =========================== v6: no bar — a floating nav pill and a floating avatar over full-height pages =========================== */
+:root{--bar-h:0px;--pill-clear:78px}
+.appbar{position:fixed;top:0;left:0;right:0;height:0;padding:0;background:none!important;backdrop-filter:none;display:block;z-index:60;pointer-events:none}
+.appbar::after,.appbar .bar-tint,.appbar .bar-left{display:none}
+.appbar .pager{position:fixed;left:50%;top:12px;transform:translateX(-50%);pointer-events:auto;background:var(--parchment);
+  box-shadow:inset 0 0 0 1px #12233f2e,0 1px 2px #12233f1f;
+  transition:background-color .82s cubic-bezier(.22,1,.36,1),box-shadow .82s cubic-bezier(.22,1,.36,1)}
+body[data-page="argo"] .appbar .pager{background:var(--bar-navy);box-shadow:inset 0 0 0 1px #fdf5cc40,0 1px 2px #0006;transition:background-color .74s cubic-bezier(.62,.02,.22,1) .14s,box-shadow .74s cubic-bezier(.62,.02,.22,1) .14s}
+body[data-page="forge"] .appbar .pager{background:var(--bar-ember);box-shadow:inset 0 0 0 1px #fdf5cc40,0 1px 2px #3a161066;transition:background-color .74s cubic-bezier(.62,.02,.22,1) .14s,box-shadow .74s cubic-bezier(.62,.02,.22,1) .14s}
+.appbar .bar-right{position:fixed;top:10px;right:var(--pad-x);padding:0;pointer-events:auto;display:flex;align-items:flex-start;gap:12px}
+.appbar .callpill{margin-top:26px}
+.menu{top:108px}
+/* float and settle: a lifted shadow on a pseudo-element (opacity only); it fades over 2 s, hover/focus lifts it again in 0.22 s */
+.appbar .pager::after,.appbar .avatar::after{content:"";position:absolute;inset:0;border-radius:inherit;pointer-events:none;z-index:-1;opacity:0;
+  box-shadow:0 18px 34px -10px #12233f8c,0 6px 12px -4px #12233f4d;transition:opacity 2s cubic-bezier(.22,1,.36,1)}
+.appbar .avatar{position:relative;isolation:auto}
+.appbar .pager.lift::after,.appbar .avatar.lift::after{opacity:1;transition:none}
+.appbar .pager:hover::after,.appbar .pager:focus-within::after,.appbar .avatar:hover::after,.appbar .avatar:focus-visible::after,.appbar .avatar[aria-expanded=true]::after{opacity:1;transition:opacity .22s cubic-bezier(.22,1,.36,1)}
+.appbar .avatar{box-shadow:0 0 0 3px var(--parchment),0 0 0 4.5px #12233fb3,0 2px 4px #12233f33}
+.appbar .avatar:hover{box-shadow:0 0 0 3px var(--parchment),0 0 0 4.5px var(--navy),0 2px 4px #12233f33}
+.appbar .avatar[aria-expanded=true]{box-shadow:0 0 0 3px var(--parchment),0 0 0 5px var(--accent),0 2px 4px #12233f33}
+@media (prefers-reduced-motion:reduce){ .appbar .pager::after,.appbar .avatar::after{opacity:.35!important} }
+html.reduce-motion .appbar .pager::after,html.reduce-motion .appbar .avatar::after{opacity:.35!important}
+/* pages run to the top edge; content starts below the floating pill */
+html.v2 #pages{top:0}
+html.v2 #page-argo{padding-top:calc(var(--pill-clear) - 14px)}
+.page-wrap{padding-top:calc(var(--pill-clear) + 12px)}
+html.v2 .forge-head{padding-top:calc(var(--pill-clear) + 4px)}
+html.v2 .forge-scroll{top:calc(var(--pill-clear) + clamp(120px,15vh,150px))}
+html.v2 .forge-viewer{top:calc(var(--pill-clear) + clamp(100px,13vh,130px))}
+html.v2 .forge-page{background:radial-gradient(120% 95% at 50% 30%,#e0844f33 0%,#b9583a66 50%,#7a2e1fcc 92%,#3a1610ee 100%),var(--clay),#d07a4c}
+html.v2 .panel{top:calc(var(--pill-clear) + 30px)}
+/* Home scrolls inside .main-scroll; the torn edge and the column belong to the page, so their geometry never changes with scroll */
+html.v2 #page-main{overflow:hidden}
+#page-main .main-scroll{position:absolute;inset:0;overflow-x:hidden;overflow-y:auto;scrollbar-width:thin;scrollbar-color:#12233f40 transparent}
+#page-main .home-rip{position:absolute;top:0;bottom:0}
+#page-main .home-column{position:absolute;bottom:0}
+/* bigger motifs (scaled down on smaller windows) */
+#page-main .pk-sky{right:clamp(140px,14vw,220px);top:22px;width:clamp(260px,26vw,400px);height:clamp(130px,13vw,200px)}
+html.v2 .forge-page::before{right:clamp(150px,14vw,230px);top:calc(var(--pill-clear) - 6px);width:clamp(140px,13vw,200px);height:clamp(140px,13vw,200px)}
+html.v2 .forge-hearth{height:clamp(190px,26vh,270px)}
+html.v2 .forge-hearth::before{width:clamp(190px,17vw,270px);height:clamp(168px,15vw,238px);margin-left:calc(clamp(190px,17vw,270px) / -2);bottom:16px}
+html.v2 .forge-scroll{padding-bottom:clamp(220px,30vh,300px);-webkit-mask-image:linear-gradient(#000 calc(100% - 230px),transparent calc(100% - 110px));mask-image:linear-gradient(#000 calc(100% - 230px),transparent calc(100% - 110px))}
+html.v2 .forge-olive{width:clamp(220px,20vw,300px);height:clamp(66px,6vw,90px)}
+
+/* =========================== v6b: spacing, the seam column, one title size, Argo's title over the stage =========================== */
+:root{--pill-top:clamp(10px,1.3vw,20px);--fs-title:clamp(44px,4vw,60px);--pill-clear:calc(var(--pill-top) + 66px)}
+.appbar .pager{top:var(--pill-top)}
+.appbar .bar-right{top:calc(var(--pill-top) - 2px)}
+.menu{top:calc(var(--pill-top) + 98px)}
+/* one page-title style on every page */
+.t-hero,#main-h,html.v2 .forge-title,html.v2 #argo-h{font:400 var(--fs-title)/1 var(--f-title);letter-spacing:-.01em}
+/* the column spans the full height and stands on the seam between Home and The Forge (half of it shows on Home) */
+#page-main .home-column{top:0;bottom:0;height:auto;right:-46px;width:92px}
+#page-main .home-column:hover,#page-main .home-column:focus-visible,#page-main .home-column:active{transform:none}
+#page-main .home-column::before{height:44px}
+#page-main .home-column .col-body{top:43px}
+#page-main .page-wrap{padding-right:max(var(--pad-x),96px)}
+/* Argo's title sits over the 3D view, top-left; it fades away during a call or while you work the stage, and back after */
+html.v2 #page-argo .argo-title{position:absolute;left:24px;top:18px;z-index:6;margin:0;pointer-events:none;color:var(--parchment);
+  text-shadow:0 2px 12px #0a1830cc;opacity:1;transition:opacity 2s cubic-bezier(.22,1,.36,1)}
+html.v2 body[data-phase="live"] #page-argo .argo-title,html.v2 #page-argo.stage-busy .argo-title{opacity:0}
+html.v2 #page-argo .stage-head{top:calc(30px + var(--fs-title))}
+html.v2 #page-argo > header .status,html.v2 #page-argo > header .replay:not([hidden]){margin-left:auto}
+html.v2 #page-argo > header .replay:not([hidden]) + .status{margin-left:0}
+html.v2 #page-argo > header{min-height:52px}
+html.reduce-motion #page-argo .argo-title{transition:none}
+@media (prefers-reduced-motion:reduce){ html.v2 #page-argo .argo-title{transition:none} }
+html.v2 .forge-page::before{top:calc(var(--pill-top) + 4px);width:clamp(120px,11vw,170px);height:clamp(120px,11vw,170px)}

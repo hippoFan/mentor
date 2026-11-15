@@ -210,3 +210,12 @@ function setRail(open) {
 railBtn?.addEventListener('click', () => setRail(!argo.classList.contains('rail-open')));
 addEventListener('keydown', e => { if (e.key === 'Escape' && argo?.classList.contains('rail-open') && matchMedia('(max-width: 1279px)').matches) { setRail(false); railBtn.focus(); } });
 $('stage')?.addEventListener('pointerdown', () => { if (argo?.classList.contains('rail-open')) setRail(false); });
+
+// ---------- Argo's title over the stage: hidden while you work the 3D view (and during a call, by CSS), back when you leave ----------
+const stageEl = $('stage'), theatreEl = document.querySelector('#page-argo .theatre');
+const busy = on => argo?.classList.toggle('stage-busy', on);
+stageEl?.addEventListener('pointerdown', () => busy(true));
+stageEl?.addEventListener('focusin', () => busy(true));
+stageEl?.addEventListener('keydown', () => busy(true));
+for (const id of ['t-hands', 't-explode', 't-holo', 't-reset']) $(id)?.addEventListener('click', () => busy(true));
+addEventListener('pointerdown', e => { if (theatreEl && !theatreEl.contains(e.target)) busy(false); }, true);
