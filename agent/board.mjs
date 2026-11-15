@@ -10,6 +10,7 @@
 //   resolveMarks(marks, b)                                           // marks with pin/pin2 snapped to their holes
 import { readFileSync } from 'node:fs';
 import { partTable, UNO_MODELS } from './twin/partpins.js';
+import { customBoard } from './headers.mjs';
 
 const json = p => JSON.parse(readFileSync(new URL(p, import.meta.url), 'utf8'));
 export const UNO = json('./data/uno-pins.json');
@@ -171,7 +172,7 @@ export function boardFromH(H, size, model = current) {
   // Convex and clockwise on screen (y down) as A -> B -> C -> D: we always see the board's top face, never its mirror.
   for (let i = 0; i < 4; i++) if (cross(quad[i], quad[(i + 1) % 4], quad[(i + 2) % 4]) <= 0) return null;
   const area = Math.abs(quad.reduce((s, p, i) => s + p[0] * quad[(i + 1) % 4][1] - quad[(i + 1) % 4][0] * p[1], 0)) / 2;
-  if (area < 0.02 * w * h || area > 25 * w * h) return null;
+  if (area < (spec.minArea ?? 0.02) * w * h || area > 25 * w * h) return null;
   // Pose from the homography with an assumed phone focal length (~ 66 deg across the long side).
   const f = 0.8 * Math.max(w, h), cx = w / 2, cy = h / 2;
   const Kinv = [1 / f, 0, -cx / f, 0, 1 / f, -cy / f, 0, 0, 1];
@@ -233,22 +234,34 @@ export function createBoard(corners, size, model = 'uno-r3') {
  * Also makes this the board the tracker follows (boardFromH's default and TRACK_POINTS).
  */
 export function boardFromReply(board, size, frame = null) {
-  if (!board || !BOARD_MODELS.has(board.model)) return null;
+  if (!board) return null;
+  // Not a library board (model "other", a sensor breakout, a custom PCB): read its pin headers live (headers.mjs).
+  if (!BOARD_MODELS.has(board.model)) return frame && board.headers?.length ? customFromReply(board, frame) : null;
   const spec = boardSpec(board.model);
   current = spec; TRACK_POINTS = spec.track;
   const corners = frame ? refineCorners(frame, board.corners, spec).corners : board.corners;
   return createBoard(corners, size, spec);
 }
 
+/** A custom board from the headers the brain saw; becomes the tracked board when at least one header checks out. */
+function customFromReply(board, frame) {
+  const c = customBoard(frame, board);
+  const why = c.rejected.map(r => `${r.label}: ${r.reason}`).join('; ');
+  if (!c.board) { if (why) console.log(`[board] custom board not registered (${why})`); return null; }
+  console.log(`[board] custom board: ${c.headers.map(h => `${h.label} ${h.rows}x${h.count}`).join(', ')}${why ? `; skipped ${why}` : ''}`);
+  current = c.spec; TRACK_POINTS = c.spec.track;
+  return c.board;
+}
+
 // ---------- snapping the model's corners to the real header holes ----------
 
 /** Luma of an RGBA frame as Float32 (0..255). */
-function luma(frame) {
+export function luma(frame) {
   const { data, width: w, height: h } = frame, out = new Float32Array(w * h);
   for (let i = 0, j = 0; i < out.length; i++, j += 4) out[i] = 0.299 * data[j] + 0.587 * data[j + 1] + 0.114 * data[j + 2];
   return { d: out, w, h };
 }
-function sample({ d, w, h }, x, y) {
+export function sample({ d, w, h }, x, y) {
   if (!(x >= 0 && y >= 0 && x < w - 1 && y < h - 1)) return NaN;
   const x0 = x | 0, y0 = y | 0, ax = x - x0, ay = y - y0, i = y0 * w + x0;
   return (d[i] * (1 - ax) + d[i + 1] * ax) * (1 - ay) + (d[i + w] * (1 - ax) + d[i + w + 1] * ax) * ay;

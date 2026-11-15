@@ -285,11 +285,14 @@ const agent = defineAgent({
         if (!draw && reply.marks.length) console.log(`[overlay] ${reply.marks.length} marks not drawn (not asked for; MENTOR_OVERLAY=${OVERLAY})`);
         last = { marks: reply.marks, say: reply.say, board: reply.board };
         // The laptop's 3D twin (/twin) builds the recognised board; tell it once per new part.
-        if (reply.board?.model && reply.board.model !== 'none' && reply.board.model !== lastPart) {
+        if (reply.board?.model && reply.board.model !== 'none' && reply.board.model !== 'other' && reply.board.model !== lastPart) {
           lastPart = reply.board.model;
           live.send({ type: 'part', model: lastPart, label: { 'uno-r3': 'Arduino UNO R3', 'uno-r4-wifi': 'Arduino UNO R4 WiFi' }[lastPart] || 'Board' });
         }
         tracker.seed(now, marks, reply.board);   // the brain judged `now` (the frame from the turn start): track from there;
+        // A board nobody mapped (custom PCB): headers.mjs read its headers; send that board to the laptop twin once.
+        const cb = tracker.board?.part?.custom;
+        if (cb && cb.key !== lastPart) { lastPart = cb.key; live.send({ type: 'part', model: 'custom', label: cb.name, custom: cb }); }
         // with UNO corners the tracker registers the board and snaps pin marks/wires to their exact holes (board.mjs)
         live.send({ type: 'turn', brain: brain.provider, model: reply.model || '', ms: reply.ms, marks: reply.marks, board: { model: reply.board?.model || 'none', corners: tracker.board ? tracker.board.corners() : (reply.board?.corners || []) }, step: reply.step, done: !!reply.done });
         if (reply.step) caption = reply.step;
