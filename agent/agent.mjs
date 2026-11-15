@@ -138,7 +138,10 @@ const agent = defineAgent({
       if (!session) { console.log(`[say:muted] ${text}`); return; }
       try { session.say(text); } catch (error) { console.error('[mentor] say failed', error?.message || error); }
     };
+    // Saves brain requests (the free Gemini tier is ~20/day/model): a bare acknowledgement gets no model call.
+    const ACKS = /^(ok(ay)?|yeah|yep|yes|sure|mm+|hm+|uh+|um+|cool|nice|got it|alright|thanks|thank you)[.!?]*$/i;
     const onTurn = async heard => {
+      if (ACKS.test(heard.trim())) { console.log(`[heard] ${heard} (acknowledgement, no brain call)`); live.send({ type: 'heard', text: heard }); return; }
       const seq = ++turnSeq;
       console.log(`[heard] ${heard}`);
       live.send({ type: 'heard', text: heard });
