@@ -20,6 +20,7 @@ import { FPS, HEIGHT, WIDTH, contentBox, crop, focusFor, maskSelfView, frameJpeg
 import { startLive } from './live.mjs';
 import { createMarkTracker } from './tracker.mjs';
 import { cropJpeg, isScanIntent, scanLine } from './scan.mjs';
+import { researchInterior } from './research.mjs';
 import { OVERLAY, overlayFrame, shouldDraw } from './overlay-policy.mjs';
 
 // Accept the common alternative names for the same keys.
@@ -222,6 +223,13 @@ const agent = defineAgent({
         const cut = await cropJpeg(image.jpeg, spec.bbox, 1024);
         const n = ++scanNo;
         live.send({ type: 'scan', id: n, at: Date.now(), spec, photo: cut.jpeg.toString('base64'), crop: cut.rect, ms: spec.ms, model: spec.model || '' });
+        // Researched interior: what's inside this object (public teardowns), so the laptop's explode is realistic.
+        // Runs in the background (20-30 s, cached per object); the scan works without it.
+        if (spec.known_model === 'none' && process.env.MENTOR_RESEARCH !== '0') {
+          researchInterior(brain, spec, { image: cut })
+            .then(i => { if (i && !ended) { live.send({ type: 'interior', id: n, interior: i }); console.log(`[scan] interior researched for ${spec.name}: ${i.layers?.length || 0} layers${i.cached ? ' (cached)' : ''}`); } })
+            .catch(e => console.warn('[scan] interior research failed:', e?.message || e));
+        }
         if (spec.known_model !== 'none' && spec.known_model !== lastPart) {
           lastPart = spec.known_model;
           live.send({ type: 'part', model: lastPart, label: { 'uno-r3': 'Arduino UNO R3', 'uno-r4-wifi': 'Arduino UNO R4 WiFi' }[lastPart] });

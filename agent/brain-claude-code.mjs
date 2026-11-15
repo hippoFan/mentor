@@ -102,6 +102,35 @@ export class ClaudeCodeBrain {
     } finally { p.child.kill(); }
   }
 
+  /** "Researched interiors" (research.mjs): a separate locked-down process; with web it may use only WebSearch + WebFetch. */
+  async research(scan, opts = {}) {
+    const { claudeResearch } = await import('./research.mjs');
+    return claudeResearch({ bin: BIN, model: process.env.MENTOR_RESEARCH_MODEL || MODEL, scan, ...opts });
+  }
+
+  /**
+   * Generic one-shot structured request in its own locked-down process (e.g. the circuit planner, circuit.mjs).
+   * @param {string} prompt @param {object} schema JSON schema of the answer
+   * @param {{jpeg: Buffer, width: number, height: number} | null} [image] @param {{system?: string, timeout?: number}} [opts]
+   * @returns {Promise<{data: any, ms: number, model: string}>}
+   */
+  async structured(prompt, schema, image = null, { system = 'Return only the JSON the schema asks for.', timeout = 60_000 } = {}) {
+    this.dir ??= await mkdtemp(join(tmpdir(), 'mentor-cc-'));
+    const p = start(schema, system, this.dir);
+    const t0 = Date.now();
+    try {
+      const content = [];
+      if (image) content.push({ type: 'image', source: { type: 'base64', media_type: 'image/jpeg', data: image.jpeg.toString('base64') } },
+        { type: 'text', text: `[camera frame ${image.width}x${image.height}px]` });
+      content.push({ type: 'text', text: String(prompt) });
+      const d = await p.ask(content, timeout);
+      const data = d.structured_output || JSON.parse(d.result);
+      const ms = Date.now() - t0;
+      console.log(`[brain:claude-code] structured ${MODEL} ${ms}ms`);
+      return { data, ms, model: `claude-code ${MODEL}` };
+    } finally { p.child.kill(); }
+  }
+
   /** Recap from the transcript, in a one-shot process with the recap schema. */
   async finish() {
     if (!this.messages.length) return null;

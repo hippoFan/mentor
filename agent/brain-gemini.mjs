@@ -106,6 +106,45 @@ export class GeminiBrain {
     return { ...sanitizeScan(raw, 1000, 1000), ms, model };
   }
 
+  /** "Researched interiors" (research.mjs): what is inside a scanned object. A separate request, not in the conversation. */
+  async research(scan, opts = {}) {
+    const { geminiResearch } = await import('./research.mjs');
+    return geminiResearch({ client: this.client, models: GEMINI_MODELS, skipped, scan, ...opts });
+  }
+
+  /**
+   * Generic one-shot structured request (not added to the conversation), e.g. the circuit planner (circuit.mjs).
+   * Falls through GEMINI_MODELS like every other call.
+   * @param {string} prompt @param {object} schema JSON schema of the answer
+   * @param {{jpeg: Buffer} | null} [image] @param {{system?: string, timeout?: number}} [opts]
+   * @returns {Promise<{data: any, ms: number, model: string}>}
+   */
+  async structured(prompt, schema, image = null, { system = '', timeout = 30_000 } = {}) {
+    const parts = [];
+    if (image) parts.push({ inlineData: { mimeType: 'image/jpeg', data: image.jpeg.toString('base64') } }, { text: '[camera frame]' });
+    parts.push({ text: String(prompt) });
+    const t0 = Date.now();
+    let last;
+    for (const model of GEMINI_MODELS) {
+      if (skipped.has(model) && model !== GEMINI_MODELS.at(-1)) continue;
+      try {
+        const response = await this.client.models.generateContent({ model, contents: [{ role: 'user', parts }], config: {
+          ...(system ? { systemInstruction: system } : {}), responseMimeType: 'application/json', responseJsonSchema: schema, maxOutputTokens: 4000,
+          thinkingConfig: model.startsWith('gemini-2') ? { thinkingBudget: 0 } : { thinkingLevel: ThinkingLevel.LOW }, httpOptions: { timeout } } });
+        const ms = Date.now() - t0;
+        console.log(`[brain:gemini] structured ${model} ${ms}ms`);
+        return { data: JSON.parse(response.text || ''), ms, model };
+      } catch (error) {
+        last = error;
+        const status = Number(error?.status || error?.code);
+        if (![429, 503, 404, 500].includes(status)) throw error;
+        skipped.add(model);
+        console.warn(`[brain:gemini] ${model} unavailable (${status}); trying the next model`);
+      }
+    }
+    throw last;
+  }
+
   /** Same contract as ClaudeBrain.finish. */
   async finish() {
     if (!this.messages.length) return null;

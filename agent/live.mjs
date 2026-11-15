@@ -112,6 +112,7 @@ export async function createLiveServer() {
       if (event.type === 'brain') state.brain = event.brain;
       if (event.type === 'part') state.part = event;
       if (event.type === 'scan') { state.scans.push(event); state.scans = state.scans.slice(-6); }   // ~150 KB each with the photo
+      if (event.type === 'interior') { const sc = state.scans.find(x => x.id === event.id); if (sc) sc.interior = event.interior; }   // replayed with its scan
       if (event.type === 'turn') { state.turns.push(event); state.turns = state.turns.slice(-40); }
       if (event.type === 'heard' || event.type === 'say') { state.transcript.push(event); state.transcript = state.transcript.slice(-40); }
       const msg = JSON.stringify(event);
