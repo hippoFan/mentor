@@ -1,0 +1,226 @@
+/* The laptop app's Odyssey layer (design guide v2) over twin.html's own styles: the three-page shell, Argo restyled
+   into the temple-framed stage, and Main. Loaded after /twin/odyssey.css. --ody-v2 tells twin/pages.js this sheet
+   is here; without it (an older page server) the page stays the one-page app and nothing below applies. */
+:root{--ody-v2:1}
+
+/* ---------- legacy tokens re-pointed at the deck palette (twin.html's rules keep working, in the new colours) ---------- */
+html.v2{
+  --app-bg:var(--night); --ink:var(--bone); --app-muted:var(--mist); --quiet:var(--muted); --line:#3a4660; --deck:var(--pitch);
+  --athena:var(--torch); --wine:var(--sail); --amber:var(--gold); --stage:#070d1b; --app-gutter:16px;
+  --display:var(--f-body); --ui:var(--f-body);
+  --rail-w:360px;
+}
+html.v2 body{display:block;height:100dvh;overflow:hidden;background:var(--night);color:var(--bone);font:400 18px/1.45 var(--f-body)}
+html.v2 #pages{display:block;position:fixed;inset:0;overflow:hidden}
+html.v2 #pages > .page{position:absolute;inset:0;overflow:hidden}
+html.v2 #pages > .page[hidden]{display:none}
+html.v2 #page-argo.off{visibility:hidden;pointer-events:none}
+html.v2 .page h1[tabindex="-1"]:focus{outline:none}   /* a page switch moves focus to its title for screen readers; no ring on a heading */
+html.v2 kbd{font:600 15px/1 var(--f-body);border-radius:0;opacity:.85;padding:3px 5px;min-width:20px}
+
+/* =========================== ARGO =========================== */
+html.v2 #page-argo{display:grid;grid-template-rows:auto minmax(0,1fr);padding:0 calc(var(--tab-w) + 32px) 0 32px}
+html.v2 .argo-sky{position:absolute;inset:0;z-index:0}
+
+/* header: the title left, the call's state and the app's buttons right */
+html.v2 #page-argo > header{position:relative;z-index:5;display:flex;align-items:center;gap:12px;padding:58px 0 10px;min-width:0}
+html.v2 #page-argo > header .mark,html.v2 #page-argo > header .wordmark,html.v2 #page-argo > header .tagline{display:none}
+html.v2 #argo-h{margin-right:auto}
+html.v2 #page-argo .status{margin-left:0;border:0;border-radius:0;background:var(--pitch);color:var(--bone);font:600 18px/1 var(--f-body);min-height:44px;padding:0 16px 0 14px}
+html.v2 #page-argo .status .dot{width:12px;height:12px;background:var(--muted)}
+html.v2 #page-argo .status .brain{color:var(--mist)}
+html.v2 body[data-phase="live"] #page-argo .status{background:var(--brick);color:var(--bone)}
+html.v2 body[data-phase="live"] #page-argo .status .dot{background:var(--bone);box-shadow:none}
+html.v2 body[data-phase="live"] #page-argo .status .brain{color:var(--bone)}
+html.v2 body[data-phase="reconnecting"] #page-argo .status{background:var(--pitch);color:var(--gold);box-shadow:inset 0 0 0 2px var(--gold)}
+html.v2 body[data-replay] #page-argo .status{background:var(--plum)}
+html.v2 #page-argo .replay{margin-left:0;border:0;border-radius:0;background:var(--plum);color:var(--bone);font:600 17px/1 var(--f-body);min-height:44px;padding:0 14px;max-width:300px}
+html.v2 #page-argo .consent{border:0;border-radius:0;background:var(--slate-deep);color:var(--bone);font:600 17px/1 var(--f-body);min-height:44px;display:inline-flex;align-items:center;padding:0 14px}
+html.v2 #page-argo .consent[data-state="declined"]{background:var(--pitch);color:var(--gold)}
+html.v2 #page-argo .consent[hidden]{display:none}
+html.v2 .btn-top{border:0;border-radius:0;min-height:44px;padding:0 14px;background:transparent;color:var(--bone);box-shadow:inset 0 0 0 2px #fdf5cc99;
+  font:700 16px/1 var(--f-caps);letter-spacing:.03em;transition:transform var(--t-hover) var(--ease-out)}
+html.v2 a.btn-top{color:var(--bone)}
+html.v2 .btn-top:hover{background:transparent;box-shadow:inset 0 0 0 2px var(--bone);transform:translateY(-2px)}
+html.v2 .btn-top[aria-expanded="true"]{background:var(--bone);color:var(--pitch)}
+html.v2 .btn-top kbd{font-family:var(--f-body)}
+
+/* the temple: rail | gap | pilaster | sea stage | pilaster, a palmette lintel over the stage */
+html.v2 #page-argo > main{position:relative;z-index:2;display:grid;padding:0;gap:0;min-height:0;
+  grid-template-columns:var(--rail-w) 20px 30px minmax(0,1fr) 30px;grid-template-rows:48px minmax(0,1fr)}
+html.v2 #page-argo .lintel{grid-column:3/6;grid-row:1;background:linear-gradient(var(--plum),var(--plum)) left bottom/100% 8px no-repeat,var(--o-frieze) 0 0/40px 40px repeat-x,var(--stone)}
+html.v2 #page-argo .pilaster{grid-row:2;position:relative;background:linear-gradient(90deg,#0002,transparent 30%,transparent 70%,#0002),var(--stone)}
+html.v2 #page-argo .pilaster::before{content:"";position:absolute;left:0;right:0;top:0;height:16px;background:var(--o-checker) 0 0/16px 16px;border-bottom:3px solid var(--plum)}
+html.v2 #page-argo .pl{grid-column:3}
+html.v2 #page-argo .pr{grid-column:5}
+html.v2 #page-argo .theatre{grid-column:4;grid-row:2;border-radius:0;box-shadow:none;background:radial-gradient(60% 55% at 50% 52%,#173457 0%,#0c1830 55%,#070d1b 100%)}
+html.v2 #page-argo .stage{background:transparent}
+html.v2 #page-argo .stage:focus-visible{border-radius:0;outline:3px solid var(--torch);outline-offset:-3px}
+html.v2 #page-argo .vignette{background:radial-gradient(120% 90% at 50% 45%,transparent 60%,rgba(4,8,16,.6) 100%)}
+
+/* the stage's own furniture: name top left, the caller's phone top right, view modes beside it, tools above the sea */
+html.v2 #page-argo .stage-head{left:20px;top:16px;right:calc(var(--pip) + 48px)}
+html.v2 #page-argo{--pip:150px}
+html.v2 #page-argo .stage-head h2{font:400 34px/1.05 var(--f-title);color:var(--holo);max-width:16ch}
+html.v2 body:not(.has-part) #page-argo .stage-head h2{color:var(--mist)}
+html.v2 #page-argo .stage-head p{font:500 17px/1.35 var(--f-body);color:var(--mist)}
+html.v2 #page-argo .pointing{border-radius:0;background:var(--pitch);border:2px solid var(--torch);font:600 16px/1.2 var(--f-body)}
+html.v2 #page-argo .estimate{border-radius:0;font:600 16px/1 var(--f-body);padding:5px 8px}
+html.v2 #page-argo .modes{top:auto;bottom:156px;right:16px;border-radius:0;background:var(--pitch);border:0;padding:4px}
+html.v2 #page-argo .modes button{border-radius:0;font:700 16px/1 var(--f-caps);color:var(--bone);min-height:40px;padding:0 12px}
+html.v2 #page-argo .modes button[aria-selected="true"]{background:var(--bone);color:var(--pitch)}
+html.v2 #page-argo .phone{left:auto;right:16px;top:16px;bottom:auto;width:var(--pip);border-radius:0;padding:0;background:#000;box-shadow:0 0 0 2px var(--bone),0 10px 24px #0008}
+html.v2 #page-argo .phone .screen{border-radius:0}
+html.v2 #page-argo .phone .chip{right:6px;bottom:6px}
+html.v2 #page-argo .waiting{left:24px;right:calc(var(--pip) + 40px);bottom:170px}
+html.v2 #page-argo .waiting h2{font:600 40px/1.1 var(--f-body);color:var(--bone);max-width:20ch}
+html.v2 #page-argo .waiting p{font:500 19px/1.4 var(--f-body);color:var(--mist)}
+html.v2 body[data-phase="reconnecting"] #page-argo .waiting h2{color:var(--gold)}
+html.v2 #page-argo .consent-card{border-radius:var(--r-slab);background:var(--pitch);border:0;box-shadow:0 0 0 3px var(--torch)}
+html.v2 #page-argo .consent-card p{font:600 26px/1.15 var(--f-body)}
+html.v2 #page-argo .consent-card .mark{display:none}
+html.v2 #page-argo .toolbar{left:16px;right:16px;transform:none;width:fit-content;margin:0 auto;bottom:98px;border-radius:0;border:0;background:var(--pitch);padding:4px;gap:4px;max-width:calc(100% - 32px);flex-wrap:wrap;justify-content:center}
+html.v2 #page-argo .tool{border-radius:0;font:600 16px/1 var(--f-body);color:var(--bone);min-height:44px;padding:0 12px}
+html.v2 #page-argo .tool:hover{background:#ffffff14}
+html.v2 #page-argo .tool[aria-pressed="true"]{background:var(--bone);color:var(--pitch)}
+html.v2 #page-argo .tool kbd{border-color:currentColor}
+html.v2 #page-argo .chip{border-radius:0;font:600 16px/1 var(--f-body);min-height:36px;background:var(--pitch);color:var(--bone);border:2px solid #fdf5cc99}
+html.v2 #page-argo .tag span{font:600 15px/1 var(--f-body);border-radius:0}
+html.v2 #page-argo .tag.part span{font-size:14px}
+html.v2 #page-argo .labelkey{bottom:150px}
+
+/* swapped: the caller's camera is the hero, the hologram goes into the small window (above the sea) */
+html.v2 body.swapped #page-argo .phone{left:0;top:0;right:0;bottom:0;width:auto;box-shadow:none;z-index:1}
+html.v2 body.swapped #page-argo .stage{right:16px;bottom:100px;border-radius:0;box-shadow:0 0 0 2px var(--holo),0 10px 24px #0008}
+
+/* hands, coach and help cards: pitch slabs */
+html.v2 #page-argo .handview,html.v2 #page-argo .coach,html.v2 #page-argo .handhelp,html.v2 #page-argo .analysis-card{border-radius:var(--r-slab);background:var(--pitch);border:0;box-shadow:0 0 0 2px #fdf5cc55,0 12px 28px #000a}
+html.v2 #page-argo .coach h3,html.v2 #page-argo .handhelp h3{font:700 22px/1.15 var(--f-caps);color:var(--torch)}
+
+/* the rail: a pitch slab beside the temple, its sections headed in Cinzel. The rail is drawn 25% larger so every
+   line of the older 13-15px text reads at 16px or more from 2 m. */
+html.v2 #page-argo .rail{grid-column:1;grid-row:1/3;margin-bottom:56px;background:var(--pitch);border-radius:var(--r-slab);padding:0 14px 12px;
+  zoom:1.25;scrollbar-color:#4a4b42 transparent}
+html.v2 #page-argo .rail section{border-top-color:#34352e}
+html.v2 #page-argo .rail h3{font:700 14px/1.15 var(--f-caps);color:var(--torch);letter-spacing:.03em;margin-bottom:8px}
+html.v2 #page-argo .rail h3 .count{font-family:var(--f-body);color:var(--mist);font-weight:500}
+html.v2 #page-argo .rail .now{top:0;padding-top:10px;background:var(--pitch);box-shadow:0 12px 16px -14px #000}
+html.v2 #page-argo .rail .mood{color:var(--torch);font:600 13px/1.2 var(--f-body)}
+html.v2 #page-argo .rail #step{font:600 19px/1.2 var(--f-body);color:var(--bone)}
+html.v2 #page-argo .rail .empty,html.v2 #page-argo .rail .pins-hint,html.v2 #page-argo .rail .keys,html.v2 #page-argo .rail .privacy,html.v2 #page-argo .rail .caveat{color:var(--mist)}
+html.v2 #page-argo .rail .btn{border-radius:0;border:0;background:transparent;color:var(--bone);box-shadow:inset 0 0 0 2px #fdf5cc99;font:600 14px/1.1 var(--f-body);min-height:36px}
+html.v2 #page-argo .rail .btn.primary{background:var(--torch);color:var(--pitch);box-shadow:0 3px 0 var(--torch-edge);font:700 13px/1.1 var(--f-caps);letter-spacing:.03em}
+html.v2 #page-argo .rail .btn.primary:active{transform:translateY(2px);box-shadow:0 1px 0 var(--torch-edge)}
+html.v2 #page-argo .rail .keys-open{border-radius:0}
+html.v2 #page-argo .rail ul.list li button{border-radius:0}
+
+/* the sea along the bottom, two galleys riding it (decoration: never in the way of a click) */
+html.v2 .argo-sea{position:absolute;left:0;right:0;bottom:0;height:110px;z-index:4;pointer-events:none}
+html.v2 .argo-sea .ship{position:absolute;bottom:12px}
+
+/* tester drawer and shortcut sheet: pitch slabs, read from 2 m */
+html.v2 .panel{border-radius:var(--r-slab) 0 0 var(--r-slab);right:0;top:70px;bottom:20px;background:var(--pitch);border:0;box-shadow:-3px 0 0 var(--torch),0 18px 44px #000c;zoom:1.2;z-index:70}
+html.v2 .panel h2{font:700 20px/1 var(--f-caps);color:var(--torch)}
+html.v2 .panel h3{font:700 13px/1.15 var(--f-caps);color:var(--torch);letter-spacing:.03em}
+html.v2 .keysheet{z-index:80;background:#070d1bcc}
+html.v2 .ks-card{border-radius:var(--r-slab);background:var(--pitch);border:0;box-shadow:0 0 0 3px var(--torch);zoom:1.2}
+html.v2 .ks-card h2{font:400 34px/1 var(--f-title);color:var(--torch)}
+html.v2 .ks-card h3{font:700 14px/1.15 var(--f-caps);color:var(--torch)}
+html.v2 .ks-card .btn{border-radius:0}
+html.v2 .toast-item{border-radius:0;background:var(--pitch);border:0;border-top:2px solid var(--torch);font:500 17px/1.35 var(--f-body)}
+
+@media (prefers-reduced-motion:no-preference){
+  html.v2 #page-argo.enter > header,html.v2 #page-argo.enter > main{animation:ody-rise var(--t-enter) var(--ease-out) both}
+  html.v2 #page-argo.enter > main{animation-delay:calc(140ms + var(--stagger))}
+}
+
+/* =========================== MAIN =========================== */
+html.v2 #page-main{padding:0 var(--pad-x);overflow-x:hidden;overflow-y:auto;scrollbar-width:thin;scrollbar-color:#4a4b42 transparent}
+#page-main .main-sheet{position:relative;min-height:100%;padding-bottom:88px}
+#page-main .ink{top:58px;bottom:44px;left:calc(-1 * var(--pad-x));right:calc(-1 * var(--pad-x))}
+#page-main .skyline{left:calc(-1 * var(--pad-x));right:calc(-1 * var(--pad-x));z-index:1}
+#page-main .main-head{position:relative;z-index:2;display:flex;align-items:center;justify-content:center;gap:28px;padding-top:80px;height:160px}
+#page-main .main-head svg{width:58px;height:82px}
+#page-main .cols{position:relative;z-index:2;display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:36px;margin-top:6px}
+#page-main section + section{margin-top:18px}
+#page-main .row{grid-template-columns:132px 128px minmax(0,1fr)}
+#page-main .row .tile:last-child{overflow-wrap:anywhere}
+#page-main .tile.state.dash{font:600 17px/1.1 var(--f-body)}
+#page-main .voice-row{grid-template-columns:132px minmax(0,1fr)}
+#page-main .meter-tile{flex-direction:column;align-items:stretch;gap:4px;justify-content:center}
+#page-main .meter-top{display:flex;gap:8px}
+#page-main .meter-top .sp{flex:1}
+#page-main .meter{display:flex;gap:3px}
+#page-main .meter i{flex:1;height:14px;background:var(--torch)}
+#page-main .meter i.left{background:transparent;box-shadow:inset 0 0 0 2px #191a1655}
+#page-main .tile.dash .sub{color:var(--mist);font:500 17px/1.25 var(--f-body)}
+#page-main .usage{display:grid;grid-template-columns:repeat(4,1fr);gap:var(--gap)}
+#page-main .tile.dash.wide{margin-top:var(--gap);min-height:52px;gap:12px}
+#page-main .tile.dash.wide small{font:500 16px/1.25 var(--f-body)}
+#page-main .tile.dash.stack{flex-direction:column;align-items:flex-start;justify-content:center;gap:2px}
+#page-main .tile.dash .nt{font:600 19px/1.15 var(--f-body);white-space:nowrap}
+#page-main .usage .tile{flex-direction:column;align-items:flex-start;justify-content:center;min-height:72px;padding:6px 10px;gap:2px}
+#page-main .usage .t-num{font-size:34px}
+#page-main .usage .nt{font:600 19px/1.15 var(--f-body)}
+#page-main .usage small{font:500 16px/1.1 var(--f-body)}
+#page-main .t-note{margin:6px 0 0;font:500 16px/1.35 var(--f-body);color:var(--mist)}
+
+#page-main .keyrow{display:grid;grid-template-columns:132px minmax(0,1fr) 128px;gap:var(--gap);margin-bottom:var(--gap)}
+#page-main .keyrow .btn{min-height:52px;padding:0 10px}
+#page-main .tile.key.long{font-size:19px;line-height:1.05}
+#page-main .keyrow .tile .kt{overflow-wrap:anywhere}
+#page-main .keyrow .badge{white-space:nowrap}
+#page-main .badge.default{color:var(--slate-deep)}
+#page-main button.badge{background:transparent;cursor:pointer;color:var(--slate-deep);min-height:36px;padding:4px 8px;transition:transform var(--t-hover) var(--ease-out)}
+#page-main button.badge:hover{transform:translateY(-2px)}
+#page-main button.badge:focus-visible{outline:3px solid var(--pitch);outline-offset:2px}
+#page-main .key-edit{background:var(--bone);color:var(--pitch);padding:12px 16px 14px;margin:-2px 0 var(--gap);display:grid;gap:10px;box-shadow:inset 0 4px 0 var(--torch)}
+#page-main .kf{display:grid;grid-template-columns:96px minmax(0,1fr);align-items:center;gap:10px}
+#page-main .kf label{font:600 17px/1.2 var(--f-body)}
+#page-main .kf input{min-height:46px;border:2px solid var(--pitch);border-radius:0;background:#fffdf0;color:var(--pitch);font:500 18px/1.2 var(--f-body);padding:0 10px;min-width:0}
+#page-main .kf input:focus-visible{outline:3px solid var(--torch);outline-offset:1px}
+#page-main .kf-acts{display:flex;gap:10px;flex-wrap:wrap}
+#page-main .key-edit .btn.quiet{color:var(--pitch);box-shadow:inset 0 0 0 2px var(--pitch)}
+#page-main .key-edit :focus-visible{outline-color:var(--pitch)}
+#page-main .kf-note{margin:0;font:500 16px/1.35 var(--f-body);color:#4a4636}
+
+#page-main .int-card{flex-direction:column;align-items:stretch;gap:10px;padding:12px 16px 14px}
+#page-main .int-top{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+#page-main .int-top h3{margin:0;font:600 21px/1.1 var(--f-body);flex:1}
+#page-main .badge.frontier{color:var(--plum)}
+#page-main .int-pick{display:grid;grid-template-columns:auto minmax(0,1fr) auto minmax(0,1.4fr);gap:8px 10px;align-items:center}
+#page-main .int-pick label{font:600 17px/1 var(--f-body)}
+#page-main .int-pick select{min-height:44px;min-width:0;border:2px solid var(--pitch);border-radius:0;background:#fffdf0;color:var(--pitch);font:500 17px/1.2 var(--f-body);padding:0 6px}
+#page-main .int-card :focus-visible{outline-color:var(--pitch)}
+#page-main .int-how{margin:0;font:500 17px/1.35 var(--f-body)}
+#page-main .int-foot{display:flex;align-items:center;gap:14px}
+#page-main .int-back{margin:0;flex:1;font:500 16px/1.3 var(--f-body);color:var(--brick)}
+#page-main .int-foot .btn{white-space:nowrap}
+
+#page-main .voice{display:flex;align-items:center;gap:16px;margin-bottom:10px}
+#page-main .mic{flex:none;width:64px;height:64px;border-radius:50%;background:var(--brick);color:var(--bone);display:grid;place-items:center;box-shadow:0 0 0 4px var(--pitch),0 0 0 6px var(--torch)}
+#page-main .mic svg{width:34px;height:34px}
+#page-main .voice p{margin:0;font-size:19px}
+#page-main .voice b{color:var(--bone);font-weight:600}
+#page-main .voice a{color:var(--torch);font-weight:600;text-underline-offset:3px}
+#page-main .ody-toasts{position:fixed}
+
+/* =========================== THE FORGE (container + fallback; the page itself is twin/forge.js + forge.css) =========================== */
+html.v2 #page-forge{padding:0 var(--pad-x);background:var(--night)}
+#page-forge .forge-fallback{margin-top:40px}
+#page-forge > h1.t-hero{text-align:center;padding-top:72px}
+
+/* =========================== small screens: the pages stack their columns =========================== */
+@media (max-width:1100px){
+  html.v2 #page-argo{--rail-w:300px}
+  #page-main .cols{grid-template-columns:minmax(0,1fr)}
+}
+@media (max-width:820px){
+  html.v2 #page-argo{padding:0 16px;grid-template-rows:auto auto}
+  html.v2 #page-argo{overflow-y:auto}
+  html.v2 #page-argo > main{grid-template-columns:minmax(0,1fr);grid-template-rows:auto 60vh auto}
+  html.v2 #page-argo .lintel,html.v2 #page-argo .pilaster{display:none}
+  html.v2 #page-argo .theatre{grid-column:1;grid-row:2}
+  html.v2 #page-argo .rail{grid-column:1;grid-row:3;margin-top:12px}
+  html.v2 .edge-tab{width:44px;height:180px}
+}

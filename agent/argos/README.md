@@ -12,7 +12,7 @@ while Argos uses its own model key (Gemini by default).
 | `scad.mjs` | Scan to OpenSCAD, code checks, and OpenSCAD WASM compiles to STL (in a worker, with a time limit) |
 | `forge.mjs` | Design store in `designs/` (git-ignored): scans, refined versions, imports |
 | `providers.mjs` | Gemini (default), Claude, and any OpenAI-compatible API |
-| `keys.mjs` | Key status for the main page (set or not, never a key). Keys are set only by editing `.env` on the laptop |
+| `keys.mjs` | Keys for the Main page: write-only entry into `.env` (allowlisted names, validated values, atomic, mode 600); reads back set + last 4 only |
 | `stt.mjs` | Record button: ElevenLabs Scribe. Wispr Flow works with no setup because it types into the text box. |
 | `../twin/argos.js` | The panel: plain styling, every element starts with `argos-` |
 
@@ -45,7 +45,8 @@ How chat mode routes a request:
 | `POST /argos/designs/<id>/compile` | | builds an STL from the design's source and saves it as a new version |
 | `DELETE /argos/designs/<id>` | | |
 | `POST /argos/import?name=<file>` | raw `.stl` / `.obj` / `.glb` / `.scad` file, 15 MB max | `{design}` |
-| `GET /argos/keys` (`POST` always 403) | | which keys are set |
+| `GET /argos/keys` | | `{keys:[{name, label, group, set, settable, last4?}], providers}`, never a key |
+| `POST /argos/keys` | `{name, value}` (`''` clears), page Origin only, 2 KB max | `{key:{name, set, last4?}, providers}` |
 | `GET /argos/usage` | | `{eleven, argos: counts}` |
 
 Design files are `source.scad`, `model.stl`, `model.obj`, `model.glb`, `photo.jpg` and `spec.json`.

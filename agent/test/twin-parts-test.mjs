@@ -57,7 +57,7 @@ try {
     await new Promise((res, rej) => { mock.stdout.on('data', d => { if (/twin on/.test(String(d))) res(); }); mock.on('exit', c => rej(new Error(`mock exited ${c}`))); });
     let st = null;
     for (let attempt = 0; attempt < 3 && !st; attempt++) {   // the previous mock just freed the port: retry a failed load
-      await cdp('Page.navigate', { url: `http://localhost:${PORT}/twin` });
+      await cdp('Page.navigate', { url: `http://localhost:${PORT}/twin#argo` });
       st = await until(`(s => s?.built === ${JSON.stringify(part)} && s)(window.mentorTwin?.boardState?.())`, 60, 250);
     }
     await test(`${part}: built from the library`, () => {

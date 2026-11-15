@@ -15,7 +15,8 @@ const APP_PATHS = new Set(['/', '/index.html', '/twin', '/twin.html']);
 // The 3D twin (/twin) and its files. Each route is a fixed pattern of plain path segments (no dots except the one
 // extension), so nothing outside these folders can be named: no traversal, no directory listing.
 const TYPES = { js: 'text/javascript; charset=utf-8', mjs: 'text/javascript; charset=utf-8', json: 'application/json; charset=utf-8',
-  wasm: 'application/wasm', task: 'application/octet-stream', tflite: 'application/octet-stream', ttf: 'font/ttf' };
+  wasm: 'application/wasm', task: 'application/octet-stream', tflite: 'application/octet-stream', ttf: 'font/ttf',
+  otf: 'font/otf', woff2: 'font/woff2', css: 'text/css; charset=utf-8', svg: 'image/svg+xml' };
 const STATIC = [
   [/^\/twin\/([a-z0-9-]+\.(?:js|json))$/, m => new URL(`./twin/${m[1]}`, import.meta.url)],
   [/^\/data\/(uno-pins\.json)$/, m => new URL(`./data/${m[1]}`, import.meta.url)],
@@ -26,6 +27,10 @@ const STATIC = [
     m => new URL(`./node_modules/@mediapipe/tasks-vision/${m[1]}`, import.meta.url)],
   [/^\/twin\/models\/(hand_landmarker\.task|magic_touch\.tflite)$/, m => new URL(`./twin/models/${m[1]}`, import.meta.url)],
   [/^\/fonts\/(InterVariable\.ttf)$/, m => new URL(`./fonts/${m[1]}`, import.meta.url)],   // OFL, served locally: no font CDN
+  // The Odyssey look (design guide v2): page stylesheets, our own ornament sprite, and the deck's three OFL fonts.
+  [/^\/twin\/([a-z0-9-]+\.css)$/, m => new URL(`./twin/${m[1]}`, import.meta.url)],
+  [/^\/twin\/(ornaments\.svg)$/, m => new URL(`./twin/${m[1]}`, import.meta.url)],
+  [/^\/fonts\/(GFSTheokritos\.otf|CinzelDecorative-(?:Regular|Bold)\.ttf|CooperHewitt-[456]00\.woff2)$/, m => new URL(`./fonts/${m[1]}`, import.meta.url)],
 ];
 async function appPage() {   // the page's one inline script is its import map; CSP allows exactly that script by hash
   const html = await readFile(APP, 'utf8');

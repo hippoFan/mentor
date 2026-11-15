@@ -64,8 +64,14 @@ own testing only.
 
 ## Secrets
 - Keys live in `.env`, which is git-ignored. Only `env.example` is committed.
-- The laptop page can see only whether each key is set (never a key or part of one) and can't set or change keys
-  (`POST /argos/keys` always answers 403).
+- Keys can be entered on the Main page (`POST /argos/keys {name, value}`, `agent/argos/keys.mjs`), locked down: only this
+  page's Origin and Host, same-origin fetches, JSON of 2 KB or less, a fixed allowlist of names (Gemini, Anthropic,
+  OpenAI-compatible key/base URL/model, ElevenLabs; never Chert), one-line values from a fixed character set with length
+  caps, and a base URL that may point only at `https://api.openai.com`, `https://api.aisa.one` or `http://127.0.0.1` /
+  `http://localhost` (never Ody's own ports 8789/8790; the same check runs again before every model call, so a hand-edited
+  `.env` can't point the key elsewhere). `''` clears a key. Only keys of 24+ characters show their last 4. The `.env` write is atomic (temp file + rename), keeps every other line, and is
+  mode 600. Entry is write-only: the page reads back whether a key is set and its last 4 characters, never the key, and
+  values are never logged.
 - `npm run check-keys` verifies keys without printing them and without spending model requests.
 
 ## Reporting a vulnerability

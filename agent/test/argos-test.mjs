@@ -6,12 +6,14 @@
 //   node test/argos-test.mjs
 import assert from 'node:assert/strict';
 import { createServer } from 'node:http';
-import { mkdtemp, rm } from 'node:fs/promises';
+import { mkdtemp, readFile, rm, stat, writeFile } from 'node:fs/promises';
+import { request } from 'node:http';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
 const dir = await mkdtemp(join(tmpdir(), 'argos-'));
 process.env.ARGOS_DESIGNS_DIR = dir;
+process.env.ARGOS_ENV_FILE = join(dir, 'test.env');   // key writes go to a temp file, never the real .env
 for (const k of ['GEMINI_API_KEY', 'GOOGLE_API_KEY', 'ANTHROPIC_API_KEY', 'OPENAI_API_KEY', 'ELEVENLABS_API_KEY']) delete process.env[k];
 
 const { createServer: netServer } = await import('node:net');
@@ -112,9 +114,40 @@ try {
 
   // keys
   r = await fetch(`${base}/argos/keys`); const ks = await r.json(); assert.ok(!JSON.stringify(ks).includes('test-key-not-real')); pass('keys: never returned');
-  assert.ok(!JSON.stringify(ks).includes('-000')); assert.equal(ks.keys.find(k => k.name === 'ARGOS_OPENAI_BASE').value, `127.0.0.1:${MODEL}`); pass('keys: no last 4 characters, base URL shown as host only');
-  r = await post('/argos/keys', { name: 'GEMINI_API_KEY', value: 'AIzaFakeFakeFake' }); assert.equal(r.status, 403); assert.equal(process.env.GEMINI_API_KEY, undefined); pass('keys: the page can never set a key');
-  r = await post('/argos/keys', { name: 'ARGOS_OPENAI_BASE', value: 'https://evil.example/v1' }); assert.equal(r.status, 403); assert.equal(process.env.ARGOS_OPENAI_BASE, `http://127.0.0.1:${MODEL}/v1`); pass('keys: the page can never move the model base URL');
+  assert.equal(ks.keys.find(k => k.name === 'ARGOS_OPENAI_KEY').last4, undefined); assert.equal(ks.keys.find(k => k.name === 'ARGOS_OPENAI_BASE').host, `127.0.0.1:${MODEL}`); pass('keys: no last 4 for a short key, base URL shown as host only');
+  // locked-down key entry (keys.mjs): temp env file only
+  const envPath = process.env.ARGOS_ENV_FILE;
+  await writeFile(envPath, '# laptop settings\nOTHER_SETTING=keep-me\nGEMINI_API_KEY=old-value-to-replace-1\nTAIL=1\n', { mode: 0o600 });
+  const GEM = 'AIzaTestOnlyNotARealKey1234WXYZ';
+  r = await post('/argos/keys', { name: 'GEMINI_API_KEY', value: GEM }); let kj = await r.json();
+  assert.equal(r.status, 200); assert.equal(kj.key.set, true); assert.equal(kj.key.last4, 'WXYZ'); assert.ok(!JSON.stringify(kj).includes(GEM.slice(0, -4)));
+  assert.equal(kj.providers.find(p => p.id === 'gemini').ready, true); assert.equal(process.env.GEMINI_API_KEY, GEM); pass('keys: Gemini key set from the page, reply shows set + last 4 only, provider ready at once');
+  let envText = await readFile(envPath, 'utf8');
+  assert.equal(envText, `# laptop settings\nOTHER_SETTING=keep-me\nGEMINI_API_KEY=${GEM}\nTAIL=1\n`); assert.equal((await stat(envPath)).mode & 0o777, 0o600); pass('keys: .env line replaced in place, other lines intact, mode 600');
+  r = await fetch(`${base}/argos/keys`); assert.ok(!(await r.text()).includes(GEM)); r = await fetch(`${base}/argos/state`); assert.ok(!(await r.text()).includes(GEM)); pass('keys: GET /argos/keys and /argos/state never contain the full key');
+  r = await post('/argos/keys', { name: 'GEMINI_API_KEY', value: GEM }, { origin: 'http://evil.example' }); assert.equal(r.status, 403);
+  r = await post('/argos/keys', { name: 'GEMINI_API_KEY', value: 'AIzaEvilEvilEvilEvil' }, { origin: 'http://localhost:1' }); assert.equal(r.status, 403);
+  r = await fetch(`${base}/argos/keys`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ name: 'GEMINI_API_KEY', value: 'AIzaNoOriginNoOrigin' }) }); assert.equal(r.status, 403);
+  r = await post('/argos/keys', { name: 'GEMINI_API_KEY', value: 'AIzaCrossSiteCrossSite' }, { 'sec-fetch-site': 'cross-site' }); assert.equal(r.status, 403);
+  const hostStatus = await new Promise((ok, no) => { const q = request({ host: '127.0.0.1', port: PAGE, path: '/argos/keys', method: 'POST', headers: { host: 'evil.example', origin: base, 'content-type': 'application/json' } }, s => { s.resume(); ok(s.statusCode); }); q.on('error', no); q.end('{"name":"GEMINI_API_KEY","value":"AIzaRebindRebindRebind"}'); });
+  assert.equal(hostStatus, 403); assert.equal(process.env.GEMINI_API_KEY, GEM); pass('keys: other origins, no origin, cross-site fetches and a foreign Host are refused');
+  for (const [name, value, why] of [['CHERT_API_KEY', 'chert-test-value-123456', 'not settable'], ['PATH', '/tmp', 'not allowlisted'], ['GEMINI_API_KEY', 'AIzaGood\nEVIL=1xxxxx', 'newline'], ['GEMINI_API_KEY', 'short', 'too short'], ['GEMINI_API_KEY', 'AIza has spaces in it', 'spaces'], ['ARGOS_OPENAI_MODEL', 'gpt\u0000x', 'control char']]) {
+    r = await post('/argos/keys', { name, value }); assert.ok(r.status === 400 || r.status === 403, why); assert.ok(!(await r.text()).includes(value), why);
+  }
+  r = await post('/argos/keys', { name: 'GEMINI_API_KEY', value: GEM, extra: 1 }); assert.equal(r.status, 400);
+  r = await post('/argos/keys', JSON.stringify({ name: 'GEMINI_API_KEY', value: 'A'.repeat(3000) })); assert.equal(r.status, 413);
+  assert.ok(!(await readFile(envPath, 'utf8')).includes('EVIL')); pass('keys: allowlist, one-line values, length caps, extra fields and bodies over 2 KB refused');
+  for (const bad of ['https://evil.example/v1', 'http://api.openai.com/v1', 'https://api.openai.com.evil.example/v1', 'https://user:pw@api.openai.com/v1', 'https://api.openai.com:8443/v1', 'https://api.openai.com/v1?x=1', 'http://10.0.0.5:8000/v1', 'http://127.0.0.1:8790/argos', 'http://localhost:8789/v1', `http://127.0.0.1:${PAGE}/v1`, 'file:///etc/passwd', 'javascript:alert(1)']) {
+    r = await post('/argos/keys', { name: 'ARGOS_OPENAI_BASE', value: bad }); assert.equal(r.status, 400, bad);
+  }
+  assert.equal(process.env.ARGOS_OPENAI_BASE, `http://127.0.0.1:${MODEL}/v1`); pass('keys: base URL off the allowlist refused (other hosts, http, userinfo, ports, query, schemes)');
+  for (const good of ['https://api.openai.com/v1', 'https://api.aisa.one/v1', 'http://localhost:11434/v1', `http://127.0.0.1:${MODEL}/v1/`]) {
+    r = await post('/argos/keys', { name: 'ARGOS_OPENAI_BASE', value: good }); assert.equal(r.status, 200, good);
+  }
+  assert.equal(process.env.ARGOS_OPENAI_BASE, `http://127.0.0.1:${MODEL}/v1`); pass('keys: base URL allowlist accepts OpenAI, AIsa and this laptop');
+  r = await post('/argos/keys', { name: 'GEMINI_API_KEY', value: '' }); kj = await r.json();
+  assert.equal(kj.key.set, false); assert.equal(process.env.GEMINI_API_KEY, undefined); envText = await readFile(envPath, 'utf8');
+  assert.ok(!envText.includes('GEMINI_API_KEY') && envText.includes('OTHER_SETTING=keep-me') && envText.includes('TAIL=1')); pass("keys: '' clears the key from .env and the process");
   r = await fetch(`${base}/argos/designs/${id}/source.scad`); assert.equal(r.headers.get('cross-origin-resource-policy'), 'same-origin'); pass('design files: same-origin only (CORP)');
 
   // privacy: no scan saved after "stop recording" or a decline; a new call resets; call scans expire like call folders

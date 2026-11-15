@@ -1,0 +1,213 @@
+/* The Forge (right page): forge fire against the night sea. DESIGN-GUIDE.md v2 §8 (stone relics) and §9 (The Forge).
+   Tokens come from twin/odyssey.css; every var() has the guide's value as a fallback so this file stands alone.
+   Everything is prefixed forge- so it never collides with the shell or the other pages. */
+.forge{--f-pad:var(--pad-x,96px)}
+.forge-page{position:absolute;inset:0;overflow:hidden;overflow:clip;color:var(--bone,#fdf5cc);font:400 20px/1.45 var(--f-body,"Cooper Hewitt",Arial,sans-serif);
+  background:radial-gradient(70% 38% at 50% 104%,#ea872f 0%,#983a34aa 35%,#12233f00 75%),var(--night,#12233f)}
+.forge-page *,.forge-page *::before,.forge-page *::after{box-sizing:border-box}
+.forge-o{display:block}
+.forge-sr{position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap}
+.forge :focus-visible{outline:3px solid var(--torch,#ea872f);outline-offset:3px}
+
+/* ---------- sky, ink sheet, header ---------- */
+.forge-sky{position:absolute;inset:0;pointer-events:none;overflow:hidden}
+.forge-star{position:absolute;color:var(--torch,#ea872f)}
+.forge-cloud{position:absolute;width:144px;height:48px;image-rendering:pixelated;shape-rendering:crispEdges}
+.forge-ink{position:absolute;left:0;right:0;top:150px;bottom:-40px;
+  background:radial-gradient(46% 42% at 50% 100%,#ea872f66,#983a3440 45%,transparent 75%),var(--pitch,#191a16);
+  -webkit-mask:var(--o-drip) top left/320px 40px repeat-x,linear-gradient(#000,#000) 0 39px/100% calc(100% - 78px) no-repeat,var(--o-drip-down) bottom left/320px 40px repeat-x;
+          mask:var(--o-drip) top left/320px 40px repeat-x,linear-gradient(#000,#000) 0 39px/100% calc(100% - 78px) no-repeat,var(--o-drip-down) bottom left/320px 40px repeat-x}
+.forge-head{position:absolute;left:var(--f-pad);right:var(--f-pad);top:0;z-index:2;display:flex;flex-direction:column;align-items:center;padding-top:58px;pointer-events:none}
+.forge-head-row{display:flex;align-items:flex-end;gap:26px}
+.forge-flank{width:58px;height:88px;flex:none}
+.forge-title{margin:0;font:400 clamp(48px,6vw,76px)/.95 var(--f-title,"GFS Theokritos",Georgia,serif);color:var(--torch,#ea872f);letter-spacing:.01em;white-space:nowrap}
+.forge-sub{margin:6px 0 0;color:var(--mist,#c9d6e8);font:500 20px/1.3 var(--f-body,"Cooper Hewitt",Arial,sans-serif)}
+
+/* ---------- gallery ---------- */
+.forge-scroll{position:absolute;left:0;right:0;top:196px;bottom:0;z-index:2;overflow-y:auto;overscroll-behavior:contain;
+  padding:0 var(--f-pad) 150px;scrollbar-width:thin;scrollbar-color:var(--torch,#ea872f) transparent;
+  -webkit-mask-image:linear-gradient(#000 calc(100% - 150px),#0006 calc(100% - 60px),transparent);mask-image:linear-gradient(#000 calc(100% - 150px),#0006 calc(100% - 60px),transparent)}
+.forge-bar{display:flex;flex-wrap:wrap;align-items:center;gap:12px 20px;margin:34px 0 16px}
+.forge-sect{display:flex;align-items:center;gap:10px;margin:0;margin-right:auto;font:700 22px/1.1 var(--f-caps,"Cinzel Decorative",Georgia,serif);color:var(--torch,#ea872f);letter-spacing:.02em}
+.forge-sect svg{width:24px;height:24px;color:var(--torch,#ea872f)}
+.forge-filters{display:flex;flex-wrap:wrap;gap:8px}
+.forge-filter{gap:8px}
+.forge-n{min-width:26px;padding:3px 6px;background:#fdf5cc22;font:600 16px/1 var(--f-body,"Cooper Hewitt",Arial,sans-serif);text-align:center}
+.forge-filter[aria-pressed=true] .forge-n{background:var(--pitch,#191a16);color:var(--bone,#fdf5cc)}
+
+.forge-relics{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:20px}
+.forge-relic{position:relative;display:flex;flex-direction:column;background:var(--stone,#dfd3c7);color:var(--pitch,#191a16)}
+.forge-relic::before{content:"";display:block;height:30px;background:var(--o-frieze) 0 -6px/30px 30px repeat-x;border-bottom:5px solid var(--plum,#8d5666)}
+.forge-relic-star{position:absolute;top:48px;right:20px;z-index:1;width:30px;height:30px;color:var(--torch,#ea872f);filter:drop-shadow(0 2px 0 var(--pitch,#191a16))}
+.forge-well{position:relative;height:176px;margin:12px 12px 0;overflow:hidden;display:grid;place-items:center;
+  background:radial-gradient(55% 65% at 50% 70%,#5a2414 0%,#2a1610 55%,var(--pitch,#191a16) 100%)}
+.forge-well img{width:100%;height:100%;object-fit:contain;transition:filter var(--t-hover,160ms) var(--ease-out,ease)}
+.forge-well.is-photo img{object-fit:cover;filter:sepia(.25) saturate(1.1) brightness(.9)}
+.forge-well.is-photo::after{content:"";position:absolute;inset:0;pointer-events:none;background:radial-gradient(80% 90% at 50% 110%,#ea872f55,transparent 60%),linear-gradient(transparent 55%,#2a161099)}
+.forge-well.is-loading::before{content:"";width:48px;height:4px;background:var(--torch,#ea872f);opacity:.6}
+.forge-well-glyph{width:56px;height:56px;color:var(--torch,#ea872f)}
+.forge-well-note{position:absolute;bottom:10px;left:0;right:0;text-align:center;color:var(--mist,#c9d6e8);font:500 16px/1.2 var(--f-body,"Cooper Hewitt",Arial,sans-serif)}
+.forge-relic:hover .forge-well img{filter:brightness(1.15) saturate(1.15)}
+.forge-relic:hover .forge-well.is-photo img{filter:sepia(.1) saturate(1.2) brightness(1.02)}
+.forge-txt{display:flex;flex-direction:column;gap:8px;padding:12px 16px 16px}
+.forge-relic-name{margin:0;font:600 23px/1.15 var(--f-body,"Cooper Hewitt",Arial,sans-serif)}
+.forge-open{all:unset;cursor:pointer;color:inherit;font:inherit;overflow-wrap:anywhere}
+.forge-open::after{content:"";position:absolute;inset:0;z-index:2}
+.forge .forge-open:focus-visible{outline:none}
+.forge-open:focus-visible::after{outline:3px solid var(--pitch,#191a16);outline-offset:-6px}
+.forge-relic-meta{margin:-4px 0 0;font:500 18px/1.3 var(--f-body,"Cooper Hewitt",Arial,sans-serif);color:var(--brick,#983a34)}
+.forge-badges{display:flex;flex-wrap:wrap;gap:6px}
+.forge-badges:empty{display:none}
+.forge-badge{display:inline-flex;align-items:center;padding:4px 8px;font:600 16px/1 var(--f-body,"Cooper Hewitt",Arial,sans-serif);border:2px solid currentColor}
+.forge-badge.is-estimate{background:var(--plum,#8d5666);border-color:var(--plum,#8d5666);color:var(--bone,#fdf5cc)}
+.forge-badge.is-outside{background:var(--pitch,#191a16);border-color:var(--pitch,#191a16);color:var(--bone,#fdf5cc)}
+.forge-badge.is-caveat{background:transparent;color:var(--pitch,#191a16);border-style:dashed}
+.forge-badge.is-session{background:var(--slate-deep,#44707a);border-color:var(--slate-deep,#44707a);color:var(--bone,#fdf5cc)}
+.forge-chain{display:flex;flex-wrap:wrap;align-items:center;gap:4px;margin:0;padding:0;list-style:none;font:600 16px/1 var(--f-body,"Cooper Hewitt",Arial,sans-serif)}
+.forge-chain li>span,.forge-chain-btn{display:inline-block;padding:4px 7px;box-shadow:inset 0 0 0 2px #191a1640;color:var(--pitch,#191a16)}
+.forge-chain li.is-current>span{background:var(--torch,#ea872f);box-shadow:none}
+.forge-chain-arrow{color:var(--brick,#983a34);font:400 20px/1 var(--f-title,"GFS Theokritos",Georgia,serif)}
+.forge-chain-more{color:var(--brick,#983a34);padding:0 2px}
+.forge-chain-btn{position:relative;z-index:3;border:0;background:transparent;cursor:pointer;font:inherit;min-height:32px;transition:background var(--t-hover,160ms)}
+.forge-chain-btn:hover{background:var(--bone,#fdf5cc)}
+.forge .forge-chain-btn:focus-visible{outline-color:var(--pitch,#191a16)}
+
+.forge-empty{display:flex;flex-direction:column;align-items:center;gap:12px;padding:48px 16px;color:var(--mist,#c9d6e8);text-align:center}
+.forge-empty[hidden]{display:none}
+.forge-olive{width:160px;height:48px}
+.forge-empty-text{margin:0;max-width:34em;font:500 20px/1.4 var(--f-body,"Cooper Hewitt",Arial,sans-serif)}
+
+/* ---------- the hearth: anvil and fire over the sea ---------- */
+.forge-hearth{position:absolute;left:0;right:0;bottom:0;height:140px;z-index:3;pointer-events:none}
+.forge-sea{position:absolute;left:0;right:0;bottom:0;height:40px;background:var(--o-waves) 0 0/160px 40px repeat-x;opacity:.9}
+.forge-anvil{position:absolute;left:50%;bottom:22px;width:104px;height:104px;margin-left:-52px;transform-origin:50% 100%}
+.forge-glow{position:absolute;left:20%;right:20%;bottom:10px;height:90px;background:radial-gradient(50% 60% at 50% 100%,#e2e76e88,#ea872f55 45%,transparent 75%)}
+.forge.is-viewing .forge-hearth{opacity:.35}
+
+/* ---------- buttons (the guide's .btn family, scoped) ---------- */
+.forge-btn{display:inline-flex;align-items:center;justify-content:center;gap:10px;min-height:52px;padding:0 22px;border:0;cursor:pointer;text-decoration:none;
+  font:700 18px/1 var(--f-caps,"Cinzel Decorative",Georgia,serif);letter-spacing:.03em;white-space:nowrap;
+  transition:transform var(--t-hover,160ms) var(--ease-out,ease),box-shadow var(--t-hover,160ms) var(--ease-out,ease),background var(--t-hover,160ms)}
+.forge-btn:disabled{cursor:progress;opacity:.75}
+.forge-torch{background:var(--torch,#ea872f);color:var(--pitch,#191a16);box-shadow:0 4px 0 var(--torch-edge,#9a5418)}
+.forge-torch:hover:not(:disabled){transform:translateY(-2px);box-shadow:0 6px 0 var(--torch-edge,#9a5418)}
+.forge-torch:active:not(:disabled){transform:translateY(3px);box-shadow:0 1px 0 var(--torch-edge,#9a5418);transition-duration:var(--t-press,90ms)}
+.forge-quiet{background:transparent;color:var(--bone,#fdf5cc);box-shadow:inset 0 0 0 2px #fdf5cc99}
+.forge-quiet:hover{box-shadow:inset 0 0 0 2px var(--bone,#fdf5cc)}
+.forge-quiet[aria-pressed=true]{background:var(--bone,#fdf5cc);color:var(--pitch,#191a16)}
+.forge-small{min-height:44px;padding:0 14px;font-size:16px}
+.forge-filter{min-height:44px;padding:0 10px 0 14px;font-size:16px}
+.forge-on-light,.forge-ink-btn{background:var(--pitch,#191a16);color:var(--bone,#fdf5cc);box-shadow:0 3px 0 #000}
+.forge-on-light:hover,.forge-ink-btn:hover{transform:translateY(-2px);box-shadow:0 5px 0 #000}
+.forge-on-light:active,.forge-ink-btn:active{transform:translateY(2px);box-shadow:0 1px 0 #000;transition-duration:var(--t-press,90ms)}
+.forge-import{flex:none}
+
+/* ---------- viewer ---------- */
+.forge-viewer{position:absolute;left:var(--f-pad);right:var(--f-pad);top:190px;bottom:20px;z-index:5;display:flex;flex-direction:column;gap:10px}
+.forge-viewer[hidden]{display:none}
+.forge.is-viewing .forge-scroll{visibility:hidden}
+.forge-v-top{display:flex;align-items:center;gap:12px}
+.forge-v-body{flex:1;min-height:0;display:grid;grid-template-columns:minmax(0,1fr) 360px;gap:20px}
+.forge-kiln{display:flex;flex-direction:column;min-height:0;background:var(--stone,#dfd3c7);padding:0 12px 12px}
+.forge-kiln::before{content:"";display:block;height:30px;margin:0 -12px 12px;background:var(--o-frieze) 0 -6px/30px 30px repeat-x;border-bottom:5px solid var(--plum,#8d5666)}
+.forge-stage{position:relative;flex:1;min-height:240px;overflow:hidden;
+  background:radial-gradient(60% 70% at 50% 78%,#5a2414 0%,#2a1610 52%,var(--pitch,#191a16) 100%)}
+.forge-stage[data-look=holo]{background:radial-gradient(60% 55% at 50% 52%,#173457 0%,#0c1830 55%,#070d1b 100%)}
+.forge-canvas{position:absolute;inset:0;width:100%;height:100%;display:block;touch-action:none;cursor:grab}
+.forge-canvas:active{cursor:grabbing}
+.forge-stage:not([data-has=model]) .forge-canvas{visibility:hidden}
+.forge-photo{position:absolute;inset:16px 16px 84px;width:calc(100% - 32px);height:calc(100% - 100px);object-fit:contain}
+.forge-photo[hidden]{display:none}
+.forge-stage-msg{position:absolute;left:50%;bottom:84px;transform:translateX(-50%);max-width:min(560px,90%);margin:0;padding:8px 14px;
+  background:#191a16e6;color:var(--bone,#fdf5cc);font:500 18px/1.35 var(--f-body,"Cooper Hewitt",Arial,sans-serif);text-align:center}
+.forge-stage-msg:empty{display:none}
+.forge-stage[data-has=model] .forge-stage-msg{bottom:16px}
+.forge-stage:not([data-has]) .forge-stage-msg,.forge-stage[data-has=""] .forge-stage-msg{top:50%;bottom:auto;transform:translate(-50%,-50%)}
+.forge-stage[data-has=""]:has(.forge-build:not([hidden])) .forge-stage-msg{top:auto;bottom:84px;transform:translateX(-50%)}
+.forge-build{position:absolute;left:50%;bottom:20px;transform:translateX(-50%)}
+.forge-build:hover:not(:disabled){transform:translate(-50%,-2px)}
+.forge-build:active:not(:disabled){transform:translate(-50%,3px)}
+.forge-build[hidden],.forge-tools[hidden]{display:none}
+.forge-tools{position:absolute;top:12px;right:12px;display:flex;gap:8px}
+.forge-tools .forge-quiet{background:#191a16b3}
+.forge-tools .forge-quiet[aria-pressed=true]{background:var(--bone,#fdf5cc)}
+.forge-stage.is-busy::after{content:"";position:absolute;left:0;top:0;height:3px;width:100%;background:linear-gradient(90deg,transparent,var(--torch,#ea872f),transparent);background-size:40% 100%;background-repeat:no-repeat}
+
+.forge-side{position:relative;overflow-y:auto;overscroll-behavior:contain;background:var(--stone,#dfd3c7);color:var(--pitch,#191a16);padding:0 20px 20px;
+  display:flex;flex-direction:column;gap:10px;scrollbar-width:thin;scrollbar-color:var(--plum,#8d5666) transparent}
+.forge-side::before{content:"";display:block;flex:none;height:30px;margin:0 -20px 4px;background:var(--o-frieze) 0 -6px/30px 30px repeat-x;border-bottom:5px solid var(--plum,#8d5666)}
+.forge-side :focus-visible,.forge .forge-side .forge-btn:focus-visible{outline-color:var(--pitch,#191a16)}
+.forge-v-name{margin:0;font:600 26px/1.15 var(--f-body,"Cooper Hewitt",Arial,sans-serif);overflow-wrap:anywhere}
+.forge-v-name:focus{outline:none}
+.forge-v-meta{margin:-6px 0 0;font:500 18px/1.3 var(--f-body,"Cooper Hewitt",Arial,sans-serif);color:var(--brick,#983a34)}
+.forge-v-note,.forge-v-summary,.forge-refusal{margin:0;padding:10px 12px;background:var(--bone,#fdf5cc);font:500 18px/1.4 var(--f-body,"Cooper Hewitt",Arial,sans-serif)}
+.forge-v-note{box-shadow:inset 4px 0 0 var(--pitch,#191a16)}
+.forge-v-summary{background:transparent;padding:0}
+.forge-refusal{box-shadow:inset 4px 0 0 var(--brick,#983a34)}
+.forge-v-caveats{margin:0;padding-left:20px;font:500 17px/1.4 var(--f-body,"Cooper Hewitt",Arial,sans-serif)}
+.forge-v-note[hidden],.forge-v-summary[hidden],.forge-v-caveats[hidden],.forge-refusal[hidden],.forge-confirm[hidden],.forge-side .forge-btn[hidden]{display:none}
+.forge-side-h{margin:6px 0 0;font:700 17px/1.1 var(--f-caps,"Cinzel Decorative",Georgia,serif);color:var(--brick,#983a34);letter-spacing:.03em}
+.forge-actions{display:flex;flex-direction:column;gap:10px}
+.forge-side .forge-btn{width:100%;min-height:48px;font-size:16px;padding:0 14px;white-space:normal;text-align:center}
+.forge-side .forge-quiet{color:var(--pitch,#191a16);box-shadow:inset 0 0 0 2px #191a1680}
+.forge-side .forge-quiet:hover{box-shadow:inset 0 0 0 2px var(--pitch,#191a16);background:#fdf5cc66}
+.forge-why{margin:0;font:500 17px/1.35 var(--f-body,"Cooper Hewitt",Arial,sans-serif)}
+.forge-refine{margin-top:6px}
+.forge-delete{margin-top:auto}
+.forge-confirm{display:flex;flex-direction:column;gap:8px;padding:12px;background:var(--bone,#fdf5cc)}
+.forge-confirm-q{margin:0;font:600 18px/1.35 var(--f-body,"Cooper Hewitt",Arial,sans-serif)}
+.forge-confirm-row{display:flex;gap:8px}
+.forge-confirm-row .forge-btn{flex:1}
+
+/* ---------- drop zone, toasts ---------- */
+.forge-drop{position:absolute;inset:0;z-index:20;display:grid;place-items:center;background:#191a16e0;pointer-events:none}
+.forge-drop[hidden]{display:none}
+.forge-drop::before{content:"";position:absolute;inset:24px;outline:3px dashed var(--torch,#ea872f);outline-offset:-3px}
+.forge-drop p{margin:0;color:var(--bone,#fdf5cc);font:600 26px/1.3 var(--f-body,"Cooper Hewitt",Arial,sans-serif)}
+.forge-toasts{position:absolute;left:50%;bottom:24px;z-index:30;transform:translateX(-50%);display:flex;flex-direction:column;align-items:center;gap:8px;width:min(680px,calc(100% - 32px));pointer-events:none}
+.forge-toast{pointer-events:auto;display:flex;align-items:center;gap:14px;max-width:100%;padding:12px 18px;background:var(--pitch,#191a16);color:var(--bone,#fdf5cc);
+  border-top:2px solid var(--torch,#ea872f);box-shadow:0 10px 24px #0008;font:500 18px/1.35 var(--f-body,"Cooper Hewitt",Arial,sans-serif)}
+.forge-toast.is-error{border-top-color:var(--flame,#e2e76e)}
+.forge-toast .forge-btn{flex:none}
+
+/* ---------- motion: one entrance, quiet ambience, honest feedback (DESIGN-GUIDE §7) ---------- */
+@media (prefers-reduced-motion:no-preference){
+  .forge.forge-enter .forge-ink{animation:forge-unfurl var(--t-unfurl,520ms) var(--ease-out,ease-out) both}
+  .forge.forge-enter .forge-rise,.forge.forge-enter .forge-relic{animation:forge-rise var(--t-enter,360ms) var(--ease-out,ease-out) both;animation-delay:calc(140ms + var(--i,0) * var(--stagger,40ms))}
+  .forge.forge-enter .forge-flank-l{animation:forge-in-l var(--t-unfurl,520ms) var(--ease-out,ease-out) 200ms both}
+  .forge.forge-enter .forge-flank-r{animation:forge-in-r var(--t-unfurl,520ms) var(--ease-out,ease-out) 200ms both}
+  .forge-relic.is-fresh{animation:forge-rise var(--t-enter,360ms) var(--ease-out,ease-out) both}
+  .forge-star{animation:forge-twinkle 3.6s var(--ease-sea,ease-in-out) infinite;animation-delay:var(--d,0s)}
+  .forge-cloud{animation:forge-drift 48s steps(24) infinite alternate}
+  .forge:not(.forge-enter) .forge-flicker,.forge-anvil{transform-origin:50% 100%;animation:forge-flicker 1.4s steps(3) infinite;animation-delay:var(--d,0s)}
+  .forge-glow{animation:forge-breathe 5s var(--ease-sea,ease-in-out) infinite}
+  .forge-stage.is-busy::after{animation:forge-sweep 1.2s linear infinite}
+  .forge-viewer:not([hidden]){animation:forge-rise var(--t-enter,360ms) var(--ease-out,ease-out) both}
+  /* never animate decoration during a live call, off screen, or with the tab hidden (shell / IntersectionObserver) */
+  .forge.is-live-call .forge-page *,.forge.is-offscreen .forge-page *{animation-play-state:paused!important}
+}
+@keyframes forge-unfurl{from{clip-path:inset(0 50% 0 50%)}to{clip-path:inset(0 0 0 0)}}
+@keyframes forge-rise{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:none}}
+@keyframes forge-in-l{from{opacity:0;transform:translateX(-24px)}to{opacity:1;transform:none}}
+@keyframes forge-in-r{from{opacity:0;transform:translateX(24px)}to{opacity:1;transform:none}}
+@keyframes forge-twinkle{0%,100%{transform:scale(1);opacity:1}50%{transform:scale(.82);opacity:.75}}
+@keyframes forge-drift{to{transform:translateX(48px)}}
+@keyframes forge-flicker{0%{transform:scaleY(1) skewX(0)}33%{transform:scaleY(1.05) skewX(-2deg)}66%{transform:scaleY(.97) skewX(1.5deg)}}
+@keyframes forge-breathe{0%,100%{opacity:.85}50%{opacity:1}}
+@keyframes forge-sweep{from{background-position:-40% 0}to{background-position:140% 0}}
+@media (prefers-reduced-motion:reduce){.forge *,.forge *::before,.forge *::after{animation:none!important;transition-duration:1ms!important}}
+
+/* ---------- narrow windows ---------- */
+@media (max-width:980px){
+  .forge-v-body{grid-template-columns:1fr;grid-template-rows:minmax(260px,1fr) auto}
+  .forge-side{max-height:46vh}
+  .forge-viewer{overflow-y:auto}
+}
+@media (max-width:640px){
+  .forge{--f-pad:16px}
+  .forge-sky .forge-star{display:none}
+  .forge-flank{display:none}
+  .forge-sub{font-size:18px;text-align:center}
+  .forge-relics{grid-template-columns:1fr}
+  .forge-import{width:100%}
+}

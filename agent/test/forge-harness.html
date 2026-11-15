@@ -1,0 +1,19 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><link rel="icon" href="data:,">
+<title>The Forge (test harness)</title>
+<!-- Test-only page for twin/forge.js (served by test/mock-forge.mjs). The real app mounts The Forge from the shell. -->
+<script type="importmap">{"imports":{"three":"/vendor/three/build/three.module.js","three/addons/":"/vendor/three/examples/jsm/"}}</script>
+<link rel="stylesheet" href="/twin/odyssey.css">
+<link rel="stylesheet" href="/twin/forge.css">
+<style>
+  /* the shell's page container, as TOKENS-READY.md describes it */
+  html,body{margin:0;height:100%}
+  body{overflow:hidden}
+  #page-forge{position:absolute;inset:0;padding:0 var(--pad-x);overflow:hidden}
+  #sprite{position:absolute;width:0;height:0;overflow:hidden}
+</style>
+</head><body class="ody">
+<div id="sprite" aria-hidden="true"></div>
+<section id="page-forge" class="page" aria-labelledby="forge-h"></section>
+<script type="module" src="/test/forge-harness.js"></script>
+</body></html>

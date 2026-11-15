@@ -13,7 +13,7 @@ import WebSocket from 'ws';
 import { sanitizeScan } from '../scan.mjs';
 
 const HERE = fileURLToPath(new URL('..', import.meta.url));
-const PORT = 8798, DEBUG = 9344;
+const PORT = Number(process.env.MOCK_PORT || 8798), DEBUG = 9344;   // MOCK_PORT: another free mock port (8796-8799)
 const SHOTS = join(homedir(), '.playwright-mcp');
 const CHROME = process.env.MENTOR_CHROME || join(homedir(), '.cache/ms-playwright/chromium-1248/chrome-linux64/chrome');
 let pass = 0, fail = 0;
@@ -57,7 +57,7 @@ try {
   };
   await cdp('Emulation.setDeviceMetricsOverride', { width: 1440, height: 900, deviceScaleFactor: 1, mobile: false });
   await cdp('Runtime.enable'); await cdp('Network.enable'); await cdp('Page.enable');
-  await cdp('Page.navigate', { url: `http://localhost:${PORT}/twin` });
+  await cdp('Page.navigate', { url: `http://localhost:${PORT}/twin#argo` });
   const built = await until("(s => s.built && s)(window.mentorTwin?.boardState?.())", 80, 250);
   await test('page built', () => { assert.ok(built, errors.join(' | ')); return built.name; });
   await until("document.querySelector('#mode-circuit') && !document.querySelector('#mode-circuit').hidden", 60, 250);

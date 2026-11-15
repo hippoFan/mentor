@@ -6,6 +6,7 @@
 //   await complete({ provider: 'claude', system, prompt, schema, timeout: 60_000 })
 //   providers()                                                // [{id, name, ready, model}] for the page
 import { GoogleGenAI } from '@google/genai';
+import { baseUrl } from './keys.mjs';
 
 const env = (...names) => names.map(n => process.env[n]).find(v => typeof v === 'string' && v.trim())?.trim() || '';
 
@@ -25,7 +26,7 @@ export const PROVIDERS = {
     name: env('ARGOS_OPENAI_NAME') || 'OpenAI-compatible',
     key: () => env('ARGOS_OPENAI_KEY', 'OPENAI_API_KEY'),
     models: () => [env('ARGOS_OPENAI_MODEL') || 'gpt-5.1-codex-mini'],
-    base: () => (env('ARGOS_OPENAI_BASE') || 'https://api.openai.com/v1').replace(/\/+$/, ''),
+    base: () => baseUrl(env('ARGOS_OPENAI_BASE') || 'https://api.openai.com/v1'),   // the same allowlist as the Main page, also for a hand-edited .env
   },
 };
 export const PROVIDER_IDS = Object.keys(PROVIDERS);
@@ -80,6 +81,7 @@ async function callClaude({ system, prompt, schema, timeout }) {
 
 async function callOpenAI({ system, prompt, schema, timeout }) {
   const p = PROVIDERS.openai, model = p.models()[0];
+  if (!p.base()) throw new Error('The OpenAI-compatible base URL is not allowed. Set it on the Main page.');
   const res = await fetch(`${p.base()}/chat/completions`, {
     method: 'POST', signal: AbortSignal.timeout(timeout),
     headers: { 'content-type': 'application/json', authorization: `Bearer ${p.key()}` },

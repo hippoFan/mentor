@@ -51,8 +51,9 @@ try {
   const play = frames => evalJs(`window.mentorTwin.handsPlay(${JSON.stringify(frames)})`);
   const hold = (spec, extra = {}) => evalJs(`window.mentorTwin.handsHold(${JSON.stringify(spec)}, ${JSON.stringify(extra)})`);
   const settle = async () => { await sleep(400); await until('!window.mentorTwin.boardState().flying', 60, 250); await sleep(500); };
+  let loads = 0;
   const load = async q => {
-    await cdp('Page.navigate', { url: `http://localhost:${PORT}/twin${q}` });
+    await cdp('Page.navigate', { url: `http://localhost:${PORT}/twin${q}${q ? '&' : '?'}load=${++loads}#argo` });   // a fresh query each time: a same-URL #hash navigation would not reload
     return until('(s => s?.built && s)(window.mentorTwin?.boardState?.())', 80, 250);
   };
   await cdp('Emulation.setDeviceMetricsOverride', { width: 1440, height: 900, deviceScaleFactor: 1, mobile: false });

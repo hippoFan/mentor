@@ -68,6 +68,7 @@ Ody is that person, on a FaceTime call:
 | **Any board, even custom** | Library boards (UNO, Mega, Nano, ESP32, Raspberry Pi 3/4/5, Pico, NodeMCU) get pin-exact wires. On a custom PCB, Ody reads each header (2.54 mm grid + silkscreen labels), snaps every hole to the real one, and wires to it. |
 | **Voice controls the hologram** | "Explode it", "put it back together", "rotate it", "reset the view", "make it look real", "export the model": instant, with no model call. |
 | **Always-on laptop page** | `hub.mjs` keeps `localhost:8790` up between calls; each call streams into it live (token-gated, local only). |
+| **Three pages** | `localhost:8790` opens on **Main** (status, real usage numbers or "Not tracked", the Demo plan, write-only model keys, Export to agent). **Argo** (←) is the hologram builder with the Argos dog; **The Forge** (→) holds past and imported designs. Edge tabs, the pager, ← → and swipes switch pages; a live call keeps updating Argo while another page shows. |
 | **Clean view by default** | Your phone shows just your camera. Ody draws only when you ask where, what, or how to connect something, and marks fade after about 10 s. Safety warnings always show. |
 | **Stop signs** | It circles a short, a missing resistor or reversed polarity in red and says "Stop," before you power on. |
 | **Knows your exact board** | It identifies the part first (UNO R3 USB-B vs UNO R4 USB-C) and points at *that* board's layout. |
@@ -223,7 +224,7 @@ agent/
   consent.mjs          the consent gate, "stop recording", 7-day retention
   hub.mjs              always-on laptop page (token-gated publish, page -> agent channel)
   watchdog.mjs, replay.mjs, record.mjs, build-backup.mjs   judging-day safety net
-  twin.html, twin/     the laptop app: hologram, parts, interiors, circuit, hands, edits
+  twin.html, twin/     the laptop app: Main, Argo (hologram, parts, interiors, circuit, hands, edits), The Forge
   check-keys.mjs, status.mjs, usage.mjs   key, line and usage checks
   chert-rooms.mjs, greet.mjs   from Chert's video-agent starter
   test/                e2e fake caller, tracker, recap, dashboard mock

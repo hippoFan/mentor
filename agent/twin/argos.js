@@ -1,70 +1,107 @@
-// Argos: the guide dog in the bottom-right corner of the laptop app. A working, deliberately plain panel; the Odyssey
-// design pass restyles it (every element has an id / class starting with "argos-"). Talks only to this laptop's own
-// server (/argos/ routes, argos/server.mjs) and listens to {type:'argos'} events on the page's one socket (shell.js).
+// Argos: the guide dog in the bottom-right corner of the Argo page (Odysseus's dog; the page is Argo, Jason's ship).
+// Restyled in the Odyssey look (design guide v2: a brick shield with the bone hound, a pitch slab panel). Every element
+// has an id / class starting with "argos-". Talks only to this laptop's own server (/argos/ routes, argos/server.mjs)
+// and listens to {type:'argos'} events on the page's one socket (shell.js).
 //   Chat     type or record ("explode it", "swap the LED for a distance sensor", "walk me through it", questions)
 //   Refine   pick a design, say what to change; Multicode runs manager, researcher, developer and auditor agents
 // Wispr Flow works with no setup: it types into the focused text box like any keyboard.
+// The default model comes from localStorage['argos.provider'] (set on the Main page); a key saved on the Main page fires
+// 'ody:keys' and the model picker refreshes without a reload.
 import { subscribe } from './shell.js';
 
+// Tokens come from /twin/odyssey.css; the fallbacks keep the panel readable on a page server without it.
 const css = `
-#argos-btn{position:fixed;right:20px;bottom:20px;z-index:60;width:64px;height:64px;border-radius:50%;border:2px solid #c9a227;
-  background:#1b2a3a;color:#f3e7c9;cursor:pointer;box-shadow:0 6px 24px rgba(0,0,0,.35);display:grid;place-items:center}
-#argos-btn:focus-visible{outline:3px solid #f3e7c9;outline-offset:3px}
-#argos-panel{position:fixed;right:20px;bottom:96px;z-index:60;width:min(380px,calc(100vw - 32px));height:min(560px,calc(100vh - 130px));
-  display:flex;flex-direction:column;background:#f3e7c9;color:#1b2a3a;border:2px solid #1b2a3a;border-radius:14px;overflow:hidden;
-  font:14px/1.4 Inter,system-ui,sans-serif;box-shadow:0 12px 40px rgba(0,0,0,.4)}
+#argos-btn{position:fixed;right:calc(var(--tab-w,64px) + 40px);bottom:56px;z-index:60;width:96px;height:96px;border-radius:50%;border:0;padding:0;
+  background:var(--brick,#983a34);color:var(--bone,#fdf5cc);cursor:pointer;display:grid;place-items:center;
+  box-shadow:0 0 0 4px var(--pitch,#191a16),0 0 0 7px var(--torch,#ea872f),0 14px 28px #000a;transition:transform var(--t-hover,160ms) var(--ease-out,ease-out)}
+#argos-btn:hover{transform:translateY(-3px)}
+#argos-btn:active{transform:translateY(1px);transition-duration:var(--t-press,90ms)}
+#argos-btn:focus-visible{outline:3px solid var(--torch,#ea872f);outline-offset:10px}
+#argos-btn svg{width:70px;height:48px;margin-top:-6px}
+#argos-btn .argos-name{position:absolute;bottom:-16px;left:50%;transform:translateX(-50%);padding:6px 10px 5px;background:var(--torch,#ea872f);color:var(--pitch,#191a16);
+  font:700 16px/1 var(--f-caps,Georgia,serif);letter-spacing:.04em;white-space:nowrap}
+#argos-btn[aria-expanded="true"]{box-shadow:0 0 0 4px var(--pitch,#191a16),0 0 0 7px var(--bone,#fdf5cc),0 14px 28px #000a}
+#argos-panel{position:fixed;right:calc(var(--tab-w,64px) + 24px);bottom:168px;z-index:61;width:min(460px,calc(100vw - 32px));height:min(560px,calc(100vh - 300px));min-height:320px;
+  display:flex;flex-direction:column;background:var(--pitch,#191a16);color:var(--bone,#fdf5cc);border-radius:var(--r-slab,14px);overflow:hidden;
+  font:400 18px/1.4 var(--f-body,Arial,sans-serif);box-shadow:0 0 0 3px var(--torch,#ea872f),0 18px 44px #000c}
 #argos-panel[hidden]{display:none}
-.argos-head{display:flex;align-items:center;gap:8px;padding:10px 12px;background:#1b2a3a;color:#f3e7c9}
-.argos-head b{flex:1;font-size:15px}
-.argos-head select,.argos-row select{font:inherit;border-radius:6px;border:1px solid #8a7a55;background:#fffaf0;color:#1b2a3a;padding:2px 4px}
-.argos-tabs{display:flex;border-bottom:1px solid #c8b78f}
-.argos-tabs button{flex:1;padding:8px;border:0;background:none;font:inherit;cursor:pointer;color:#1b2a3a}
-.argos-tabs button[aria-selected="true"]{font-weight:700;box-shadow:inset 0 -3px #c9a227}
-.argos-row{display:flex;gap:6px;align-items:center;padding:6px 12px;font-size:13px}
+#argos-panel::before{content:"";flex:none;height:14px;background:var(--o-checker,#8d5666) 0 0/16px 16px repeat-x;border-bottom:3px solid var(--plum,#8d5666)}
+.argos-head{display:flex;align-items:center;gap:10px;padding:10px 12px 8px 16px}
+.argos-head h2{flex:1;margin:0;font:700 22px/1 var(--f-caps,Georgia,serif);color:var(--torch,#ea872f);letter-spacing:.03em}
+.argos-head label{font:600 16px/1 var(--f-body,Arial,sans-serif);color:var(--mist,#c9d6e8)}
+#argos-panel select{font:500 17px/1.2 var(--f-body,Arial,sans-serif);min-height:40px;border:0;border-radius:0;background:var(--bone,#fdf5cc);color:var(--pitch,#191a16);padding:4px 8px;max-width:100%}
+#argos-close{min-width:44px;min-height:44px;border:0;background:transparent;color:var(--bone,#fdf5cc);font:400 30px/1 var(--f-title,Georgia,serif);cursor:pointer}
+.argos-tabs{display:grid;grid-template-columns:1fr 1fr;gap:var(--gap,8px);padding:0 12px 8px}
+.argos-tabs button{min-height:44px;border:0;background:transparent;color:var(--bone,#fdf5cc);box-shadow:inset 0 0 0 2px #fdf5cc80;font:700 17px/1 var(--f-caps,Georgia,serif);letter-spacing:.03em;cursor:pointer}
+.argos-tabs button[aria-selected="true"]{background:var(--torch,#ea872f);color:var(--pitch,#191a16);box-shadow:none}
+.argos-row{display:flex;gap:10px;align-items:center;padding:0 12px 8px;font:500 17px/1.3 var(--f-body,Arial,sans-serif);color:var(--mist,#c9d6e8)}
+.argos-row[hidden]{display:none}
 .argos-row select{flex:1;min-width:0}
-#argos-log{flex:1;overflow:auto;padding:10px 12px;display:flex;flex-direction:column;gap:8px}
-.argos-msg{max-width:88%;padding:7px 10px;border-radius:10px;white-space:pre-wrap;word-break:break-word}
-.argos-msg.me{align-self:flex-end;background:#1b2a3a;color:#f3e7c9}
-.argos-msg.dog{align-self:flex-start;background:#fffaf0;border:1px solid #c8b78f}
-.argos-msg.step{align-self:stretch;background:none;border-left:3px solid #c9a227;border-radius:0;padding:2px 8px;font-size:12.5px}
-.argos-msg.step.failed{border-color:#b3261e}
-.argos-msg.err{border-color:#b3261e}
-.argos-msg a{color:#7a4f00}
-.argos-in{display:flex;gap:6px;padding:10px 12px;border-top:1px solid #c8b78f}
-#argos-text{flex:1;resize:none;height:40px;font:inherit;border-radius:8px;border:1px solid #8a7a55;padding:8px;background:#fffaf0;color:#1b2a3a}
-.argos-in button{border:0;border-radius:8px;padding:0 12px;font:inherit;cursor:pointer;background:#1b2a3a;color:#f3e7c9}
-#argos-mic[aria-pressed="true"]{background:#b3261e}
-.argos-note{font-size:12px;color:#5b4d2e;padding:0 12px 6px}`;
+#argos-multi{width:22px;height:22px;accent-color:var(--torch,#ea872f);flex:none}
+#argos-log{flex:1;overflow:auto;padding:10px 12px;display:flex;flex-direction:column;gap:8px;background:#0f100d;border-top:2px solid #2a2b26}
+.argos-msg{max-width:90%;padding:8px 12px;white-space:pre-wrap;word-break:break-word;font:500 18px/1.35 var(--f-body,Arial,sans-serif)}
+.argos-msg.me{align-self:flex-end;background:var(--bone,#fdf5cc);color:var(--pitch,#191a16)}
+.argos-msg.dog{align-self:flex-start;background:var(--stone,#dfd3c7);color:var(--pitch,#191a16)}
+.argos-msg.step{align-self:stretch;max-width:none;background:none;color:var(--mist,#c9d6e8);border-left:4px solid var(--torch,#ea872f);padding:2px 10px;font-size:17px}
+.argos-msg.step.failed{border-color:var(--live,#ff6b5e)}
+.argos-msg.err{background:var(--brick,#983a34);color:var(--bone,#fdf5cc)}
+.argos-msg a{display:inline-flex;align-items:center;min-height:36px;margin:6px 8px 0 0;padding:0 12px;background:var(--pitch,#191a16);color:var(--bone,#fdf5cc);
+  font:700 16px/1 var(--f-caps,Georgia,serif);text-decoration:none;letter-spacing:.03em}
+.argos-msg a:focus-visible{outline:3px solid var(--pitch,#191a16);outline-offset:2px}
+.argos-note{font:500 16px/1.35 var(--f-body,Arial,sans-serif);color:var(--mist,#c9d6e8);padding:8px 12px 0}
+.argos-in{display:flex;gap:8px;padding:10px 12px 12px}
+#argos-text{flex:1;resize:none;height:52px;font:500 18px/1.3 var(--f-body,Arial,sans-serif);border:0;border-radius:0;padding:8px 10px;background:var(--bone,#fdf5cc);color:var(--pitch,#191a16)}
+#argos-text::placeholder{color:#5d5a4c}
+#argos-mic{flex:none;width:52px;height:52px;border-radius:50%;border:0;background:var(--brick,#983a34);color:var(--bone,#fdf5cc);cursor:pointer;display:grid;place-items:center;
+  box-shadow:0 0 0 3px var(--pitch,#191a16),0 0 0 5px var(--torch,#ea872f)}
+#argos-mic svg{width:26px;height:26px}
+#argos-mic[aria-pressed="true"]{background:var(--live,#ff6b5e);color:var(--pitch,#191a16)}
+.argos-send{flex:none;min-height:52px;padding:0 16px;border:0;background:var(--torch,#ea872f);color:var(--pitch,#191a16);font:700 17px/1 var(--f-caps,Georgia,serif);
+  letter-spacing:.03em;cursor:pointer;box-shadow:0 4px 0 var(--torch-edge,#9a5418)}
+.argos-send:active{transform:translateY(3px);box-shadow:0 1px 0 var(--torch-edge,#9a5418)}
+#argos-panel :focus-visible{outline:3px solid var(--torch,#ea872f);outline-offset:2px}
+#argos-text:focus-visible,#argos-panel select:focus-visible{outline-offset:0}
+.argos-sr{position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap}
+html:not(.v2) #argos-btn{right:20px;bottom:20px;width:76px;height:76px}html:not(.v2) #argos-btn svg{width:54px;height:38px}html:not(.v2) #argos-panel{right:20px;bottom:116px}
+body[data-page]:not([data-page="argo"]) #argos-btn,body[data-page]:not([data-page="argo"]) #argos-panel{display:none}
+@media (prefers-reduced-motion:reduce){#argos-btn,.argos-send{transition:none}}`;
 
-const DOG = '<svg width="34" height="34" viewBox="0 0 64 64" aria-hidden="true"><path fill="currentColor" d="M18 12c-5 0-9 6-9 13 0 4 2 7 5 8v9c0 8 7 14 18 14s18-6 18-14v-9c3-1 5-4 5-8 0-7-4-13-9-13-3 0-5 2-6 4H24c-1-2-3-4-6-4Zm6 22a3 3 0 1 1 0 .1Zm16 0a3 3 0 1 1 0 .1ZM32 40c3 0 5 1.5 5 3s-2 3-5 3-5-1.5-5-3 2-3 5-3Z"/></svg>';
+// Argos: a Greek-vase hound in profile (our own drawing, design/preview/ornaments.svg "o-dog"), bone with a brick collar.
+const DOG = '<svg viewBox="0 0 96 66" aria-hidden="true"><path fill="currentColor" d="M8 22C14 30 18 31 24 30C34 26 50 28 62 29C65 24 68 18 71 14L73 6L77 13C82 15 87 17 91 20L90 23C85 25 80 25 76 26C73 30 71 34 69 38L68 62H64L62 44C56 44 48 42 40 40C36 42 34 46 33 50L30 62H26L27 50C24 44 22 38 22 34C16 34 10 30 8 22Z"/><path d="M63 26C66 29 70 31 74 30" stroke="#983a34" stroke-width="3" fill="none" stroke-linecap="round"/><circle cx="80" cy="17" r="1.4" fill="#191a16"/></svg>';
+const MIC = '<svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M12 2a3.5 3.5 0 0 0-3.5 3.5v6a3.5 3.5 0 0 0 7 0v-6A3.5 3.5 0 0 0 12 2Zm-6.5 9.2h2a4.5 4.5 0 0 0 9 0h2a6.5 6.5 0 0 1-5.5 6.4V21h3v2h-8v-2h3v-3.4a6.5 6.5 0 0 1-5.5-6.4Z"/></svg>';
+const STOP = '<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="6" y="6" width="12" height="12" fill="currentColor"/></svg>';
 
 const el = (tag, attrs = {}, text = '') => { const e = document.createElement(tag); for (const [k, v] of Object.entries(attrs)) e.setAttribute(k, v); if (text) e.textContent = text; return e; };
+const store = { get: k => { try { return localStorage.getItem(k); } catch { return null; } }, set: (k, v) => { try { localStorage.setItem(k, v); } catch { /* private mode */ } } };
 const style = el('style'); style.textContent = css; document.head.append(style);
 
-const btn = el('button', { id: 'argos-btn', type: 'button', 'aria-label': 'Open Argos', 'aria-expanded': 'false', 'aria-controls': 'argos-panel' });
+const btn = el('button', { id: 'argos-btn', type: 'button', 'aria-label': 'Open Argos, the assistant', 'aria-expanded': 'false', 'aria-controls': 'argos-panel' });
 btn.innerHTML = DOG;   // static markup above, no data
-const panel = el('section', { id: 'argos-panel', 'aria-label': 'Argos', hidden: '' });
-const head = el('div', { class: 'argos-head' }); head.append(el('b', {}, 'Argos'));
-const provider = el('select', { id: 'argos-provider', 'aria-label': 'Model' }); head.append(provider);
-const tabs = el('div', { class: 'argos-tabs', role: 'tablist' });
-const tabChat = el('button', { role: 'tab', 'aria-selected': 'true', type: 'button' }, 'Chat');
-const tabRefine = el('button', { role: 'tab', 'aria-selected': 'false', type: 'button' }, 'Refine');
+btn.append(el('span', { class: 'argos-name', 'aria-hidden': 'true' }, 'Argos'));
+const panel = el('section', { id: 'argos-panel', 'aria-labelledby': 'argos-title', hidden: '' });
+const head = el('div', { class: 'argos-head' }); head.append(el('h2', { id: 'argos-title' }, 'Argos'));
+head.append(el('label', { for: 'argos-provider' }, 'Model'));
+const provider = el('select', { id: 'argos-provider' }); head.append(provider);
+const close = el('button', { id: 'argos-close', type: 'button', 'aria-label': 'Close Argos' }, '×'); head.append(close);
+const tabs = el('div', { class: 'argos-tabs', role: 'tablist', 'aria-label': 'What Argos does' });
+const tabChat = el('button', { role: 'tab', id: 'argos-tab-chat', 'aria-selected': 'true', type: 'button' }, 'Chat');
+const tabRefine = el('button', { role: 'tab', id: 'argos-tab-refine', 'aria-selected': 'false', type: 'button', tabindex: '-1' }, 'Refine');
 tabs.append(tabChat, tabRefine);
 const designRow = el('div', { class: 'argos-row' }); designRow.append(el('label', { for: 'argos-design' }, 'Design'));
 const design = el('select', { id: 'argos-design' }); designRow.append(design);
 const multiRow = el('div', { class: 'argos-row', hidden: '' });
-const multi = el('input', { type: 'checkbox', id: 'argos-multi' }); multiRow.append(multi, el('label', { for: 'argos-multi' }, 'Multicode (manager, researcher, developer, auditor)'));
-const log = el('div', { id: 'argos-log', 'aria-live': 'polite' });
-const note = el('div', { class: 'argos-note' }, 'Changes go to the 3D model. Say "walk me through it" to wire the real board.');
+const multi = el('input', { type: 'checkbox', id: 'argos-multi' }); multiRow.append(multi, el('label', { for: 'argos-multi' }, 'Multicode: manager, researcher, developer, auditor'));
+const log = el('div', { id: 'argos-log', role: 'log', 'aria-live': 'polite', tabindex: '0', 'aria-label': 'Conversation with Argos' });
+const note = el('div', { class: 'argos-note' }, 'Changes go to the 3D model. Say “walk me through it” to wire the real board.');
 const inRow = el('form', { class: 'argos-in' });
 const text = el('textarea', { id: 'argos-text', 'aria-label': 'Message Argos', placeholder: 'Ask Argos, or say what to change…' });
-const mic = el('button', { id: 'argos-mic', type: 'button', 'aria-label': 'Record', 'aria-pressed': 'false' }, '●');
-const go = el('button', { type: 'submit' }, 'Send');
+const mic = el('button', { id: 'argos-mic', type: 'button', 'aria-label': 'Record a message', 'aria-pressed': 'false' }); mic.innerHTML = MIC;
+const go = el('button', { type: 'submit', class: 'argos-send' }, 'Send');
 inRow.append(text, mic, go);
 panel.append(head, tabs, designRow, multiRow, log, note, inRow);
 document.body.append(btn, panel);
 
-let mode = 'chat', designs = [];
+let mode = 'chat', designs = [], providerList = [];
 const say = (who, msg, cls = '') => { const m = el('div', { class: `argos-msg ${who} ${cls}`.trim() }, msg); log.append(m); log.scrollTop = log.scrollHeight; return m; };
 const api = async (path, opts = {}) => {
   const r = await fetch(`/argos/${path}`, { ...opts, headers: { ...(opts.body && !(opts.body instanceof Blob) ? { 'content-type': 'application/json' } : {}), ...(opts.headers || {}) } });
@@ -74,18 +111,31 @@ const api = async (path, opts = {}) => {
 };
 
 function setMode(m) {
-  mode = m; tabChat.setAttribute('aria-selected', String(m === 'chat')); tabRefine.setAttribute('aria-selected', String(m === 'refine'));
+  mode = m;
+  tabChat.setAttribute('aria-selected', String(m === 'chat')); tabRefine.setAttribute('aria-selected', String(m === 'refine'));
+  tabChat.tabIndex = m === 'chat' ? 0 : -1; tabRefine.tabIndex = m === 'refine' ? 0 : -1;
   multiRow.hidden = m !== 'refine';
-  text.placeholder = m === 'refine' ? 'What should change? e.g. "add four 3.2 mm mounting holes"' : 'Ask Argos, or say what to change…';
+  text.placeholder = m === 'refine' ? 'What should change? e.g. “add four 3.2 mm mounting holes”' : 'Ask Argos, or say what to change…';
 }
 tabChat.addEventListener('click', () => setMode('chat')); tabRefine.addEventListener('click', () => setMode('refine'));
+tabs.addEventListener('keydown', e => {
+  if (e.key !== 'ArrowLeft' && e.key !== 'ArrowRight') return;
+  e.preventDefault(); const next = mode === 'chat' ? 'refine' : 'chat'; setMode(next); (next === 'chat' ? tabChat : tabRefine).focus();
+});
+
+/** Fills the model picker: the stored default if it has a key, else the first provider with one. */
+function renderProviders(list) {
+  providerList = Array.isArray(list) ? list : [];
+  const keep = provider.value;
+  provider.replaceChildren(...providerList.map(p => { const o = el('option', { value: p.id }, `${p.name}${p.ready ? ' · ready' : ' (no key)'}`); if (!p.ready) o.disabled = true; return o; }));
+  const ready = id => providerList.some(p => p.id === id && p.ready);
+  const want = [store.get('argos.provider'), keep].find(ready) || providerList.find(p => p.ready)?.id;
+  if (want) provider.value = want;
+}
+provider.addEventListener('change', () => { store.set('argos.provider', provider.value); dispatchEvent(new CustomEvent('ody:provider', { detail: provider.value })); });
 
 async function loadState() {
-  try {
-    const st = await api('state');
-    provider.replaceChildren(...st.providers.map(p => { const o = el('option', { value: p.id }, `${p.name}${p.ready ? '' : ' (no key)'}`); if (!p.ready) o.disabled = true; return o; }));
-    const first = st.providers.find(p => p.ready); if (first) provider.value = first.id;
-  } catch { /* server without Argos */ }
+  try { renderProviders((await api('state')).providers); } catch { /* server without Argos */ }
   await loadDesigns();
 }
 async function loadDesigns(selectId) {
@@ -121,12 +171,12 @@ mic.addEventListener('click', async () => {
     const chunks = []; rec = new MediaRecorder(stream);
     rec.ondataavailable = e => e.data.size && chunks.push(e.data);
     rec.onstop = async () => {
-      stream.getTracks().forEach(t => t.stop()); mic.setAttribute('aria-pressed', 'false'); mic.textContent = '●'; rec = null;
+      stream.getTracks().forEach(t => t.stop()); mic.setAttribute('aria-pressed', 'false'); mic.setAttribute('aria-label', 'Record a message'); mic.innerHTML = MIC; rec = null;
       const blob = new Blob(chunks, { type: chunks[0]?.type || 'audio/webm' });
-      try { const r = await api('stt', { method: 'POST', body: blob, headers: { 'content-type': blob.type } }); if (r.text) void submit(r.text); else say('dog', "I didn't catch that.", 'err'); }
+      try { const r = await api('stt', { method: 'POST', body: blob, headers: { 'content-type': blob.type } }); if (r.text) void submit(r.text); else say('dog', 'I didn’t catch that. Try again, or type.', 'err'); }
       catch (e) { say('dog', e.message, 'err'); }
     };
-    rec.start(); mic.setAttribute('aria-pressed', 'true'); mic.textContent = '■';
+    rec.start(); mic.setAttribute('aria-pressed', 'true'); mic.setAttribute('aria-label', 'Stop recording and send'); mic.innerHTML = STOP;
     setTimeout(() => rec?.state === 'recording' && rec.stop(), 30_000);
   } catch { say('dog', 'Microphone not available. Type instead.', 'err'); }
 });
@@ -139,19 +189,39 @@ subscribe(e => {
   if (e.kind !== 'refine') return;
   if (e.state === 'started') jobMsg.set(e.jobId, say('dog', `${e.mode === 'multicode' ? 'Multicode team' : 'Refining'}: ${e.instruction}`));
   if (e.state === 'step' && e.step) say('step', `${e.step.role}: ${e.step.text}`, e.step.state === 'failed' ? 'failed' : '');
-  if (e.state === 'failed') say('dog', `Couldn't finish: ${e.error}`, 'err');
+  if (e.state === 'failed') say('dog', `Couldn’t finish: ${e.error}`, 'err');
   if (e.state === 'done' && e.design) {
     const m = say('dog', `${e.summary || 'Done.'}${e.caveats?.length ? `\nNote: ${e.caveats.join(' ')}` : ''}\n`);
     for (const [label, file] of [['Download STL', 'model.stl'], ['OpenSCAD code', 'source.scad']]) {
       if (!e.design.files?.includes(file)) continue;
-      const a = el('a', { href: `/argos/designs/${encodeURIComponent(e.design.id)}/${file}?download`, download: '' }, label); m.append(a, document.createTextNode('  '));
+      const a = el('a', { href: `/argos/designs/${encodeURIComponent(e.design.id)}/${file}?download`, download: '' }, label); m.append(a, document.createTextNode(' '));
     }
     void loadDesigns(e.design.id);
   }
 });
+// keys saved on the Main page: the model picker shows the new state at once (no reload)
+addEventListener('ody:keys', e => { if (Array.isArray(e.detail?.providers)) renderProviders(e.detail.providers); else void loadState(); });
+addEventListener('ody:provider', e => { if (typeof e.detail === 'string' && providerList.some(p => p.id === e.detail && p.ready)) provider.value = e.detail; });
+addEventListener('storage', e => { if (e.key === 'argos.provider') renderProviders(providerList); });
 
-btn.addEventListener('click', () => {
-  const open = panel.hidden; panel.hidden = !open; btn.setAttribute('aria-expanded', String(open));
-  if (open) { void loadState(); text.focus(); if (!log.childElementCount) say('dog', 'Woof. I\'m Argos. Tell me what to change on the model, or ask me anything.'); }
-});
-addEventListener('keydown', e => { if (e.key === 'Escape' && !panel.hidden) { panel.hidden = true; btn.setAttribute('aria-expanded', 'false'); btn.focus(); } });
+function setOpen(open, { focus = true } = {}) {
+  if (open === !panel.hidden) return;
+  panel.hidden = !open; btn.setAttribute('aria-expanded', String(open));
+  if (open) { void loadState(); if (focus) text.focus(); if (!log.childElementCount) say('dog', 'Woof. I’m Argos. Tell me what to change on the model, or ask me anything.'); }
+  else if (focus) btn.focus();
+}
+btn.addEventListener('click', () => setOpen(panel.hidden));
+close.addEventListener('click', () => setOpen(false));
+addEventListener('keydown', e => { if (e.key === 'Escape' && !panel.hidden) setOpen(false); });
+void loadState();   // the picker is right even before the panel opens
+
+/** Opens the panel's Refine tab with this design selected (The Forge's "Refine with Argos"). */
+export async function selectDesign(id) {
+  setOpen(true, { focus: false });
+  setMode('refine');
+  await loadDesigns(String(id || ''));
+  if (designs.some(d => d.id === id)) design.value = id;
+  text.focus();
+}
+/** For the Main page and tests: open or close the panel. */
+export function openArgos(open = true) { setOpen(open); }

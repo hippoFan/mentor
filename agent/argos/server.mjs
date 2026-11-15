@@ -10,7 +10,8 @@
 //   GET    /argos/designs/<id>/<file>         source.scad | model.stl | model.obj | model.glb | photo.jpg | spec.json
 //   DELETE /argos/designs/<id>
 //   POST   /argos/import?name=<file.ext>      raw file body  -> design
-//   GET    /argos/keys                        which keys are set (never a key); POST /argos/keys always 403: keys live in .env
+//   GET    /argos/keys                        which keys are set + last 4 characters (never a key)
+//   POST   /argos/keys      {name, value}     set/clear one allowlisted key in .env (write-only, page Origin only, keys.mjs)
 //   GET    /argos/usage                       ElevenLabs credits + this hub's Argos call counts
 import { randomBytes } from 'node:crypto';
 import { createChat } from './chat.mjs';
@@ -23,6 +24,20 @@ import { STT, transcribe } from './stt.mjs';
 
 const FILE_TYPES = { 'source.scad': 'text/plain; charset=utf-8', 'model.stl': 'model/stl', 'model.obj': 'text/plain; charset=utf-8',
   'model.glb': 'model/gltf-binary', 'photo.jpg': 'image/jpeg', 'spec.json': 'application/json; charset=utf-8' };
+// POST /argos/keys: only the page this server serves (http://localhost:PORT or 127.0.0.1:PORT), never another site.
+const pagePort = () => Number(process.env.MENTOR_MONITOR_PORT || 8790);
+function pageOrigin(req) {
+  const port = pagePort(), ok = [`localhost:${port}`, `127.0.0.1:${port}`];
+  const origin = String(req.headers.origin || ''), hostHdr = String(req.headers.host || '');
+  if (!ok.includes(hostHdr) || !ok.map(h => `http://${h}`).includes(origin)) return false;
+  const site = req.headers['sec-fetch-site'];
+  return site === undefined || site === 'same-origin';
+}
+const keyHits = [];
+function keyBudget(max = 60, ms = 60_000) {   // at most 60 key changes a minute
+  const now = Date.now(); while (keyHits.length && now - keyHits[0] > ms) keyHits.shift();
+  if (keyHits.length >= max) return false; keyHits.push(now); return true;
+}
 const cap = (s, n) => String(s ?? '').replace(/[\u0000-\u001f\u007f<>]/g, ' ').replace(/\s+/g, ' ').trim().slice(0, n);
 
 function readBody(req, max) {
@@ -89,7 +104,7 @@ export function createArgos({ send, callLive = () => false }) {
     const url = new URL(req.url, 'http://localhost'), p = url.pathname, method = req.method;
     try {
       if (method === 'GET' && p === '/argos/state') {
-        return json(res, 200, { providers: providers(), keys: keyStatus(), call: callLive(), designs: (await listDesigns()).length, modes: MODES, counts });
+        return json(res, 200, { providers: providers(), keys: keyStatus(), call: callLive(), designs: (await listDesigns()).length, modes: MODES, counts, uptime: Math.round(process.uptime()) });
       }
       if (method === 'POST' && p === '/argos/chat') {
         const b = await readJson(req);
@@ -137,8 +152,14 @@ export function createArgos({ send, callLive = () => false }) {
       }
       if (method === 'GET' && p === '/argos/keys') return json(res, 200, { keys: keyStatus(), providers: providers() });
       if (method === 'POST' && p === '/argos/keys') {
-        req.resume();   // keys are never set from the page (setKey always refuses with 403)
-        return json(res, 200, { key: await setKey(), providers: providers() });
+        // Write-only key entry from the Main page (keys.mjs): this page's Origin and Host only (live.mjs checks too),
+        // same-origin fetch, JSON <= 2 KB, an allowlisted name, a validated value. Never echoes or logs the value.
+        if (!pageOrigin(req)) { req.resume(); return json(res, 403, { error: 'Only the Ody page on this laptop can set keys.' }); }
+        if (Number(req.headers['content-length']) > 2 * 1024) { req.resume(); return json(res, 413, { error: 'Too large.' }); }
+        const b = await readJson(req, 2 * 1024);
+        if (!b || typeof b !== 'object' || Array.isArray(b) || Object.keys(b).some(k => k !== 'name' && k !== 'value')) return json(res, 400, { error: 'Send {name, value} only.' });
+        if (!keyBudget()) return json(res, 429, { error: 'Too many changes. Wait a minute.' });
+        return json(res, 200, { key: await setKey(String(b.name || ''), b.value), providers: providers() });
       }
       if (method === 'GET' && p === '/argos/usage') {
         let eleven = null;
