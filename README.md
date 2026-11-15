@@ -16,7 +16,7 @@ talks you through the build one step at a time, and texts you a voyage log when 
 [![Gemini](https://img.shields.io/badge/Gemini-brain-1D1D1F?style=flat-square)](https://ai.google.dev)
 [![License: MIT](https://img.shields.io/badge/license-MIT-FFC845?style=flat-square)](LICENSE)
 
-[Watch the film](docs/mentor-film.mp4) · [How it works](#how-it-works) · [Features](#features) · [Run it](#run-it) · [Security](SECURITY.md)
+[Watch the film](docs/ody-film.mp4) · [How it works](#how-it-works) · [Features](#features) · [Run it](#run-it) · [Security](SECURITY.md)
 
 </div>
 
