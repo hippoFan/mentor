@@ -62,6 +62,10 @@ Ody is that person, on a FaceTime call:
 |---|---|
 | **AR marks that stick** | Rings and labels follow each part as your phone moves: a pyramidal Lucas-Kanade tracker in plain JS, with no dependencies. Synthetic handheld test: 1.6 px mean error at about 1 ms per frame. |
 | **AR wires on the exact hole** | "Where does this wire go?" On an Arduino UNO (R3 / R4 WiFi), Ody registers the board from its 4 corners, snaps them to the real header holes, and draws a holographic 3D jumper from the exact pin hole, arcing up out of the board and staying registered as the phone moves (`board.mjs`). |
+| **3D hologram on your laptop** | The board Ody recognises appears at `localhost:8790/twin` as an Iron Man-style hologram: Ody's rings and holographic jumpers in 3D between the exact holes, explode view (E), hover any pin for its name and function, export the scene as `.glb`. Hand control: pinch to rotate and fist to grab, tracked on the laptop with MediaPipe, and the video never leaves it. |
+| **Scan anything** | "Scan this" turns whatever is on camera into an approximate 3D model (an AI-built shape assembly with your photo wrapped on), shown in the hologram and exportable. Known boards use their exact model. Labelled as an AI estimate from one view. |
+| **Parts library** | 18 boards and modules with exact pin maps (Arduino UNO, Mega, Nano; ESP32; Raspberry Pi 4 and Pico; NodeMCU; breadboard; HC-SR04, DHT22, SG90, MPU6050…), imported from Wokwi and Fritzing by `tools/import-parts.mjs`. |
+| **Clean view by default** | Your phone shows just your camera. Ody draws only when you ask where, what, or how to connect something, and marks fade after about 10 s. Safety warnings always show. |
 | **Stop signs** | It circles a short, a missing resistor or reversed polarity in red and says "Stop," before you power on. |
 | **Knows your exact board** | It identifies the part first (UNO R3 USB-B vs UNO R4 USB-C) and points at *that* board's layout. |
 | **"Show me again"** | Instantly re-shows the last marks and repeats the last line, with no model call. |
@@ -75,6 +79,13 @@ Ody is that person, on a FaceTime call:
 <tr>
 <td width="50%"><img src="docs/film-2.6.jpg" alt="Film opening: In the Odyssey, a goddess disguised herself as an old friend"></td>
 <td width="50%"><img src="docs/tester-panel.jpg" alt="Tester panel: connection, brain, latency bars and what Ody sees with its marks"><br><sub>The tester panel (press <b>T</b>), shown with mock data.</sub></td>
+</tr>
+</table>
+
+<table>
+<tr>
+<td width="50%"><img src="docs/twin-hologram.jpg" alt="Ody's 3D digital twin: a cyan hologram of an Arduino UNO R4 WiFi with a holographic jumper from pin 13 to a breadboard"><br><sub><b>The 3D twin</b> at <code>/twin</code>: Ody's marks and wires in 3D (mock replay).</sub></td>
+<td width="50%"><img src="docs/scan-multimeter.jpg" alt="A scanned multimeter rebuilt as a 3D hologram with labelled parts"><br><sub><b>Scan anything:</b> a multimeter from one camera view, about 13 s (AI estimate).</sub></td>
 </tr>
 </table>
 
