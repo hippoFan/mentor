@@ -813,7 +813,12 @@ function renderPartsPanel() {
     b.append(pEl('span', 'ico part'), pEl('span', 'what', p.name), pEl('span', p.mod ? 'where mod' : 'where', p.mod ? 'modified' : p.moved ? 'moved' : p.layer || ''));
     if (p.mod) b.title = p.modNote || describeChange(p.mod);
     b.addEventListener('click', () => { if (scopeNow() === 'board' && S.explodeTo < 1 && !changed(list)) setExplode(true); selectPart(P.sel === p ? null : p); });
-    li.append(b); ul.append(li);
+    li.append(b);
+    if (P.sel === p) {   // the picked part's own action, on its row
+      const x = pEl('button', 'row-act', 'Remove'); x.type = 'button'; x.setAttribute('aria-label', `Remove ${p.name}`);
+      x.addEventListener('click', () => removePart(p)); li.classList.add('has-act'); li.append(x);
+    }
+    ul.append(li);
   }
   $('partRemove').hidden = !P.sel; $('partRemove').textContent = P.sel ? `Remove ${P.sel.name}` : 'Remove';
   const tray = $('tray'); tray.replaceChildren();
@@ -1701,7 +1706,7 @@ function frame(now) {
   if (S.tipKey) placeKeyTip();
   composer.render(dt);
   labels.render(scene, camera);
-  if (++declutterTick % 3 === 0) declutter();
+  if (++declutterTick % 3 === 0) { tightLabels(); declutter(); occlude(); }
   // frame time: drop bloom resolution, then pixel ratio, if the laptop can't hold 60 fps
   acc += dt; frames++;
   if (acc >= 1) {
@@ -1710,6 +1715,35 @@ function frame(now) {
     if (stats.fps < 52 && document.visibilityState === 'visible') { if (++slow >= 3) { slow = 0; if (bloomScale > 0.3) bloomScale = 0.3; else if (pixelRatio > 1.25) pixelRatio = 1.25; else if (pixelRatio > 1) pixelRatio = 1; resize(); } } else slow = 0;
   }
 }
+
+// ---------- labels never hide behind a panel, and turn into numbered dots on a narrow stage ----------
+const OVERLAYS = ['handview', 'analysisCard', 'handhelp', 'phone', 'labelkey'];
+function occlude() {
+  const rects = OVERLAYS.map(id => $(id)).filter(e => e && !e.hidden && e.offsetParent !== null).map(e => e.getBoundingClientRect())
+    .concat([...document.querySelectorAll('.coach:not([hidden]) .coach-card, .stage .toolbar')].map(e => e.getBoundingClientRect()));
+  for (const t of $('labels').querySelectorAll('.tag')) {
+    const s = t.querySelector('span'), dot = t.querySelector('i'); if (!s) continue;
+    const a = s.getBoundingClientRect(), d = dot ? dot.getBoundingClientRect() : a;
+    const hit = r => (a.left < r.right && a.right > r.left && a.top < r.bottom && a.bottom > r.top) || (d.left < r.right && d.right > r.left && d.top < r.bottom && d.bottom > r.top);
+    t.classList.toggle('occluded', rects.some(hit));
+  }
+}
+let tightKey = '';
+function tightLabels() {
+  const tight = stage.getBoundingClientRect().width < 560;
+  document.body.classList.toggle('tight-labels', tight);
+  const tags = tight ? [...$('labels').querySelectorAll('.tag:not(.layer)')].filter(t => t.style.display !== 'none') : [];
+  const names = tags.map(t => t.querySelector('span')?.textContent || '');
+  const key = names.join('|');
+  $('labelkey').hidden = !tags.length;
+  if (key === tightKey) return; tightKey = key;
+  for (const t of $('labels').querySelectorAll('.tag[data-n]')) t.removeAttribute('data-n');
+  const order = names.map((n, i) => [n, i]).sort((x, y) => x[0].localeCompare(y[0]));
+  const ol = $('labelkeyList'); ol.replaceChildren();
+  order.forEach(([n, i], k) => { tags[i].querySelector('span').dataset.n = String(k + 1); tags[i].dataset.n = String(k + 1); ol.append(pEl('li', '', n)); });
+  $('labelkeyBtn').textContent = `Labels (${tags.length})`;
+}
+$('labelkeyBtn').addEventListener('click', () => { const ol = $('labelkeyList'); ol.hidden = !ol.hidden; $('labelkeyBtn').setAttribute('aria-expanded', String(!ol.hidden)); });
 
 // ---------- labels never sit on top of each other: later (lower-priority) labels lift until they are clear ----------
 let declutterTick = 0;

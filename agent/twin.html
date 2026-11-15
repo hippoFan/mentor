@@ -170,8 +170,8 @@
   .cur-label { position: absolute; left: 24px; top: -12px; white-space: nowrap; padding: 4px 9px; border-radius: 99px; background: rgba(18,14,28,.9);
     color: var(--ink); font-size: 12.5px; font-weight: 600; box-shadow: 0 0 0 1px rgba(255,255,255,.12); }
   .cur-label[hidden] { display: none; }
-  .handview { position: absolute; right: 18px; bottom: 76px; z-index: 5; width: 212px; border-radius: 16px; overflow: hidden;
-    background: rgba(12,10,20,.9); border: 1px solid rgba(59,216,255,.22); color: var(--ink); font-size: 12.5px; }
+  .handview { position: absolute; right: 18px; bottom: 76px; z-index: 8; width: 212px; border-radius: 16px; overflow: hidden;
+    background: #0E0B17; border: 1px solid rgba(59,216,255,.22); box-shadow: 0 16px 40px rgba(0,0,0,.5); color: var(--ink); font-size: 12.5px; }
   .handview[hidden] { display: none; }
   .hstatus { display: flex; align-items: center; gap: 8px; margin: 0; padding: 9px 12px; font-weight: 600; font-size: 13px; line-height: 1.25; }
   .hdot { width: 8px; height: 8px; border-radius: 50%; background: var(--quiet); flex: none; transition: background .25s, box-shadow .25s; }
@@ -180,12 +180,13 @@
   .hstatus[data-kind="close"] .hdot, .hstatus[data-kind="dark"] .hdot { background: var(--amber); }
   .handview canvas { display: block; width: 100%; height: auto; aspect-ratio: 4 / 3; background: #0B1016; }
   .handview canvas[hidden] { display: none; }
-  .legend { list-style: none; margin: 0; padding: 6px 6px 2px; display: grid; gap: 1px; }
-  .legend li { display: grid; grid-template-columns: 30px minmax(0, 1fr) auto; align-items: center; gap: 6px; padding: 3px 7px 3px 4px; border-radius: 8px; color: #CFCADC; transition: background .15s, color .15s; }
-  .legend li em { font-style: normal; color: var(--muted); }
-  .legend li.on { background: rgba(59,216,255,.15); color: #fff; } .legend li.on em { color: #CFF5FF; }
-  .legend .lg svg { width: 30px; height: 20px; display: block; }
-  .legend .gb { stroke: currentColor; stroke-width: 1.2; }
+  .hlegend { list-style: none; margin: 0; padding: 6px 6px 2px; display: grid; gap: 1px; }
+  .hlegend li { display: grid; grid-template-columns: 30px minmax(0, 1fr) auto; align-items: center; gap: 6px; padding: 3px 7px 3px 4px; border-radius: 8px; color: #CFCADC; transition: background .15s, color .15s; }
+  .hlegend li span:not(.lg) { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .hlegend li em { font-style: normal; color: var(--muted); white-space: nowrap; text-align: right; }
+  .hlegend li.on { background: rgba(59,216,255,.15); color: #fff; } .hlegend li.on em { color: #CFF5FF; }
+  .hlegend .lg svg { width: 30px; height: 20px; display: block; }
+  .hlegend .gb { stroke: currentColor; stroke-width: 1.2; }
   .hv-actions { display: flex; gap: 4px; padding: 4px 6px 7px; }
   .hv-btn { flex: 1; border: 0; border-radius: 9px; background: rgba(255,255,255,.06); color: var(--ink); font: 600 12.5px var(--ui); padding: 7px 8px; min-height: 32px; cursor: pointer; }
   .hv-btn:hover { background: rgba(255,255,255,.12); }
@@ -228,7 +229,7 @@
     .coach:not([hidden]) .coach-card, .handhelp:not([hidden]) { animation: rise .25s cubic-bezier(.2,.8,.2,1); }
     @keyframes rise { from { opacity: 0; translate: 0 8px; } }
   }
-  @media (prefers-reduced-motion: reduce) { .cursor::before, .legend li, .coach-dots i { transition: none; } }
+  @media (prefers-reduced-motion: reduce) { .cursor::before, .hlegend li, .coach-dots i { transition: none; } }
   .fps { position: absolute; top: 60px; right: 18px; z-index: 4; color: #B3ADC6; font: 500 12px/1 var(--ui); font-variant-numeric: tabular-nums; }
   .fps[hidden] { display: none; }
 
@@ -547,6 +548,30 @@
   @media (prefers-reduced-motion: no-preference) { .keysheet:not([hidden]) .ks-card { animation: rise var(--t-2) var(--ease); } }
   @media (prefers-reduced-motion: reduce) { .tool, .btn, .btn-top, .modes button, .chip, .hv-btn, ul.list li button, .ck, .toast-item { transition: none; } .tool:active, .btn:active, .btn-top:active, .modes button:active, .chip:active, .hv-btn:active, ul.list li button:active { transform: none; } }
 
+  /* labels never sit behind a panel: a tag whose label falls under an open overlay hides until it is clear */
+  .tag.occluded { visibility: hidden; }
+  /* narrow stage: labels become numbered dots; the "Labels" key lists what each number is */
+  body.tight-labels .tag[data-n]:not(.layer) span { font-size: 0; padding: 0; width: 22px; height: 22px; border-radius: 50%; display: grid; place-items: center; max-width: none; }
+  body.tight-labels .tag[data-n]:not(.layer) span::after { content: attr(data-n); font: 700 11.5px/1 var(--ui); color: var(--ink); }
+  body.tight-labels .tag[data-n]:not(.layer) span em { display: none; }
+  body.tight-labels .tag[data-n]:not(.layer) b { width: 22px; }
+  body.tight-labels .tag[data-n]:not(.layer) span { left: 16px; bottom: 12px; }
+  .labelkey { position: absolute; z-index: 8; left: 8px; bottom: 118px; display: grid; justify-items: start; gap: 6px; max-width: calc(100% - 16px); }
+  .labelkey ol { order: -1; }
+  .labelkey .chip { position: static; display: inline-flex; }
+  .labelkey[hidden] { display: none; }
+  .labelkey ol { margin: 0; padding: 8px 12px 8px 30px; background: #0E0B17; border: 1px solid var(--line); border-radius: 14px; font-size: 13.5px; line-height: 1.6;
+    max-height: 46vh; overflow-y: auto; box-shadow: 0 12px 30px rgba(0,0,0,.5); }
+  .labelkey ol[hidden] { display: none; }
+  .labelkey li::marker { color: var(--athena); font-weight: 700; }
+  .parts-list { overflow-x: hidden; }
+  ul.list li.has-act { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 6px; }
+  .row-act { border: 1px solid var(--line); background: var(--deck); color: var(--ink); border-radius: 9px; padding: 5px 10px; font: 600 12.5px var(--ui); min-height: 32px; cursor: pointer; white-space: nowrap; }
+  .row-act:hover { border-color: color-mix(in srgb, var(--live) 60%, transparent); color: #FF9C95; }
+  .parts-actions { grid-template-columns: 1fr; }
+  .parts-actions #partRemove { display: none; }
+  .parts-actions .primary { grid-column: 1 / -1; }
+
   /* ---------- narrower screens ---------- */
   @media (max-width: 1100px) { .tagline { display: none; } }
   @media (max-width: 900px) {
@@ -565,7 +590,7 @@
     .tool kbd { display: none; }
     .modes { top: auto; right: auto; left: 8px; bottom: 66px; }
     .handview { right: 8px; bottom: 70px; width: 176px; }
-    .handview .legend li em { display: none; }
+    .handview .hlegend li em { display: none; }
     .analysis-card { left: 8px; right: 8px; width: auto; bottom: 70px; max-height: 60%; }
     body.swapped .stage { width: 46%; right: 8px; bottom: 8px; }
     aside.rail { overflow: visible; padding: 8px 0 0; }
@@ -615,6 +640,7 @@
         <div class="an-body"></div>
       </div>
       <div class="waiting" id="waiting"><h2 id="waitTitle">Every Telemachus deserves a Mentor.</h2><p id="waitSub">FaceTime Ody, then hold your board up to the camera.</p></div>
+      <div class="labelkey" id="labelkey" hidden><button class="chip" id="labelkeyBtn" type="button" aria-expanded="false" aria-controls="labelkeyList">Labels</button><ol id="labelkeyList" hidden></ol></div>
       <div class="tooltip" id="tip" role="tooltip" hidden><strong></strong><span></span></div>
       <canvas class="handlayer" id="handlayer" aria-hidden="true"></canvas>
       <div class="cursor" id="cursor" hidden><span class="cur-label" hidden></span></div>
@@ -622,7 +648,7 @@
       <div class="handview" id="handview" role="group" aria-label="Hand control" hidden>
         <p class="hstatus" id="hstatus" data-kind="none" role="status" aria-live="polite"><span class="hdot" aria-hidden="true"></span><span id="hstatusText">Show your hand to the camera</span></p>
         <canvas id="handcanvas" width="212" height="159" aria-hidden="true"></canvas>
-        <ul class="legend" id="handlegend" aria-label="Gestures">
+        <ul class="hlegend" id="handlegend" aria-label="Gestures">
           <li data-g="hover"><span class="lg"></span><span>Open hand</span><em>point</em></li>
           <li data-g="rotate"><span class="lg"></span><span>Pinch</span><em>grab, turn</em></li>
           <li data-g="zoom"><span class="lg"></span><span>Two hands</span><em>zoom</em></li>
