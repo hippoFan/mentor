@@ -18,7 +18,8 @@ const MAT = {   // [roughness, metalness, hologram tint]
 const C = new THREE.Matrix4().set(1, 0, 0, 0, 0, 0, 1, 0, 0, -1, 0, 0, 0, 0, 0, 1);
 const CT = C.clone().transpose();
 
-function primitive(p) {
+/** One part's geometry from its spec (also used by twin/modify.js to rebuild a part Ody changed). */
+export function primitive(p) {
   const { x, y, z } = p.size_mm;   // spec extents: x width, y depth, z height
   let g;
   switch (p.shape) {
@@ -168,7 +169,7 @@ export function buildScan(spec, photoUrl, crop) {
       ...(p.material === 'screen' ? { emissive: 0x111111 } : {}) });
     const mesh = new THREE.Mesh(g, mat);
     mesh.name = p.name; mesh.castShadow = true; mesh.receiveShadow = true;
-    mesh.userData.holo = tint; mesh.userData.holoMap = atlas; mesh.userData.scanPart = pi;
+    mesh.userData.holo = tint; mesh.userData.holoMap = atlas; mesh.userData.scanPart = pi; mesh.userData.scanSpec = p;
     g.computeBoundingBox();
     mesh.userData.centre = g.boundingBox.getCenter(new THREE.Vector3());
     group.add(mesh); meshes.push(mesh);

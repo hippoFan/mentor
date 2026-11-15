@@ -1,63 +1,147 @@
 // Unit test for the twin's hand gestures, with synthetic MediaPipe landmarks (no camera needed):
 //   node test/twin-gestures.mjs
+// (the in-browser run of the same gestures, with ?handsim=1 and screenshots, is test/twin-gestures-test.mjs)
 import assert from 'node:assert/strict';
-import { createGestures, applyToCamera, classify, synthHand, OneEuro } from '../twin/gestures.js';
+import { createGestures, applyToCamera, classify, synthHand, OneEuro, TUNING } from '../twin/gestures.js';
 
 const HOME = { theta: 0.18, phi: 0.95, radius: 300, target: [2, 6, 4] };
 let pass = 0;
 const test = (name, fn) => { fn(); pass++; console.log(`ok  ${name}`); };
-/** Runs a sequence of frames (each: list of [pose, cx, cy, size]) at 30 fps; returns the camera and the outputs. */
+/** A hand spec: [pose, cx, cy, size, opts?]. */
+const hand = ([pose, cx, cy, size, o]) => ({ landmarks: synthHand(pose, cx, cy, size, o) });
+/** Runs frames (each: list of hand specs) at 30 fps; returns the camera and the outputs. */
 function run(frames, cam = { ...HOME, target: [...HOME.target] }) {
   const g = createGestures(), outs = [];
   frames.forEach((hands, i) => {
-    const o = g.update(hands.map(([pose, cx, cy, size]) => ({ landmarks: synthHand(pose, cx, cy, size) })), i * 33);
+    const o = g.update(hands.map(hand), i * 33);
     outs.push(o); cam = applyToCamera(cam, o, HOME);
   });
   return { cam, outs };
 }
-const range = (n, f) => Array.from({ length: n }, (_, i) => f(i / (n - 1)));
+const range = (n, f) => Array.from({ length: n }, (_, i) => f(n > 1 ? i / (n - 1) : 0, i));
+const hold = (n, hands) => range(n, () => hands);
 
 test('poses classify', () => {
-  for (const p of ['palm', 'point', 'fist', 'pinch']) assert.equal(classify(synthHand(p)).pose, p);
+  for (const p of ['palm', 'point', 'fist', 'pinch', 'thumbs']) assert.equal(classify(synthHand(p)).pose, p);
 });
-test('pinch + drag rotates', () => {
-  const { cam, outs } = run(range(30, t => [['pinch', 0.35 + 0.3 * t, 0.5, 0.12]]));
+test('handedness-agnostic: a mirrored (other) hand classifies the same', () => {
+  for (const p of ['palm', 'point', 'fist', 'pinch', 'thumbs']) assert.equal(classify(synthHand(p, 0.5, 0.5, 0.12, { mirror: true })).pose, p, p);
+});
+test('pinch hysteresis: engages below pinchOn, holds until above pinchOff', () => {
+  const at = (gap, was) => classify(synthHand('pinch', 0.5, 0.5, 0.12, { gap }), was).pose === 'pinch';
+  assert.equal(at(0.38, false), false, 'between the thresholds, not yet pinching: no pinch');
+  assert.equal(at(0.24, false), true, 'below pinchOn engages');
+  assert.equal(at(0.42, true), true, 'between the thresholds while pinching: still a pinch');
+  assert.equal(at(0.56, true), false, 'above pinchOff releases');
+  // same through the recogniser: once engaged, a gap wobbling 0.30 .. 0.44 never drops the grab
+  const { outs } = run(range(40, (t, i) => [['pinch', 0.5, 0.5, 0.12, { gap: i < 4 ? 0.7 : i < 14 ? 0.15 : 0.3 + 0.14 * (i % 2) }]]));
+  const ends = outs.filter(o => o.grab === 'end').length, starts = outs.filter(o => o.grab === 'start').length;
+  assert.equal(starts, 1); assert.equal(ends, 0);
+  assert.ok(Math.abs(TUNING.pinchOff - TUNING.pinchOn) > 0.1);
+});
+test('debounce: a pinch flicker under 150 ms never grabs; a held one does', () => {
+  const flick = run([...hold(8, [['palm', 0.5, 0.5, 0.12]]), ...hold(3, [['pinch', 0.5, 0.5, 0.12]]), ...hold(10, [['palm', 0.5, 0.5, 0.12]])]);
+  assert.equal(flick.outs.filter(o => o.mode === 'rotate' || o.grab).length, 0, 'flicker counted');
+  const held = run([...hold(8, [['palm', 0.5, 0.5, 0.12]]), ...hold(8, [['pinch', 0.5, 0.5, 0.12]])]);
+  assert.equal(held.outs.filter(o => o.grab === 'start').length, 1);
+  assert.equal(held.outs.at(-1).mode, 'rotate');
+});
+test('pinch + drag rotates (gain curve: fast > slow per distance)', () => {
+  const { cam, outs } = run([...hold(6, [['pinch', 0.35, 0.5, 0.12]]), ...range(30, t => [['pinch', 0.35 + 0.3 * t, 0.5, 0.12]])]);
   assert.equal(outs.at(-1).mode, 'rotate');
   assert.ok(HOME.theta - cam.theta > 0.5, `theta moved ${cam.theta}`);
   assert.equal(cam.radius, HOME.radius);
+  const slow = run([...hold(6, [['pinch', 0.35, 0.5, 0.12]]), ...range(90, t => [['pinch', 0.35 + 0.3 * t, 0.5, 0.12]])]);
+  assert.ok(HOME.theta - cam.theta > HOME.theta - slow.cam.theta, 'a fast drag turns further than the same slow drag');
 });
-test('two-hand pinch spread zooms in', () => {
-  const { cam, outs } = run(range(30, t => [['pinch', 0.42 - 0.2 * t, 0.5, 0.11], ['pinch', 0.58 + 0.2 * t, 0.5, 0.11]]));
-  assert.equal(outs.at(-1).mode, 'zoom');
-  assert.ok(cam.radius < HOME.radius * 0.6, `radius ${cam.radius}`);
+test('rotation dead-zone: a trembling pinch does not turn the view', () => {
+  const { cam } = run(range(40, (t, i) => [['pinch', 0.5 + (i % 2 ? 0.003 : -0.003), 0.5 + (i % 3 ? 0.002 : -0.002), 0.12]]));
+  assert.ok(Math.abs(cam.theta - HOME.theta) < 1e-6 && Math.abs(cam.phi - HOME.phi) < 1e-6, `moved ${cam.theta} ${cam.phi}`);
 });
-test('fist + move grabs and moves the model', () => {
-  const { cam, outs } = run(range(30, t => [['fist', 0.4 + 0.2 * t, 0.5 + 0.1 * t, 0.12]]));
-  assert.equal(outs.at(-1).mode, 'grab');
-  const moved = Math.hypot(cam.target[0] - HOME.target[0], cam.target[2] - HOME.target[2]);
-  assert.ok(moved > 20, `moved ${moved} mm`);
-  assert.equal(cam.theta, HOME.theta);
+test('two hands apart zoom in, together zoom out (inter-hand distance, any pose)', () => {
+  const inn = run(range(30, t => [['palm', 0.4 - 0.2 * t, 0.5, 0.11], ['palm', 0.6 + 0.2 * t, 0.5, 0.11]]));
+  assert.equal(inn.outs.at(-1).mode, 'zoom');
+  assert.ok(inn.cam.radius < HOME.radius * 0.6, `radius ${inn.cam.radius}`);
+  const out = run(range(30, t => [['pinch', 0.2 + 0.2 * t, 0.5, 0.11], ['pinch', 0.8 - 0.2 * t, 0.5, 0.11]]));
+  assert.ok(out.cam.radius > HOME.radius * 1.4, `radius ${out.cam.radius}`);
+  const still = run(range(30, (t, i) => [['palm', 0.35 + (i % 2) * 0.004, 0.5, 0.11], ['palm', 0.65, 0.5, 0.11]]));
+  assert.equal(still.cam.radius, HOME.radius, 'zoom dead-zone');
 });
-test('open palm held 1 s resets once', () => {
+test('a second hand flickering in for < 150 ms does not start a zoom', () => {
+  const { outs, cam } = run([...hold(10, [['pinch', 0.5, 0.5, 0.12]]), ...hold(3, [['pinch', 0.5, 0.5, 0.12], ['palm', 0.2, 0.5, 0.12]]), ...hold(10, [['pinch', 0.5, 0.5, 0.12]])]);
+  assert.equal(outs.filter(o => o.mode === 'zoom').length, 0); assert.equal(cam.radius, HOME.radius);
+});
+test('closest (largest) hand leads, wherever it is in the list', () => {
+  const { cam, outs } = run(range(36, t => [['palm', 0.3, 0.4, 0.065], ['pinch', 0.4 + 0.3 * Math.max(0, t - 0.2), 0.55, 0.13]]));
+  assert.equal(outs.at(-1).mode, 'rotate', 'the big pinching hand leads, the smaller far one is not a second hand');
+  assert.ok(HOME.theta - cam.theta > 0.3, `theta ${cam.theta}`);
+  assert.equal(cam.radius, HOME.radius, 'no zoom from the far hand');
+});
+test('tiny background hand ignored', () => {
+  const alone = run(range(30, t => [['pinch', 0.3 + 0.4 * t, 0.5, 0.035]]));
+  assert.deepEqual(alone.cam, HOME); assert.equal(alone.outs.at(-1).status, 'none'); assert.equal(alone.outs.at(-1).ignored, 1);
+  const withUser = run(range(30, t => [['fist', 0.2 + 0.5 * t, 0.3, 0.035], ['palm', 0.55, 0.5, 0.12]]));
+  assert.ok(withUser.outs.every(o => o.mode !== 'zoom' && !o.reset), 'background fist neither zooms nor resets');
+  assert.equal(withUser.outs.at(-1).mode, 'hover'); assert.equal(withUser.outs.at(-1).hands, 1);
+});
+test('too close is reported', () => {
+  assert.equal(run(hold(5, [['palm', 0.5, 0.5, 0.42]])).outs.at(-1).status, 'close');
+  assert.equal(run(hold(5, [['palm', 0.5, 0.5, 0.12]])).outs.at(-1).status, 'ok');
+});
+test('fist held ~0.7 s resets once; a short fist does not', () => {
   const start = { theta: 1.5, phi: 0.5, radius: 120, target: [40, 0, 40] };
-  const { cam, outs } = run(range(45, () => [['palm', 0.5, 0.5, 0.12]]), start);
+  const { cam, outs } = run(hold(40, [['fist', 0.5, 0.5, 0.12]]), start);
   assert.equal(outs.filter(o => o.reset).length, 1);
   assert.deepEqual(cam, HOME);
-  const short = run(range(20, () => [['palm', 0.5, 0.5, 0.12]]), start);
-  assert.equal(short.outs.filter(o => o.reset).length, 0, 'no reset before 1 s');
+  const short = run(hold(18, [['fist', 0.5, 0.5, 0.12]]), start);
+  assert.equal(short.outs.filter(o => o.reset).length, 0, 'no reset before the hold');
+  assert.ok(short.outs.at(-1).dwell > 0.3, 'the hold shows progress');
+});
+test('open palm hovers (never resets)', () => {
+  const { cam, outs } = run(hold(60, [['palm', 0.5, 0.5, 0.12]]));
+  assert.deepEqual(cam, HOME); assert.equal(outs.at(-1).mode, 'hover');
+  const tip = synthHand('palm', 0.5, 0.5, 0.12)[8];
+  assert.ok(Math.abs(outs.at(-1).cursor.x - tip.x) < 1e-6, 'cursor = index fingertip');
+});
+test('thumbs up held fires once', () => {
+  const { outs } = run(hold(30, [['thumbs', 0.5, 0.5, 0.12]]));
+  assert.equal(outs.filter(o => o.thumbsUp).length, 1); assert.equal(outs.at(-1).mode, 'thumbs');
+});
+test('flick sideways fires once, from where the hand rested', () => {
+  const { outs } = run([...hold(12, [['palm', 0.4, 0.5, 0.12]]), ...range(4, t => [['palm', 0.4 + 0.33 * t, 0.5, 0.12]]), ...hold(8, [['palm', 0.73, 0.5, 0.12]])]);
+  const f = outs.filter(o => o.flick);
+  assert.equal(f.length, 1); assert.equal(f[0].flick.dir, 1);
+  const tip = synthHand('palm', 0.4, 0.5, 0.12)[8];
+  assert.ok(Math.abs(f[0].flick.from.x - tip.x) < 0.03, `from ${f[0].flick.from.x} vs ${tip.x}`);
+  const slow = run(range(40, t => [['palm', 0.3 + 0.4 * t, 0.5, 0.12]]));
+  assert.equal(slow.outs.filter(o => o.flick).length, 0, 'an ordinary move is not a flick');
+  const pinched = run([...hold(8, [['pinch', 0.4, 0.5, 0.12]]), ...range(4, t => [['pinch', 0.4 + 0.33 * t, 0.5, 0.12]])]);
+  assert.equal(pinched.outs.filter(o => o.flick).length, 0, 'a fast pinch-drag is not a flick');
+});
+test('pinch-pull: the hand growing moves a held part toward the camera', () => {
+  const { outs } = run([...hold(8, [['pinch', 0.5, 0.5, 0.12]]), ...range(20, t => [['pinch', 0.5, 0.5, 0.12 + 0.05 * t]])]);
+  const pull = outs.reduce((s, o) => s + o.pull, 0);
+  assert.ok(pull > 0.15, `pull ${pull}`);
+  const still = run(hold(30, [['pinch', 0.5, 0.5, 0.12]]));
+  assert.equal(still.outs.reduce((s, o) => s + o.pull, 0), 0);
+});
+test('a missed detection frame is bridged (no drop)', () => {
+  const frames = [...hold(10, [['pinch', 0.5, 0.5, 0.12]]), [], ...hold(4, [['pinch', 0.5, 0.5, 0.12]])];
+  const { outs } = run(frames);
+  assert.equal(outs.filter(o => o.grab === 'end').length, 0); assert.equal(outs[10].mode, 'rotate');
 });
 test('point held ~0.6 s selects under the fingertip', () => {
-  const { outs } = run(range(25, () => [['point', 0.6, 0.45, 0.12]]));
+  const { outs } = run(hold(30, [['point', 0.6, 0.45, 0.12]]));
   const sel = outs.filter(o => o.select);
   assert.equal(sel.length, 1);
   const tip = synthHand('point', 0.6, 0.45, 0.12)[8];
   assert.ok(Math.abs(sel[0].select.x - tip.x) < 0.01 && Math.abs(sel[0].select.y - tip.y) < 0.01);
-  const moving = run(range(25, t => [['point', 0.3 + 0.4 * t, 0.45, 0.12]]));
+  const moving = run(range(30, t => [['point', 0.3 + 0.4 * t, 0.45, 0.12]]));
   assert.equal(moving.outs.filter(o => o.select).length, 0, 'a moving finger does not select');
 });
 test('no hands = no camera change', () => {
-  const { cam, outs } = run(range(10, () => []));
-  assert.deepEqual(cam, HOME); assert.equal(outs.at(-1).mode, 'none');
+  const { cam, outs } = run(hold(10, []));
+  assert.deepEqual(cam, HOME); assert.equal(outs.at(-1).mode, 'none'); assert.equal(outs.at(-1).status, 'none');
 });
 test('one-euro filter calms jitter', () => {
   const f = new OneEuro({ minCutoff: 1.2, beta: 0.02 }); let raw = 0, out = 0, prev = null;

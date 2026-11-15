@@ -26,6 +26,8 @@
     --ui: "Inter Ody", Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
     --pip-w: clamp(118px, min(12.5vw, 19vh), 188px);
     --gutter: 16px;
+    /* one motion system: quick feedback, state changes, arrivals */
+    --ease: cubic-bezier(.2, .8, .2, 1); --t-1: 150ms; --t-2: 250ms; --t-3: 400ms;
     color-scheme: dark;
   }
   * { box-sizing: border-box; }
@@ -118,6 +120,8 @@
     padding: 6px 9px 6px 8px; border-radius: 8px; transform: translate(calc(var(--dx, 0) * 1px), calc(var(--dy, 0) * -1px)); transition: transform .18s ease-out; }
   .tag span em { font-style: normal; color: currentColor; margin-right: 6px; }
   .tag.mentor { color: var(--athena); } .tag.warn { color: var(--live); } .tag.wire { color: var(--holo); }
+  .tag.mod { color: var(--athena); } .tag.mod span { background: rgba(18,14,28,.82); border: 1px dashed color-mix(in srgb, var(--athena) 70%, transparent); }
+  .tag.ph { color: var(--athena); } .tag.ph span { background: rgba(18,14,28,.78); border: 1px dashed color-mix(in srgb, var(--athena) 55%, transparent); font-weight: 600; }
   .tag.part { color: #8FEFFF; } .tag.part span { font-weight: 500; font-size: 11.5px; background: rgba(4,10,16,.6); }
   .tag.layer { color: #8FEFFF; } .tag.layer b { width: 60px; transform: rotate(0deg); } .tag.layer span { left: 64px; bottom: -11px; }
 
@@ -147,29 +151,102 @@
   .tooltip .said { color: #7A5600; font-weight: 600; }
   .tooltip [hidden], .tooltip[hidden] { display: none; }
 
-  .handview { position: absolute; right: 18px; bottom: 76px; z-index: 5; width: 176px; border-radius: 14px; overflow: hidden;
-    background: rgba(8,12,16,.84); border: 1px solid rgba(59,216,255,.25); color: #C9F3FF; font-size: 11.5px; }
-  .handview canvas { display: block; width: 176px; height: 132px; }
-  .handview p { margin: 0; padding: 7px 10px 8px; line-height: 1.35; color: #A9BCC4; }
-  .handview p b { color: #E8FBFF; font-weight: 600; }
-  .handview[hidden] { display: none; }
-  .cursor { position: absolute; z-index: 7; width: 26px; height: 26px; margin: -13px 0 0 -13px; border-radius: 50%; pointer-events: none;
-    background: conic-gradient(var(--athena) calc(var(--d, 0) * 1turn), rgba(255,255,255,.18) 0);
-    -webkit-mask: radial-gradient(circle, transparent 8px, #000 9px); mask: radial-gradient(circle, transparent 8px, #000 9px); }
+  /* ---------- hand control: the cursor ring, the skeleton layer, the status card + legend, the coach ---------- */
+  .handlayer { position: absolute; inset: 0; width: 100%; height: 100%; z-index: 6; pointer-events: none; }
+  .cursor { position: absolute; left: 0; top: 0; z-index: 7; width: 0; height: 0; pointer-events: none; --p: 0; --d: 0; will-change: transform; }
   .cursor[hidden] { display: none; }
+  .cursor::before { content: ""; position: absolute; left: -17px; top: -17px; width: 34px; height: 34px; border-radius: 50%;
+    box-shadow: inset 0 0 0 2px rgba(238,234,245,.92), 0 0 0 1px rgba(0,0,0,.35);
+    background: radial-gradient(circle closest-side, rgba(255,200,69,.95) calc(var(--p) * 62%), transparent calc(var(--p) * 62% + 1.5%));
+    transition: box-shadow .15s cubic-bezier(.2,.8,.2,1), transform .15s cubic-bezier(.2,.8,.2,1); }
+  .cursor::after { content: ""; position: absolute; left: -22px; top: -22px; width: 44px; height: 44px; border-radius: 50%; opacity: 0;
+    background: conic-gradient(var(--athena) calc(var(--d) * 1turn), rgba(255,255,255,.16) 0);
+    -webkit-mask: radial-gradient(circle, transparent 19px, #000 20px); mask: radial-gradient(circle, transparent 19px, #000 20px); }
+  .cursor[data-state="hold"]::after { opacity: 1; }
+  .cursor[data-state="over"]::before { box-shadow: inset 0 0 0 2px var(--holo), 0 0 16px rgba(59,216,255,.55); transform: scale(1.15); }
+  .cursor[data-state="pinch"]::before, .cursor[data-state="grab"]::before { box-shadow: inset 0 0 0 3px var(--athena), 0 0 18px rgba(255,200,69,.45); transform: scale(.84); }
+  .cursor[data-state="grab"]::before { background: rgba(255,200,69,.9); }
+  .cursor[data-state="zoom"]::before { box-shadow: inset 0 0 0 2px var(--wine), 0 0 0 1px rgba(0,0,0,.35); transform: scale(1.3); }
+  .cur-label { position: absolute; left: 24px; top: -12px; white-space: nowrap; padding: 4px 9px; border-radius: 99px; background: rgba(18,14,28,.9);
+    color: var(--ink); font-size: 12.5px; font-weight: 600; box-shadow: 0 0 0 1px rgba(255,255,255,.12); }
+  .cur-label[hidden] { display: none; }
+  .handview { position: absolute; right: 18px; bottom: 76px; z-index: 5; width: 212px; border-radius: 16px; overflow: hidden;
+    background: rgba(12,10,20,.9); border: 1px solid rgba(59,216,255,.22); color: var(--ink); font-size: 12.5px; }
+  .handview[hidden] { display: none; }
+  .hstatus { display: flex; align-items: center; gap: 8px; margin: 0; padding: 9px 12px; font-weight: 600; font-size: 13px; line-height: 1.25; }
+  .hdot { width: 8px; height: 8px; border-radius: 50%; background: var(--quiet); flex: none; transition: background .25s, box-shadow .25s; }
+  .hstatus[data-kind="ok"] .hdot { background: var(--holo); box-shadow: 0 0 8px var(--holo); }
+  .hstatus[data-kind="close"], .hstatus[data-kind="dark"] { color: #FFD08A; }
+  .hstatus[data-kind="close"] .hdot, .hstatus[data-kind="dark"] .hdot { background: var(--amber); }
+  .handview canvas { display: block; width: 100%; height: auto; aspect-ratio: 4 / 3; background: #0B1016; }
+  .handview canvas[hidden] { display: none; }
+  .legend { list-style: none; margin: 0; padding: 6px 6px 2px; display: grid; gap: 1px; }
+  .legend li { display: grid; grid-template-columns: 30px minmax(0, 1fr) auto; align-items: center; gap: 6px; padding: 3px 7px 3px 4px; border-radius: 8px; color: #CFCADC; transition: background .15s, color .15s; }
+  .legend li em { font-style: normal; color: var(--muted); }
+  .legend li.on { background: rgba(59,216,255,.15); color: #fff; } .legend li.on em { color: #CFF5FF; }
+  .legend .lg svg { width: 30px; height: 20px; display: block; }
+  .legend .gb { stroke: currentColor; stroke-width: 1.2; }
+  .hv-actions { display: flex; gap: 4px; padding: 4px 6px 7px; }
+  .hv-btn { flex: 1; border: 0; border-radius: 9px; background: rgba(255,255,255,.06); color: var(--ink); font: 600 12.5px var(--ui); padding: 7px 8px; min-height: 32px; cursor: pointer; }
+  .hv-btn:hover { background: rgba(255,255,255,.12); }
+  .hv-btn[aria-pressed="true"] { background: rgba(59,216,255,.16); }
+  .gb { fill: none; stroke: #3BD8FF; stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; }
+  .gj { fill: #DDF7FF; } .gj.gold { fill: var(--athena); }
+  .gring { fill: none; stroke: var(--ink); stroke-width: 1.8; }
+  .gpart { fill: rgba(59,216,255,.12); stroke: var(--holo); stroke-width: 1.2; stroke-dasharray: 3 2; } .gpart.lit { stroke-dasharray: none; }
+  .gfill { fill: var(--athena); }
+  .garc { fill: none; stroke: var(--muted); stroke-width: 1.4; stroke-dasharray: 2 3; }
+  .gtrack { fill: none; stroke: rgba(255,255,255,.16); stroke-width: 3; } .gprog { fill: none; stroke: var(--athena); stroke-width: 3; stroke-linecap: round; }
+  .coach { position: absolute; inset: 0; z-index: 10; display: grid; place-items: center; padding: 16px; background: rgba(4,7,11,.62); }
+  .coach[hidden] { display: none; }
+  .coach-card { width: min(460px, 100%); max-height: 100%; overflow-y: auto; background: rgba(18,14,28,.97); border: 1px solid var(--line); border-radius: 22px; padding: 16px 20px 14px; box-shadow: 0 24px 60px rgba(0,0,0,.55); }
+  .coach-art { display: flex; justify-content: center; gap: 4px; height: 128px; border-radius: 14px; margin-bottom: 14px;
+    background: radial-gradient(80% 90% at 50% 100%, rgba(59,216,255,.12), transparent 70%), var(--stage); border: 1px solid rgba(59,216,255,.16); }
+  .coach-art svg { height: 100%; width: auto; max-width: 64%; }
+  .coach-art svg.small { max-width: 34%; }
+  .coach-count { margin: 0 0 4px; color: var(--muted); font-size: 12.5px; font-weight: 600; }
+  .coach h3 { margin: 0 0 8px; font: 400 30px/1.08 var(--display); letter-spacing: 0; }
+  #coachBody { margin: 0; color: #DCD7E8; font-size: 15px; line-height: 1.5; text-wrap: pretty; }
+  .coach-extra { margin: 8px 0 0; color: var(--muted); font-size: 13.5px; line-height: 1.45; } .coach-extra[hidden] { display: none; }
+  .coach-nav { display: flex; align-items: center; gap: 8px; margin-top: 16px; }
+  .coach-nav .btn { min-width: 84px; }
+  .coach-nav .btn[hidden] { display: none; }
+  .coach-skip { border: 0; background: none; color: var(--muted); font: 600 14px var(--ui); padding: 10px 6px; cursor: pointer; min-height: 44px; }
+  .coach-skip:hover { color: var(--ink); }
+  .coach-dots { flex: 1; display: flex; justify-content: center; gap: 6px; }
+  .coach-dots i { width: 6px; height: 6px; border-radius: 99px; background: var(--line); transition: width .25s cubic-bezier(.2,.8,.2,1), background .25s; }
+  .coach-dots i.on { background: var(--athena); width: 18px; }
+  .coach-privacy { margin: 12px 0 0; color: var(--muted); font-size: 12px; }
+  .handhelp { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); z-index: 10; width: min(420px, calc(100% - 32px));
+    background: rgba(18,14,28,.97); border: 1px solid var(--line); border-radius: 20px; padding: 18px 20px 16px; box-shadow: 0 24px 60px rgba(0,0,0,.55); }
+  .handhelp[hidden] { display: none; }
+  .handhelp h3 { margin: 0 0 6px; font: 400 26px/1.1 var(--display); }
+  .handhelp p { margin: 0; color: #DCD7E8; font-size: 14.5px; line-height: 1.5; }
+  .handhelp .hh-alt { margin-top: 10px; color: var(--muted); font-size: 13.5px; }
+  .hh-nav { display: flex; gap: 8px; margin-top: 14px; } .hh-nav .btn { flex: 1; }
+  @media (prefers-reduced-motion: no-preference) {
+    .coach:not([hidden]) .coach-card, .handhelp:not([hidden]) { animation: rise .25s cubic-bezier(.2,.8,.2,1); }
+    @keyframes rise { from { opacity: 0; translate: 0 8px; } }
+  }
+  @media (prefers-reduced-motion: reduce) { .cursor::before, .legend li, .coach-dots i { transition: none; } }
   .fps { position: absolute; top: 60px; right: 18px; z-index: 4; color: #B3ADC6; font: 500 12px/1 var(--ui); font-variant-numeric: tabular-nums; }
   .fps[hidden] { display: none; }
 
   /* toasts: what just happened, including what Ody did by voice */
-  .toast { position: absolute; top: 18px; left: 50%; transform: translateX(-50%); z-index: 9; display: flex; align-items: center; gap: 10px;
-    background: rgba(250,250,252,.97); color: #1D1D1F; padding: 8px 8px 8px 14px; border-radius: 99px; font-weight: 600; font-size: 14px;
-    box-shadow: 0 8px 24px rgba(0,0,0,.35); max-width: calc(100% - 48px); }
-  .toast:not(:has(button)) { padding-right: 14px; }
-  .toast.voice::before { content: ""; width: 10px; height: 10px; border-radius: 50%; border: 3px solid #E0A400; flex: none; }
-  .toast span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  .toast button { border: 0; border-radius: 99px; background: #1D1D1F; color: #fff; padding: 6px 12px; font-weight: 600; cursor: pointer; white-space: nowrap; }
+  .toast { position: absolute; top: 18px; left: 50%; transform: translateX(-50%); z-index: 9; display: flex; flex-direction: column; align-items: center; gap: 8px;
+    width: max-content; max-width: calc(100% - 48px); pointer-events: none; }
   .toast[hidden] { display: none; }
-  @media (prefers-reduced-motion: no-preference) { .toast:not([hidden]) { animation: drop .28s cubic-bezier(.2,.8,.2,1); } @keyframes drop { from { opacity: 0; transform: translate(-50%, -8px); } } }
+  .toast-item { display: flex; align-items: center; gap: 10px; max-width: 100%; pointer-events: auto;
+    background: rgba(250,250,252,.97); color: #1D1D1F; padding: 8px 8px 8px 14px; border-radius: 99px; font-weight: 600; font-size: 14px;
+    box-shadow: 0 8px 24px rgba(0,0,0,.35); transition: opacity var(--t-1) var(--ease), translate var(--t-1) var(--ease); }
+  .toast-item:not(:has(button)) { padding-right: 14px; }
+  .toast-item + .toast-item { opacity: .82; scale: .97; }
+  .toast-item.out { opacity: 0; translate: 0 -6px; }
+  .toast-item.voice::before { content: ""; width: 10px; height: 10px; border-radius: 50%; border: 3px solid #E0A400; flex: none; }
+  .toast-item span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .toast-item button { border: 0; border-radius: 99px; background: #1D1D1F; color: #fff; padding: 6px 12px; font-weight: 600; cursor: pointer; white-space: nowrap; min-height: 30px; }
+  .toast-item button:hover { background: #000; }
+  @media (prefers-reduced-motion: no-preference) { .toast-item:first-child { animation: drop var(--t-2) var(--ease); } @keyframes drop { from { opacity: 0; translate: 0 -8px; } } }
 
   /* the caller's phone: a picture-in-picture card, swappable with the hologram */
   .phone { position: absolute; left: 16px; bottom: 16px; z-index: 8; width: var(--pip-w); aspect-ratio: 9 / 16; border-radius: 22px; padding: 5px;
@@ -203,7 +280,7 @@
   body.swapped .stage { inset: auto; right: 16px; bottom: 16px; width: clamp(220px, 20vw, 320px); aspect-ratio: 16 / 10; z-index: 8; border-radius: 18px;
     box-shadow: 0 0 0 1px rgba(59,216,255,.3), 0 18px 40px rgba(0,0,0,.55); }
   body.swapped .stage > .chip { display: inline-flex; }
-  body.swapped .stage .toolbar, body.swapped .stage .waiting, body.swapped .stage-head, body.swapped .handview, body.swapped .tooltip, body.swapped #labels { display: none; }
+  body.swapped .stage .toolbar, body.swapped .stage .waiting, body.swapped .stage-head, body.swapped .handview, body.swapped .handlayer, body.swapped .cursor, body.swapped .coach, body.swapped .tooltip, body.swapped #labels { display: none; }
 
   /* ---------- the rail ---------- */
   aside.rail { min-height: 0; overflow-y: auto; overflow-x: hidden; display: flex; flex-direction: column; padding: 4px 6px 4px 2px; scrollbar-width: thin; scrollbar-color: var(--line) transparent; }
@@ -427,6 +504,49 @@
   .turns .what em { font-style: normal; color: var(--muted); }
   .turns .empty, .points .empty { color: var(--muted); border: 0; }
 
+  /* ---------- design pass: press states, sticky now, quiet empty sections, checklist, analysis badges, key sheet ---------- */
+  .tool, .btn, .btn-top, .modes button, .chip, .hv-btn, ul.list li button, .more { transition: background-color var(--t-1) var(--ease), border-color var(--t-1) var(--ease), color var(--t-1) var(--ease), transform var(--t-1) var(--ease); }
+  .tool:active, .btn:active, .btn-top:active, .modes button:active, .chip:active, .hv-btn:active, ul.list li button:active { transform: scale(.97); }
+  .rail .now { position: sticky; top: -4px; z-index: 3; background: var(--sea); box-shadow: 0 12px 16px -14px rgba(0,0,0,.7); }
+  /* a section with nothing in it yet sinks below the ones that have something, and says so in one quiet line */
+  .rail section:has(> .empty:not([hidden])), .rail section:has(> .log > .empty:only-child), .rail section:has(> .pins > .empty) { order: 10; padding: 10px 0; }
+  .rail section:has(> .empty:not([hidden])) h3, .rail section:has(> .log > .empty:only-child) h3, .rail section:has(> .pins > .empty) h3 { margin-bottom: 3px; }
+  .rail section:has(> .empty:not([hidden])) .empty, .rail section:has(> .log > .empty:only-child) .empty, .rail section:has(> .pins > .empty) .empty { font-size: 13px; line-height: 1.45; }
+  .rail section:has(> .pins > .empty) .pins-hint { display: none; }
+  .rail section[hidden] { display: none; }
+  ul.list .where.mod { color: var(--athena); font-weight: 600; }
+  .an-badges { display: inline-flex; gap: 6px; flex-wrap: wrap; justify-content: flex-end; }
+  .an-badge.new { background: rgba(255,200,69,.14); color: #FFD97A; border: 1px solid rgba(255,200,69,.5); }
+  .estimate.design { color: #FFD97A; } .estimate.design::before { background: var(--athena); box-shadow: 0 0 6px var(--athena); }
+  .estimate.design[hidden] { display: none; }
+  .checklist { list-style: none; margin: 0; padding: 0; display: grid; gap: 4px; }
+  .ck { padding: 8px 10px; border-radius: 12px; background: rgba(255,255,255,.025); border: 1px solid transparent; transition: background-color var(--t-1) var(--ease), border-color var(--t-1) var(--ease); }
+  .ck:hover { border-color: var(--line); }
+  .ck-row { display: grid; grid-template-columns: 20px minmax(0, 1fr) auto; align-items: center; gap: 10px; cursor: pointer; min-height: 28px; }
+  .ck-row input { width: 18px; height: 18px; margin: 0; accent-color: var(--athena); cursor: pointer; }
+  .ck-name { font-weight: 600; overflow-wrap: anywhere; }
+  .ck-qty { color: var(--muted); font-size: 13px; font-variant-numeric: tabular-nums; }
+  .ck.have .ck-name { color: var(--muted); text-decoration: line-through; text-decoration-color: color-mix(in srgb, var(--muted) 60%, transparent); }
+  .ck-why { margin: 3px 0 0 30px; color: #CFCADC; font-size: 13.5px; line-height: 1.45; }
+  .ck-src { margin: 4px 0 0 30px; color: var(--muted); font-size: 12px; }
+  .ck-how { margin: 6px 0 0 30px; }
+  .ck-how summary { cursor: pointer; color: var(--athena); font-weight: 600; font-size: 13px; padding: 2px 0; width: max-content; }
+  .ck-part { margin: 6px 0 4px; font-size: 13.5px; font-weight: 600; }
+  .ck-pins { margin: 0; padding-left: 16px; color: #D5D0E2; font-size: 13px; line-height: 1.55; }
+  .keys-open { margin-top: 10px; border: 0; background: none; color: var(--athena); font-weight: 600; font-size: 13px; padding: 6px 0; cursor: pointer; display: inline-flex; gap: 8px; align-items: center; }
+  .keysheet { position: fixed; inset: 0; z-index: 30; display: grid; place-items: center; padding: 16px; background: rgba(8,6,14,.66); }
+  .keysheet[hidden] { display: none; }
+  .ks-card { width: min(560px, 100%); max-height: calc(100dvh - 32px); overflow-y: auto; background: var(--deck); border: 1px solid var(--line); border-radius: 22px; padding: 20px 22px; box-shadow: 0 28px 70px rgba(0,0,0,.6); }
+  .ks-card h2 { margin: 0 0 4px; font: 400 30px/1.1 var(--display); }
+  .ks-card > p { margin: 0 0 14px; color: var(--muted); font-size: 14px; }
+  .ks-card h3 { margin: 14px 0 6px; font-size: 13px; color: var(--muted); font-weight: 600; }
+  .ks-card dl { margin: 0; display: grid; grid-template-columns: 120px minmax(0, 1fr); gap: 6px 16px; align-items: baseline; }
+  .ks-card dt { white-space: nowrap; } .ks-card dt kbd { opacity: .9; margin-right: 3px; }
+  .ks-card dd { margin: 0; color: #DCD7E8; font-size: 14px; }
+  .ks-close { float: right; }
+  @media (prefers-reduced-motion: no-preference) { .keysheet:not([hidden]) .ks-card { animation: rise var(--t-2) var(--ease); } }
+  @media (prefers-reduced-motion: reduce) { .tool, .btn, .btn-top, .modes button, .chip, .hv-btn, ul.list li button, .ck, .toast-item { transition: none; } .tool:active, .btn:active, .btn-top:active, .modes button:active, .chip:active, .hv-btn:active, ul.list li button:active { transform: none; } }
+
   /* ---------- narrower screens ---------- */
   @media (max-width: 1100px) { .tagline { display: none; } }
   @media (max-width: 900px) {
@@ -444,7 +564,8 @@
     .waiting { left: 16px; right: 16px; bottom: 76px; } .waiting p { font-size: 14px; }
     .tool kbd { display: none; }
     .modes { top: auto; right: auto; left: 8px; bottom: 66px; }
-    .handview { right: 8px; bottom: 70px; }
+    .handview { right: 8px; bottom: 70px; width: 176px; }
+    .handview .legend li em { display: none; }
     .analysis-card { left: 8px; right: 8px; width: auto; bottom: 70px; max-height: 60%; }
     body.swapped .stage { width: 46%; right: 8px; bottom: 8px; }
     aside.rail { overflow: visible; padding: 8px 0 0; }
@@ -477,6 +598,7 @@
         <p id="partsub">Ody names the board as soon as it sees it.</p>
         <div class="pointing" id="pointing" hidden><span id="pointingText"></span></div>
         <span class="estimate researched" id="researched" hidden>Researched estimate</span>
+        <span class="estimate design" id="designChip" hidden>New design</span>
       </div>
       <div class="modes" id="modes" role="tablist" aria-label="What the 3D view shows" hidden>
         <button type="button" role="tab" id="mode-board" data-mode="board" aria-selected="true">Board</button>
@@ -494,16 +616,27 @@
       </div>
       <div class="waiting" id="waiting"><h2 id="waitTitle">Every Telemachus deserves a Mentor.</h2><p id="waitSub">FaceTime Ody, then hold your board up to the camera.</p></div>
       <div class="tooltip" id="tip" role="tooltip" hidden><strong></strong><span></span></div>
-      <div class="cursor" id="cursor" hidden></div>
+      <canvas class="handlayer" id="handlayer" aria-hidden="true"></canvas>
+      <div class="cursor" id="cursor" hidden><span class="cur-label" hidden></span></div>
       <div class="fps" id="fps" hidden></div>
-      <div class="handview" id="handview" hidden>
-        <canvas id="handcanvas" width="176" height="132"></canvas>
-        <p><b id="handmode">Show a hand</b><br>Pinch to turn, two pinches to zoom, fist to move, open palm to reset, point to pick a pin.</p>
+      <div class="handview" id="handview" role="group" aria-label="Hand control" hidden>
+        <p class="hstatus" id="hstatus" data-kind="none" role="status" aria-live="polite"><span class="hdot" aria-hidden="true"></span><span id="hstatusText">Show your hand to the camera</span></p>
+        <canvas id="handcanvas" width="212" height="159" aria-hidden="true"></canvas>
+        <ul class="legend" id="handlegend" aria-label="Gestures">
+          <li data-g="hover"><span class="lg"></span><span>Open hand</span><em>point</em></li>
+          <li data-g="rotate"><span class="lg"></span><span>Pinch</span><em>grab, turn</em></li>
+          <li data-g="zoom"><span class="lg"></span><span>Two hands</span><em>zoom</em></li>
+          <li data-g="fist"><span class="lg"></span><span>Fist</span><em>reset</em></li>
+        </ul>
+        <div class="hv-actions"><button type="button" class="hv-btn" id="h-preview" aria-pressed="true">Camera</button><button type="button" class="hv-btn" id="h-help">How it works</button></div>
       </div>
+      <div class="coach" id="coach" hidden></div>
+      <div class="handhelp" id="handhelp" role="dialog" aria-modal="false" aria-label="Hand control" hidden></div>
       <div class="toolbar" role="toolbar" aria-label="View">
         <button class="tool" id="t-holo" type="button" aria-pressed="true">Hologram <kbd>H</kbd></button>
         <button class="tool" id="t-explode" type="button" aria-pressed="false">Explode <kbd>E</kbd></button>
         <button class="tool" id="t-xray" type="button" aria-pressed="false" hidden>X-ray <kbd>Y</kbd></button>
+        <button class="tool" id="t-before" type="button" aria-pressed="false" title="Show the original design (B)" hidden>Original <kbd>B</kbd></button>
         <button class="tool" id="t-reset" type="button">Reset view <kbd>R</kbd></button>
         <button class="tool" id="t-hands" type="button" aria-pressed="false" aria-describedby="handsWhy">Hands</button>
       </div>
@@ -547,6 +680,11 @@
       </div>
       <div id="project-code"></div>
     </section>
+    <section class="checks" id="checkbox" aria-labelledby="checkTitle" hidden>
+      <h3 id="checkTitle">Parts to get <span class="count" id="checkCount"></span></h3>
+      <ul class="checklist" id="checklist"></ul>
+      <p class="pins-hint">Ticks here stay on this laptop. Tell Ody when a part arrives.</p>
+    </section>
     <section aria-labelledby="talkTitle">
       <h3 id="talkTitle">What Ody heard and said</h3>
       <div class="log" id="log" role="log" aria-live="polite" tabindex="-1"></div>
@@ -572,11 +710,11 @@
     </section>
     <section aria-labelledby="marksTitle">
       <h3 id="marksTitle">Marked this call</h3>
-      <ul class="list" id="marks"></ul><p class="empty" id="marks-empty">Rings, wires and warnings Ody draws appear here. Pick one to fly the 3D view to it.</p>
+      <ul class="list" id="marks"></ul><p class="empty" id="marks-empty">Nothing marked yet. Ody’s rings and warnings land here; pick one to fly the view to it.</p>
     </section>
     <section aria-labelledby="wiresTitle">
       <h3 id="wiresTitle">Wiring</h3>
-      <ul class="list" id="wires"></ul><p class="empty" id="wires-empty">No wires yet.</p>
+      <ul class="list" id="wires"></ul><p class="empty" id="wires-empty">No wires yet. Ask Ody where a jumper goes.</p>
     </section>
     <section aria-labelledby="pinsTitle">
       <h3 id="pinsTitle"><span id="pinsTitleText">Pins</span> <span class="count" id="pinsCount"></span></h3>
@@ -611,6 +749,7 @@
       </div>
       <p class="keys" id="stagekeys"><kbd>H</kbd> hologram, <kbd>E</kbd> explode, <kbd>R</kbd> reset, <kbd>V</kbd> swap views, <kbd>X</kbd> export,
         <kbd>←</kbd><kbd>→</kbd><kbd>↑</kbd><kbd>↓</kbd> turn, <kbd>+</kbd><kbd>−</kbd> zoom, <kbd>[</kbd><kbd>]</kbd> step through pins, <kbd>F</kbd> frame rate, <kbd>T</kbd> tester.</p>
+      <button class="keys-open" id="keysOpen" type="button" aria-haspopup="dialog" aria-controls="keysheet">Keyboard shortcuts <kbd>?</kbd></button>
       <p class="privacy" id="handsWhy">Hand control uses this laptop’s camera. Video never leaves it.</p>
       <p class="privacy" id="privacy" hidden>Hand tracking runs on this laptop.</p>
     </section>
@@ -646,6 +785,37 @@
   <h3>Turns, newest first</h3>
   <ul class="turns" id="turns"></ul>
 </aside>
+<div class="keysheet" id="keysheet" hidden>
+  <div class="ks-card" role="dialog" aria-modal="true" aria-labelledby="ksTitle">
+    <button class="btn ks-close" id="ksClose" type="button">Close <kbd>Esc</kbd></button>
+    <h2 id="ksTitle">Shortcuts</h2>
+    <p>Everything hands and voice can do also works from here.</p>
+    <h3>View</h3>
+    <dl>
+      <dt><kbd>←</kbd><kbd>→</kbd><kbd>↑</kbd><kbd>↓</kbd></dt><dd>Turn the model (click the 3D view first)</dd>
+      <dt><kbd>+</kbd><kbd>−</kbd></dt><dd>Zoom in and out</dd>
+      <dt><kbd>R</kbd></dt><dd>Reset the view</dd>
+      <dt><kbd>H</kbd></dt><dd>Hologram or realistic look</dd>
+      <dt><kbd>V</kbd></dt><dd>Swap the 3D view and the caller’s camera</dd>
+      <dt><kbd>[</kbd><kbd>]</kbd></dt><dd>Step through the pins</dd>
+    </dl>
+    <h3>Parts</h3>
+    <dl>
+      <dt><kbd>E</kbd></dt><dd>Take it apart (explode) or put it back</dd>
+      <dt><kbd>Y</kbd></dt><dd>X-ray a scanned object</dd>
+      <dt><kbd>Delete</kbd></dt><dd>Remove the picked part to the tray (Undo in the message)</dd>
+      <dt><kbd>B</kbd></dt><dd>Original or new design, after Ody changes a part</dd>
+      <dt><kbd>Esc</kbd></dt><dd>Drop the pick, close a tip or this sheet</dd>
+    </dl>
+    <h3>App</h3>
+    <dl>
+      <dt><kbd>X</kbd></dt><dd>Export the 3D model (.glb)</dd>
+      <dt><kbd>F</kbd></dt><dd>Show the frame rate</dd>
+      <dt><kbd>T</kbd></dt><dd>Tester panel</dd>
+      <dt><kbd>?</kbd></dt><dd>This sheet</dd>
+    </dl>
+  </div>
+</div>
 <p class="sr" id="announce" aria-live="polite"></p>
 <script type="module" src="/twin/shell.js"></script>
 <script type="module" src="/twin/app.js"></script>

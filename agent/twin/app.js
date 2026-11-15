@@ -16,6 +16,8 @@ import { partTable, normAlias, UNO_MODELS } from './partpins.js';
 import { buildPart, PART_MODELS } from './parts3d.js';
 import { clock, COLORS, holoMaterial, edgeMaterial, makeRing, makeArrow, makeWire, makeProjectorFloor, easeInOut } from './holo.js';
 import { createGestures, applyToCamera } from './gestures.js';
+import { createHandUI, toStage } from './handui.js';
+import { cleanChange, describeChange, capture, transition as morphPart } from './modify.js';
 import { buildScan, explodeScan, disposeScan } from './scan.js';
 import { subscribe, swapped, send as sendUp } from './shell.js';
 import { customPart, customKey } from './custom.js';
@@ -603,7 +605,7 @@ canvas.addEventListener('pointerup', e => {
 // by click / tap / hand pinch, dragged on a plane facing the camera (Shift: toward / away), removed to the rail's tray
 // (Delete, button or voice) and restored. Combine snaps the kept parts back to where they sit on the real thing, shows
 // ghost outlines where removed ones were, sends {type:'analyze'} and shows the {type:'analysis'} answer.
-const P = { cache: new WeakMap(), owner: new WeakMap(), sel: null, drag: null, handDrag: null, anim: [], analysis: null, waiting: false, sent: '', sendTimer: 0 };
+const P = { cache: new WeakMap(), owner: new WeakMap(), sel: null, drag: null, handDrag: null, anim: [], morph: [], before: false, analysis: null, waiting: false, sent: '', sendTimer: 0 };
 const selBox = new THREE.BoxHelper(undefined, COLORS.mentor); selBox.visible = false; selBox.userData.noExport = true; scene.add(selBox);
 const hoverBox = new THREE.BoxHelper(undefined, 0xffffff); hoverBox.visible = false; hoverBox.userData.noExport = true;
 hoverBox.material.transparent = true; hoverBox.material.opacity = 0.45; scene.add(hoverBox);
@@ -672,6 +674,7 @@ function pickPart() {   // uses the ray pickAt just set
 const partCenter = p => new THREE.Box3().setFromObject(p.objs[0]).getCenter(new THREE.Vector3());
 function partTip(h) {
   const p = h.part;
+  if (p.mod) return { pos: h.point, title: p.name, body: p.modNote || describeChange(p.mod), said: p.base && p.base.name !== p.name ? `Modified from ${p.base.name}` : 'Modified', part: p };
   return { pos: h.point, title: p.name, body: p.note || (P.sel === p ? 'Drag to move it. Shift-drag moves it toward you. Delete removes it.' : 'Click to pick it up.'), said: p.layer ? `Layer: ${p.layer}` : '', part: p };
 }
 function selectPart(p, { fly = false, quiet = false } = {}) {
@@ -689,6 +692,7 @@ function movePart(p, dWorld) {
   p.moved = true;
 }
 function hidePart(p, on) {   // scale, not visibility: modules (circuit) set .visible every frame
+  if (p.modTag) p.modTag.visible = !on && !P.before;
   p.objs.forEach((o, i) => { if (on) o.scale.setScalar(1e-4); else o.scale.copy(p.scale[i]); });
 }
 /** Faint outline where a removed part sits on the real thing. */
@@ -713,12 +717,14 @@ function showGhost(p, on) {
   const g = ghostOf(p);
   for (const h of g) h.visible = on;
 }
-function removePart(p, { voice = false } = {}) {
+function removePart(p, { voice = false, undo = !voice } = {}) {
   if (!p || p.removed) return;
   p.removed = true; hidePart(p, true); showGhost(p, true);
   if (P.sel === p) selectPart(null);
+  if (P.handDrag?.part === p) P.handDrag = null;
   hoverBox.visible = false; showTip(null);
-  toast(`${voice ? 'Ody: removed' : 'Removed'} ${p.name}`, { voice }); updatePartTags();
+  toast(`${voice ? 'Ody: removed' : 'Removed'} ${p.name}`, { voice, ...(undo ? { ms: 6000, action: { label: 'Undo', run: () => restorePart(p) } } : {}) }); updatePartTags();
+  $('announce').textContent = `${p.name} removed to the tray.`;
   clearAnalysis(); renderPartsPanel(); queueParts();
 }
 function restorePart(p, { voice = false, quiet = false } = {}) {
@@ -736,6 +742,11 @@ function restoreAll({ voice = false } = {}) {
 }
 function animateTo(o, to, dur = 0.85) { P.anim = P.anim.filter(a => a.o !== o); P.anim.push({ o, from: o.position.clone(), to: to.clone(), t: 0, dur: REDUCED ? 0.01 : dur }); }
 function stepParts(dt) {
+  for (let i = P.morph.length - 1; i >= 0; i--) {
+    const m = P.morph[i]; m.t = Math.min(1, m.t + dt / m.dur); m.step(easeInOut(m.t));
+    if (m.t >= 1) { m.end(); P.morph.splice(i, 1); }
+  }
+  CL.group.visible = S.view === 'circuit';
   for (let i = P.anim.length - 1; i >= 0; i--) {
     const a = P.anim[i]; a.t = Math.min(1, a.t + dt / a.dur);
     a.o.position.lerpVectors(a.from, a.to, easeInOut(a.t));
@@ -752,8 +763,10 @@ function combine({ voice = false } = {}) {
   selectPart(null);
   const kept = list.filter(p => !p.removed).map(p => ({ id: p.id, name: p.name })), removed = list.filter(p => p.removed).map(p => ({ id: p.id, name: p.name }));
   toast(voice ? 'Ody: combined' : 'Combined', { voice });
-  if (!removed.length) { clearAnalysis(); renderPartsPanel(); return; }
-  const msg = { type: 'analyze', scope: scopeNow(), board: scopeBoard(), kept, removed };
+  const modified = list.filter(p => p.mod && !p.removed).map(p => ({ id: p.id, name: p.name, change: p.mod })).slice(0, 50);
+  if (P.before) setBefore(false, { quiet: true });   // combine shows the new design
+  if (!removed.length && !modified.length) { clearAnalysis(); renderPartsPanel(); return; }
+  const msg = { type: 'analyze', scope: scopeNow(), board: scopeBoard(), kept, removed, ...(modified.length ? { modified } : {}) };
   P.waiting = sendUp(msg); P.analysis = null; P.asked = msg; P.noAnswer = !P.waiting;
   clearTimeout(P.waitTimer);
   if (P.waiting) P.waitTimer = setTimeout(() => { if (P.waiting) { P.waiting = false; P.noAnswer = true; renderAnalysis(); } }, 25000);
@@ -797,7 +810,8 @@ function renderPartsPanel() {
   const ul = $('partsList'); ul.replaceChildren();
   for (const p of list.filter(q => !q.removed)) {
     const li = pEl('li'), b = pEl('button'); b.type = 'button'; b.setAttribute('aria-pressed', String(P.sel === p));
-    b.append(pEl('span', 'ico part'), pEl('span', 'what', p.name), pEl('span', 'where', p.moved ? 'moved' : p.layer || ''));
+    b.append(pEl('span', 'ico part'), pEl('span', 'what', p.name), pEl('span', p.mod ? 'where mod' : 'where', p.mod ? 'modified' : p.moved ? 'moved' : p.layer || ''));
+    if (p.mod) b.title = p.modNote || describeChange(p.mod);
     b.addEventListener('click', () => { if (scopeNow() === 'board' && S.explodeTo < 1 && !changed(list)) setExplode(true); selectPart(P.sel === p ? null : p); });
     li.append(b); ul.append(li);
   }
@@ -823,7 +837,10 @@ function renderAnalysis() {
       continue;
     }
     const head = pEl('div', 'an-head');
-    head.append(pEl('h4', '', a.title || 'What happens now'), pEl('span', 'an-badge ' + (a.works ? 'ok' : 'no'), a.works ? 'Works' : 'Won’t work'));
+    const badges = pEl('span', 'an-badges');
+    if (a.modified) badges.append(pEl('span', 'an-badge new', 'New design'));
+    badges.append(pEl('span', 'an-badge ' + (a.works ? 'ok' : 'no'), a.works ? 'Works' : 'Won’t work'));
+    head.append(pEl('h4', '', a.title || 'What happens now'), badges);
     body.append(head);
     if (a.summary) body.append(pEl('p', 'an-sum', a.summary));
     for (const [k, label] of [['pros', 'Good'], ['cons', 'Lost'], ['needs', 'It needs']]) {
@@ -837,7 +854,7 @@ function renderAnalysis() {
 }
 function onAnalysis(ev) {
   const s = v => (typeof v === 'string' ? v.slice(0, 400) : '');
-  P.analysis = { title: s(ev.title).slice(0, 100), works: ev.works === true, summary: s(ev.summary), pros: ev.pros, cons: ev.cons, needs: ev.needs, verdict: s(ev.verdict) };
+  P.analysis = { title: s(ev.title).slice(0, 100), works: ev.works === true, modified: (Array.isArray(ev.modified) && ev.modified.length > 0) || !!P.asked?.modified?.length, summary: s(ev.summary), pros: ev.pros, cons: ev.cons, needs: ev.needs, verdict: s(ev.verdict) };
   P.waiting = false; P.noAnswer = false; clearTimeout(P.waitTimer); renderAnalysis();
   $('analysisCard').hidden = false;
 }
@@ -883,9 +900,135 @@ function endDrag(e) {
 stage.addEventListener('pointerup', endDrag, true);
 stage.addEventListener('pointercancel', endDrag, true);
 
+// ---------- modify: Ody changes a part ("make the tip a brush"), revert, before / after (B) ----------
+// {type:'modify', id, scope, target:{id,name}, change:{name?, color?, material?, scale?, shape?, offset_mm?, note}, say}
+// carries the part's TOTAL edit from the original; {type:'modify', revert:true, target} undoes it. The morph is
+// twin/modify.js; here: find the part, tag it "Modified", list it, and keep Combine / export / the analysis in step.
+function scopeTo(scope) {
+  if (!scope || scope === scopeNow()) return;
+  if (scope === 'board') showBoard({ fly: false });
+  else if (scope === 'scan') setMode('scan');
+  else if (scope === 'circuit' && MODES.has('circuit')) setMode('circuit');
+}
+function runMorph(p, which, dur = 0.4) {
+  for (const m of P.morph.filter(x => x.p === p)) m.end();
+  P.morph = P.morph.filter(x => x.p !== p);
+  P.anim = P.anim.filter(a => !p.objs.includes(a.o));
+  const tw = morphPart(p, which, { holo: () => S.holo, dur: REDUCED || dur <= 0 ? 0.01 : dur });
+  if (dur <= 0) tw.end(); else P.morph.push(tw);
+}
+function modTag(p) {
+  if (!p.mod) { if (p.modTag) { p.modTag.removeFromParent(); p.modTag = null; } return; }
+  if (!p.modTag) { p.modTag = tag('Modified', 'mod'); p.objs[0].add(p.modTag); }
+  p.modTag.position.copy(p.base.objs[0].lc);
+  p.modTag.element.querySelector('span').lastChild.textContent = `Modified: ${p.name}`;
+  p.modTag.visible = !p.removed;
+}
+function designUI() {
+  const mods = stageParts().filter(p => p.mod);
+  $('designChip').hidden = !mods.length; $('t-before').hidden = !mods.length;
+  if (!mods.length && P.before) { P.before = false; $('t-before').setAttribute('aria-pressed', 'false'); }
+  for (const p of stageParts()) if (p.modTag) p.modTag.visible = !p.removed && !P.before;
+}
+function onModify(ev) {
+  const t = ev?.target && typeof ev.target === 'object' ? ev.target : {};
+  scopeTo(typeof ev.scope === 'string' ? ev.scope : '');
+  const list = stageParts();
+  const id = typeof t.id === 'string' ? t.id : typeof ev.id === 'string' ? ev.id : '';
+  const p = list.find(q => q.id === id) || list.find(q => q.base?.name && normName(q.base.name) === normName(t.name)) || findPart(t.name || id);
+  const say = typeof ev.say === 'string' ? ev.say.slice(0, 120) : '';
+  if (!p) { toast(`Ody: couldn’t find “${String(t.name || id || 'that part').slice(0, 40)}” to change`, { voice: true }); return; }
+  if (P.before) setBefore(false, { quiet: true });
+  if (ev.revert === true) {
+    if (!p.mod) return;
+    p.mod = null; p.name = p.base.name; p.modNote = '';
+    runMorph(p, 'before');
+    toast(say ? `Ody: ${say}` : `Ody: ${p.name} is back to the original`, { voice: true });
+  } else {
+    const c = cleanChange(ev.change); if (!c) return;
+    capture(p);   // the original, once, before anything changes
+    p.mod = c; p.name = c.name || p.base.name; p.modNote = c.note || '';   // the total edit, not a step
+    runMorph(p, 'after');
+    toast(say ? `Ody: ${say}` : `Ody: changed ${p.name}`, { voice: true });
+    $('announce').textContent = `${p.name} modified. ${p.modNote || describeChange(c)}`;
+  }
+  modTag(p); designUI(); clearAnalysis(); renderPartsPanel(); queueParts(); updatePartTags();
+}
+function setBefore(on, { quiet = false } = {}) {
+  const mods = stageParts().filter(p => p.mod); if (!mods.length) on = false;
+  P.before = on; $('t-before').setAttribute('aria-pressed', String(on));
+  for (const p of mods) runMorph(p, on ? 'before' : 'after', 0.3);
+  designUI();
+  if (!quiet && mods.length) toast(on ? 'Showing the original' : 'Showing the new design');
+}
+/** For export: the modified design, whatever the B toggle shows; returns how to put the view back. */
+function designForExport() {
+  if (!P.before) return () => {};
+  const mods = stageParts().filter(p => p.mod);
+  for (const p of mods) runMorph(p, 'after', 0);
+  return () => { for (const p of mods) runMorph(p, 'before', 0); };
+}
+
+// ---------- checklist: "Parts to get" (voice is the source of truth; a tick here is only this laptop) ----------
+const CL = { items: [], have: new Map(), group: new THREE.Group() };
+CL.group.name = 'Parts to get'; CL.group.userData.noExport = true; CL.group.visible = false; scene.add(CL.group);
+function onChecklist(ev) {
+  const s = (v, n) => (typeof v === 'string' ? v.trim().slice(0, n) : '');
+  CL.items = (Array.isArray(ev?.items) ? ev.items : []).slice(0, 40).map((it, i) => ({
+    id: s(it?.id, 60) || `item-${i}`, name: s(it?.name, 80), why: s(it?.why, 240), source: s(it?.source, 120),
+    qty: Number.isFinite(Number(it?.qty)) && Number(it.qty) > 0 ? Math.min(99, Math.round(Number(it.qty))) : 1,
+    status: it?.status === 'have' ? 'have' : 'needed',
+    suggested: { part: s(it?.suggested?.part, 120), pins: (Array.isArray(it?.suggested?.pins) ? it.suggested.pins : []).filter(x => typeof x === 'string' && x.trim()).slice(0, 12).map(x => x.trim().slice(0, 120)) },
+  })).filter(it => it.name);
+  CL.have.clear();   // the whole list arrives each time: Ody's statuses replace local ticks
+  renderChecklist(); placeholders();
+}
+function renderChecklist() {
+  const box = $('checkbox'), ul = $('checklist');
+  box.hidden = !CL.items.length; ul.replaceChildren(); if (!CL.items.length) return;
+  const has = it => (CL.have.has(it.id) ? CL.have.get(it.id) : it.status === 'have');
+  const left = CL.items.filter(it => !has(it)).length;
+  $('checkCount').textContent = left ? `${left} to get` : 'all here';
+  for (const it of CL.items) {
+    const have = has(it), li = pEl('li', `ck${have ? ' have' : ''}`), lab = pEl('label', 'ck-row'), cb = document.createElement('input');
+    cb.type = 'checkbox'; cb.checked = have; cb.addEventListener('change', () => { CL.have.set(it.id, cb.checked); renderChecklist(); });
+    lab.append(cb, pEl('span', 'ck-name', it.name), pEl('span', 'ck-qty', `× ${it.qty}`));
+    li.append(lab);
+    if (it.why) li.append(pEl('p', 'ck-why', it.why));
+    if (it.suggested.part || it.suggested.pins.length) {
+      const d = pEl('details', 'ck-how'); d.append(pEl('summary', '', 'How to wire it'));
+      if (it.suggested.part) d.append(pEl('p', 'ck-part', it.suggested.part));
+      if (it.suggested.pins.length) { const pins = pEl('ul', 'ck-pins'); for (const t of it.suggested.pins) pins.append(pEl('li', '', t)); d.append(pins); }
+      li.append(d);
+    }
+    if (it.source) li.append(pEl('p', 'ck-src', `Source: ${it.source}`));
+    ul.append(li);
+  }
+}
+/** In the circuit view, each part Ody has no model for waits at the breadboard's front edge as a labelled ghost block. */
+function placeholders() {
+  clearGroup(CL.group);
+  const comps = C.ev?.layout?.components || [];
+  const known = it => { const n = normName(it.name); return comps.some(c => c.id === it.id || c.part === it.id || (n && [c.label, c.part].some(x => { const m = normName(x); return m && (m === n || m.includes(n) || n.includes(m)); }))); };
+  const todo = CL.items.filter(it => !known(it)).slice(0, 8);
+  if (!todo.length || !S.bb) return;
+  const b = new THREE.Box3().setFromObject(S.bb.group);
+  const x0 = (b.isEmpty() ? BB_POS.x - 40 : b.min.x) + 10, z = (b.isEmpty() ? BB_POS.z + 30 : b.max.z) + 16;
+  todo.forEach((it, i) => {
+    const g = new THREE.Group(); g.name = `To get: ${it.name}`; g.position.set(x0 + i * 22, 6, z);
+    const geo = new THREE.BoxGeometry(16, 10, 12);
+    const block = new THREE.Mesh(geo, new THREE.MeshBasicMaterial({ color: 0xffc845, transparent: true, opacity: 0.12, depthWrite: false }));
+    block.raycast = () => {};
+    const edge = new THREE.LineSegments(new THREE.EdgesGeometry(geo), new THREE.LineDashedMaterial({ color: 0xffc845, dashSize: 1.4, gapSize: 1, transparent: true, opacity: 0.9 }));
+    edge.computeLineDistances(); edge.raycast = () => {};
+    const label = tag(it.name, 'ph', 'To get'); label.position.set(0, 6, 0);
+    g.add(block, edge, label); CL.group.add(g);
+  });
+}
+
 // ---------- export ----------
 async function exportGlb() {
-  const swapped = [];
+  const swapped = [], undoDesign = designForExport();
   twin.traverse(o => {
     if (o.userData.noExport || o.isLine || o.userData.glowShell || o.isCSS2DObject || P.owner.get(o)?.removed) { swapped.push([o, 'visible', o.visible]); o.visible = false; return; }
     if (o.userData.real && o.material !== o.userData.real) { swapped.push([o, 'material', o.material]); o.material = o.userData.real; }
@@ -897,7 +1040,7 @@ async function exportGlb() {
   });
   try {
     return await new GLTFExporter().parseAsync(twin, { binary: true, onlyVisible: true, maxTextureSize: 2048 });
-  } finally { for (const [o, k, v] of swapped.reverse()) o[k] = v; }
+  } finally { for (const [o, k, v] of swapped.reverse()) o[k] = v; undoDesign(); }
 }
 const stamp = () => { const d = new Date(), p = n => String(n).padStart(2, '0'); return `${d.getFullYear()}${p(d.getMonth() + 1)}${p(d.getDate())}-${p(d.getHours())}${p(d.getMinutes())}${p(d.getSeconds())}`; };
 function glbName() {
@@ -932,19 +1075,38 @@ async function copyWiring() {
   try { await navigator.clipboard.writeText(text); toast('Wiring copied'); }
   catch { const t = document.createElement('textarea'); t.value = text; document.body.append(t); t.select(); document.execCommand('copy'); t.remove(); toast('Wiring copied'); }
 }
-let toastTimer;
-/** A short status line on the stage. voice: Ody did it from the call. action: one button (e.g. save an export). */
+/**
+ * Short status lines on the stage, newest on top, up to three at once, each leaving on its own timer. voice: Ody did it
+ * from the call. action: one button (e.g. save an export, Undo). The same message again refreshes instead of stacking.
+ */
 function toast(msg, { voice = false, ms = 2600, action = null } = {}) {
-  const t = $('toast'); t.replaceChildren();
+  const box = $('toast');
+  const same = [...box.children].find(x => x.dataset.msg === msg);
+  if (same) { clearTimeout(same._t); same.remove(); }
+  const t = document.createElement('div'); t.className = 'toast-item'; t.dataset.msg = msg; t.classList.toggle('voice', voice);
   const span = document.createElement('span'); span.textContent = msg; t.append(span);
-  if (action) { const b = document.createElement('button'); b.type = 'button'; b.textContent = action.label; b.addEventListener('click', () => { t.hidden = true; action.run(); }); t.append(b); }
-  t.classList.toggle('voice', voice); t.hidden = false;
-  clearTimeout(toastTimer); toastTimer = setTimeout(() => { t.hidden = true; }, ms);
+  const drop = () => { clearTimeout(t._t); t.classList.add('out'); setTimeout(() => { t.remove(); box.hidden = !box.children.length; }, REDUCED ? 0 : 150); };
+  if (action) { const b = document.createElement('button'); b.type = 'button'; b.textContent = action.label; b.addEventListener('click', () => { drop(); action.run(); }); t.append(b); }
+  box.prepend(t); box.hidden = false;
+  while (box.children.length > 3) { const old = box.lastElementChild; clearTimeout(old._t); old.remove(); }
+  t._t = setTimeout(drop, ms);
 }
 
 // ---------- hands ----------
+// Optional: the laptop camera + MediaPipe (twin/hands.js), or ?handsim=1 scripted landmarks (twin/handsim.js) for
+// tests. gestures.js turns landmarks into camera moves, part grabs, flick-to-remove and thumbs-up-to-combine; the
+// coach, legend, status chip, cursor and skeleton are twin/handui.js. Every hand action also has a mouse / key way.
+const HANDSIM = new URLSearchParams(location.search).get('handsim');   // '1' scripted hands, 'deny' a blocked camera
 const gestures = createGestures();
-let hands = null, gestureOut = null;
+const handUI = createHandUI({ reduced: REDUCED, returnFocus: () => $('t-hands'), onRetry: () => toggleHands() });
+let hands = null, gestureOut = null, handInfo = { lowLight: false }, handTip = false, handHover = null, combineAsk = 0;
+/** Detection can outpace the render loop: keep the newest pose, but add up the motion and keep every one-shot event. */
+function mergeGestures(a, b) {
+  if (!a) return b;
+  return { ...b, rotate: [a.rotate[0] + b.rotate[0], a.rotate[1] + b.rotate[1]], pan: [a.pan[0] + b.pan[0], a.pan[1] + b.pan[1]], zoom: a.zoom * b.zoom, pull: a.pull + b.pull,
+    reset: a.reset || b.reset, thumbsUp: a.thumbsUp || b.thumbsUp, flick: b.flick || a.flick, select: b.select || a.select,
+    grab: a.grab === 'start' && b.grab !== 'end' ? 'start' : b.grab || (a.grab === 'end' ? 'end' : null) };
+}
 /** Hands stays in the toolbar; when it can't work it says why instead of vanishing. */
 function setHandsWhy(why) {
   const btn = $('t-hands'); S.handsWhy = why;
@@ -957,6 +1119,7 @@ function setHandsWhy(why) {
 }
 async function checkHands() {
   let why = '';
+  if (HANDSIM) { setHandsWhy(''); return; }
   try { const m = await import('./hands.js'); if (!(await m.handsAvailable())) why = 'this browser can’t open a camera or the hand model is missing'; }
   catch { why = 'the hand tracking files are missing on this laptop'; }
   if (!why && navigator.mediaDevices?.enumerateDevices) {
@@ -969,48 +1132,107 @@ const handsError = e => /NotAllowed|Security/.test(e?.name) ? 'camera permission
   : /too long/.test(e?.message) ? 'the hand model took too long to load' : 'hand tracking couldn’t start here';
 async function toggleHands() {
   const btn = $('t-hands');
-  if (S.handsWhy) { toast(`Hands unavailable: ${S.handsWhy}`); return; }
-  if (hands) { hands.stop(); hands = null; btn.setAttribute('aria-pressed', 'false'); $('handview').hidden = true; $('cursor').hidden = true; return; }
+  if (btn.getAttribute('aria-busy') === 'true') return;
+  if (S.handsWhy) { handUI.showHelp({ title: 'Hands aren’t available here', body: `Hand control is off: ${S.handsWhy.replace(/\.$/, '')}.` }); return; }
+  if (hands) { stopHands(); return; }
   btn.setAttribute('aria-busy', 'true'); btn.textContent = 'Starting camera…';
   try {
-    const { startHands } = await import('./hands.js');
+    const mod = HANDSIM ? await import('./handsim.js') : await import('./hands.js');
     const timeout = new Promise((_, rej) => setTimeout(() => rej(new Error('camera or model took too long')), 20000));
-    hands = await Promise.race([startHands({ preview: $('handcanvas'), onHands: (h, t) => { gestureOut = gestures.update(h, t); } }), timeout]);
-    btn.setAttribute('aria-pressed', 'true'); $('handview').hidden = false; $('privacy').hidden = false;
-    btn.removeAttribute('aria-busy'); btn.textContent = 'Hands';
+    gestures.reset();
+    hands = await Promise.race([mod.startHands({ deny: HANDSIM === 'deny', onHands: (h, t, info) => { if (info) handInfo = info; gestureOut = mergeGestures(gestureOut, gestures.update(h, t, info)); } }), timeout]);
+    btn.setAttribute('aria-pressed', 'true'); handUI.start(hands.video);
+    $('announce').textContent = 'Hand control on. Open hand to point, pinch to grab, two hands to zoom, a fist to reset.';
+    handUI.maybeCoach();
   } catch (e) {
     console.warn('[twin] hands', e?.name || e);
-    btn.removeAttribute('aria-busy'); setHandsWhy(handsError(e)); toast(`Hands unavailable: ${S.handsWhy}`);
+    if (/NotAllowed|Security/.test(e?.name)) {   // not permanent: allowing the camera and pressing Hands again works
+      handUI.showHelp({ title: 'The camera is blocked', body: 'Allow the camera for this page (the camera icon in the address bar), then try again. The picture stays on this laptop.', retry: true });
+    } else { setHandsWhy(handsError(e)); handUI.showHelp({ title: 'Hands couldn’t start', body: `Hand control is off: ${S.handsWhy}.` }); }
+  } finally {
+    btn.removeAttribute('aria-busy');
+    if (!S.handsWhy) btn.textContent = 'Hands';
   }
 }
+function stopHands() {
+  hands?.stop(); hands = null; gestureOut = null;
+  $('t-hands').setAttribute('aria-pressed', 'false'); handUI.stop(); dropHandDrag(true);
+  if (handTip) { showTip(null); handTip = false; } handHover = null;
+  $('announce').textContent = 'Hand control off.';
+}
+function dropHandDrag(quiet = false) {
+  if (!P.handDrag) return;
+  const { part, moved } = P.handDrag; P.handDrag = null;
+  if (moved) { clearAnalysis(); renderPartsPanel(); }
+  if (!quiet) $('announce').textContent = `Dropped ${part.name}.`;
+}
+/** Thumbs up asks first; a second thumbs up (or the toast's button) within 6 s combines. */
+function thumbsCombine() {
+  const list = stageParts();
+  if (!list.length || !partsActive()) { toast('Thumbs up combines the parts once it’s taken apart (Explode)'); return; }
+  const now = performance.now();
+  if (now - combineAsk < 6000) { combineAsk = 0; combine(); return; }
+  combineAsk = now;
+  toast('Combine the parts? Thumbs up again to confirm', { ms: 6000, action: { label: 'Combine', run: () => { combineAsk = 0; combine(); } } });
+}
 function stepHands() {
-  const g = gestureOut; if (!g) return; gestureOut = null;
-  const cur = $('cursor'), r = stage.getBoundingClientRect();
-  $('handmode').textContent = { none: g.hands ? 'Hand seen' : 'Show a hand', rotate: 'Turning', zoom: 'Zooming', grab: 'Moving', palm: 'Hold to reset', point: 'Pointing' }[g.mode] || 'Hand seen';
-  if (g.cursor) { cur.hidden = false; cur.style.left = `${g.cursor.x * r.width}px`; cur.style.top = `${g.cursor.y * r.height}px`; cur.style.setProperty('--d', (g.mode === 'point' || g.mode === 'palm') ? g.dwell.toFixed(2) : 0); }
-  else cur.hidden = true;
-  // pinch on a part (taken apart) grabs it; moving the pinch carries it; letting go drops it
-  if (g.mode === 'rotate' && g.cursor && partsActive()) {
-    const x = g.cursor.x * r.width, y = g.cursor.y * r.height;
-    rayAt(x, y);
-    if (!P.handDrag) {
-      const h = pickPart();
-      if (h) { selectPart(h.part); dragPlane.setFromNormalAndCoplanarPoint(camera.getWorldDirection(new THREE.Vector3()), h.point); P.handDrag = { part: h.part, last: h.point.clone() }; $('handmode').textContent = `Holding ${h.part.name}`; }
-    } else {
-      const hit = ray.ray.intersectPlane(dragPlane, new THREE.Vector3());
-      if (hit) { movePart(P.handDrag.part, hit.clone().sub(P.handDrag.last)); P.handDrag.last.copy(hit); }
-      $('handmode').textContent = `Holding ${P.handDrag.part.name}`;
+  const g = gestureOut; if (!g || !hands) return; gestureOut = null;
+  const r = stage.getBoundingClientRect(), at = p => toStage(p, r.width, r.height);
+  const coach = handUI.coachOpen(), act = !coach;   // with the coach open, hands can practise turning and zooming, nothing else
+  handUI.frame(g);
+  handUI.status(handInfo.lowLight ? 'dark' : g.status);
+  handUI.legend(g.mode);
+  const c = g.cursor ? at(g.cursor) : null;
+  let state = 'hover', label = '';
+  // pinch: at the start of a pinch on a part (taken apart) grab it; else the pinch turns the view
+  if (g.mode === 'rotate' && c) {
+    if (!P.handDrag && g.grab === 'start' && act && partsActive()) {
+      rayAt(c.x, c.y); const h = pickPart();
+      if (h) {
+        selectPart(h.part, { quiet: true }); S.fly = null; controls.autoRotate = false;
+        dragPlane.setFromNormalAndCoplanarPoint(camera.getWorldDirection(new THREE.Vector3()), h.point);
+        P.handDrag = { part: h.part, last: h.point.clone(), moved: false };
+        $('announce').textContent = `Holding ${h.part.name}. Move to carry it, bring your hand closer or further for depth, open your hand to drop it.`;
+      }
     }
-    if (P.handDrag) { g.rotate = [0, 0]; }
-  } else if (P.handDrag) { P.handDrag = null; clearAnalysis(); renderPartsPanel(); }
+    if (P.handDrag) {
+      const dir = camera.getWorldDirection(new THREE.Vector3()), d = P.handDrag;
+      if (g.pull) {   // the hand grew (closer to the camera): the part comes toward you
+        const step = dir.clone().multiplyScalar(-g.pull * camState().radius * 1.6);
+        movePart(d.part, step); d.last.add(step); dragPlane.setFromNormalAndCoplanarPoint(dir, d.last); d.moved = true;
+      }
+      rayAt(c.x, c.y);
+      const hit = ray.ray.intersectPlane(dragPlane, new THREE.Vector3());
+      if (hit && hit.distanceTo(d.last) > 0.01) { movePart(d.part, hit.clone().sub(d.last)); d.last.copy(hit); d.moved = true; }
+      g.rotate = [0, 0]; state = 'grab'; label = `Holding ${d.part.name}`;
+      if (handTip) { showTip(null); handTip = false; }
+    } else state = 'pinch';
+  } else if (P.handDrag) dropHandDrag();
+  // hover: the part or pin under the index fingertip lights up, with its tooltip
+  if ((g.mode === 'hover' || g.mode === 'point') && c && !S.tipPinned && !P.drag) {
+    const p = pickAt(c.x, c.y); showTip(p, c.x, c.y); handTip = !!p; handHover = p?.part || null;
+    if (p) state = 'over';
+    if (g.mode === 'point' && g.dwell > 0.12 && g.dwell < 1) state = 'hold';
+  } else if (handTip && g.mode !== 'rotate') { showTip(null); handTip = false; handHover = null; }
+  if (g.mode === 'fist') { state = 'hold'; label = act ? 'Hold to reset' : ''; }
+  else if (g.mode === 'thumbs') { state = 'hold'; label = act ? 'Thumbs up: combine' : ''; }
+  else if (g.mode === 'zoom') { state = 'zoom'; label = 'Zooming'; }
+  handUI.cursor(c?.x, c?.y, { state, closeness: g.closeness, dwell: g.dwell, label });
+  if (!act) g.reset = false;
   if (g.rotate[0] || g.rotate[1] || g.pan[0] || g.pan[1] || g.zoom !== 1 || g.reset) {
     S.fly = null; controls.autoRotate = false;
     const home = homeView();
     const now = camState();
     const next = applyToCamera({ ...now, target: now.target.toArray() }, g, { ...home, target: home.target.toArray() });
-    if (g.reset) { flyHome(0.9); toast('View reset'); } else setCam({ ...next, target: new THREE.Vector3().fromArray(next.target) });
+    if (g.reset) { flyHome(REDUCED ? 0 : 0.9); toast('View reset'); } else setCam({ ...next, target: new THREE.Vector3().fromArray(next.target) });
   }
-  if (g.select) { const x = g.select.x * r.width, y = g.select.y * r.height; const p = pickAt(x, y); S.tipPinned = p ? { p, x, y } : null; showTip(p, x, y); }
+  if (!act) return;
+  if (g.flick && partsActive()) {   // a sideways flick throws the part that was under the ring into the tray
+    const f = at(g.flick.from), p = pickAt(f.x, f.y);
+    if (p?.part && !p.part.removed) removePart(p.part, { undo: true });
+  }
+  if (g.thumbsUp) thumbsCombine();
+  if (g.select) { const s = at(g.select), p = pickAt(s.x, s.y); S.tipPinned = p ? { p, x: s.x, y: s.y } : null; showTip(p, s.x, s.y); }
 }
 
 // ---------- scan anything ----------
@@ -1114,7 +1336,7 @@ function onCircuit(ev, { replay = false } = {}) {
   const changed = !replay && Array.isArray(ev.change?.applied) && ev.change.applied.length;
   if (S.view !== 'circuit' && (changed || replay || !C.shown)) { C.shown = true; setMode('circuit'); }
   else if (S.view === 'circuit' && changed && !S.replaying) setTimeout(() => flyHome(1.2), 250);   // new parts: re-frame once they are placed
-  markNext(); renderProject(); if (S.view === 'circuit') { renderPartsPanel(); queueParts(); } guideSync();
+  markNext(); renderProject(); if (S.view === 'circuit') { renderPartsPanel(); queueParts(); } guideSync(); placeholders();
 }
 // ---------- connection guide: one jumper at a time, drawn from the board pin to its breadboard hole ----------
 const G = { on: false, i: 0, list: [], fx: new THREE.Group(), say: '' };
@@ -1387,6 +1609,8 @@ function handle(ev) {
     case 'step': setStep(ev.text); if (ev.done) S.done = true; break;
     case 'twin': if (typeof ev.action === 'string') voice(ev.action, typeof ev.target === 'string' ? ev.target.slice(0, 80) : ''); break;
     case 'analysis': onAnalysis(ev); break;
+    case 'modify': onModify(ev); break;
+    case 'checklist': onChecklist(ev); break;
     case 'circuit-step': onCircuitStep(ev); break;
     default: break;
   }
@@ -1402,6 +1626,19 @@ $('t-xray').addEventListener('click', () => setXray(!xray?.on));
 $('t-reset').addEventListener('click', () => { S.tipPinned = null; showTip(null); flyHome(1.0); });
 $('reset2').addEventListener('click', () => { S.tipPinned = null; showTip(null); flyHome(1.0); });
 $('t-hands').addEventListener('click', toggleHands);
+$('t-before').addEventListener('click', () => setBefore(!P.before));
+// the shortcut sheet (? or the rail's link): a modal with every key, focus kept inside, Esc / Close return focus
+let keysBack = null;
+function openKeys() { const k = $('keysheet'); if (!k.hidden) return closeKeys(); keysBack = document.activeElement; k.hidden = false; $('ksClose').focus({ preventScroll: true }); }
+function closeKeys() { $('keysheet').hidden = true; if (keysBack?.isConnected && keysBack !== document.body) keysBack.focus({ preventScroll: true }); keysBack = null; }
+$('keysOpen').addEventListener('click', openKeys);
+$('ksClose').addEventListener('click', closeKeys);
+$('keysheet').addEventListener('click', e => { if (e.target === $('keysheet')) closeKeys(); });
+$('keysheet').addEventListener('keydown', e => {
+  if (e.key === 'Escape' || e.key === '?') { closeKeys(); e.preventDefault(); }
+  else if (e.key === 'Tab') { e.preventDefault(); $('ksClose').focus(); }   // one control: Tab stays on it
+  e.stopPropagation();
+});
 $('export').addEventListener('click', downloadGlb);
 $('copy').addEventListener('click', copyWiring);
 addEventListener('keydown', e => {
@@ -1413,6 +1650,8 @@ addEventListener('keydown', e => {
   else if (k === 'r') { clearKeyTip(); flyHome(1.0); }
   else if (k === 'x') downloadGlb();
   else if (k === 'y' && xray && !$('t-xray').hidden) setXray(!xray.on);
+  else if (k === 'b' && !$('t-before').hidden) setBefore(!P.before);
+  else if (e.key === '?') openKeys();
   else if (k === 'f') { fpsEl.hidden = !fpsEl.hidden; showFps = !fpsEl.hidden; }
   else if (k === ']' || k === '[') selectPin(S.pinIdx < 0 ? (k === ']' ? 0 : -1) : S.pinIdx + (k === ']' ? 1 : -1));
   else if (G.on && S.view === 'circuit' && (k === 'arrowleft' || k === 'arrowright') && (onStage || e.target.closest?.('#guide'))) guideShow(G.i + (k === 'arrowright' ? 1 : -1));
@@ -1423,6 +1662,7 @@ addEventListener('keydown', e => {
   else if (onStage && (k === '+' || k === '=')) nudge({ zoom: 0.86 });
   else if (onStage && (k === '-' || k === '_')) nudge({ zoom: 1.16 });
   else if ((k === 'delete' || k === 'backspace') && P.sel) removePart(P.sel);
+  else if (k === 'escape' && (handUI.coachOpen() || !$('handhelp').hidden)) { handUI.closeCoach(); handUI.hideHelp(); }
   else if (k === 'escape' && (S.tipPinned || S.tipKey || !tipEl.hidden || P.sel)) { S.tipPinned = null; clearKeyTip(); selectPart(null); }
   else return;
   e.preventDefault();
@@ -1546,11 +1786,21 @@ window.mentorTwin = {
     flying: !!S.fly, meshes: S.scan?.built.meshes.length || 0, photoLoaded: !!S.scan?.built.atlas.userData.photo, explode: S.explode, fps: stats.fps }),
   home: () => { const v = homeView(); return { radius: v.radius, off: v.off, rects: freeRects(), box: boardBox().toArray?.() ?? [boardBox().min.toArray(), boardBox().max.toArray()] }; },
   voice: (a, t) => voice(a, t), inject: ev => handle(ev),
-  partsState: () => ({ scope: scopeNow(), active: partsActive(), sel: P.sel?.id || null, parts: stageParts().map(p => ({ id: p.id, name: p.name, removed: p.removed, moved: p.moved })), analysis: P.analysis, waiting: P.waiting, guide: G.on ? { i: G.i, n: G.list.length } : null }),
+  partsState: () => ({ scope: scopeNow(), active: partsActive(), sel: P.sel?.id || null, before: P.before, parts: stageParts().map(p => ({ id: p.id, name: p.name, removed: p.removed, moved: p.moved, mod: p.mod || null })), analysis: P.analysis, waiting: P.waiting, guide: G.on ? { i: G.i, n: G.list.length } : null }),
+  partWorld: id => { const p = stageParts().find(q => q.id === id); return p ? partCenter(p).toArray() : null; },
+  camera: () => { const c = camState(); return { radius: c.radius, theta: c.theta, phi: c.phi, pos: camera.position.toArray() }; },
+  handsState: () => ({ on: !!hands, sim: !!hands?.sim, coach: handUI.coachOpen(), help: !$('handhelp').hidden, status: handUI.statusKind(), statusText: $('hstatusText').textContent,
+    cursor: $('cursor').hidden ? null : $('cursor').style.transform, cursorState: $('cursor').dataset.state || '', label: $('cursor').querySelector('.cur-label').textContent,
+    hover: handHover?.id || null, holding: P.handDrag?.part.id || null, tip: tipEl.hidden ? null : tipEl.querySelector('strong').textContent,
+    legend: [...document.querySelectorAll('#handlegend li.on')].map(li => li.dataset.g), toast: $('toast').hidden ? '' : $('toast').textContent }),
+  handsPlay: frames => (hands?.play ? hands.play(frames).then(() => true) : Promise.resolve(false)),
+  handsHold: (spec, extra) => { hands?.hold?.(spec, extra); return !!hands?.hold; },
   partScreen: id => { const p = stageParts().find(q => q.id === id); if (!p) return null; const v = partCenter(p).project(camera), r = stage.getBoundingClientRect(); return [r.left + (v.x + 1) / 2 * r.width, r.top + (1 - v.y) / 2 * r.height]; },
   fitted: () => ({ off: { ...S.off }, ...(c => ({ radius: c.radius, phi: c.phi, theta: c.theta }))(camState()) }),
   labelBoxes: () => [...$('labels').querySelectorAll('.tag:not(.layer)')].filter(t => t.style.display !== 'none').map(t => { const r = t.querySelector('span').getBoundingClientRect(); return [r.left, r.top, r.width, r.height, t.className]; }),
   state: () => ({ model: S.model, holo: S.holo, explode: S.explode, autoRotate: controls.autoRotate, wires: [...S.wires.keys()], marks: S.current.map(c => ({ label: c.label, kind: c.kind, from: c.from, to: c.to })), fps: stats.fps, ms: stats.ms, step: S.step }),
+  partSize: id => { const p = stageParts().find(q => q.id === id); return p ? new THREE.Box3().setFromObject(p.objs[0]).getSize(new THREE.Vector3()).toArray() : null; },
+  checklistState: () => ({ items: CL.items.map(it => ({ id: it.id, status: it.status, have: CL.have.get(it.id) ?? null })), placeholders: CL.group.children.map(g => g.name), visible: CL.group.visible }),
   pinWorld: k => S.uno?.pinPos(k)?.add(S.pos).toArray(),
   pinScreen: k => { const p = S.uno?.pinPos(k)?.add(S.pos).project(camera); const r = stage.getBoundingClientRect(); return p && [r.left + (p.x + 1) / 2 * r.width, r.top + (1 - p.y) / 2 * r.height]; },
   exportBytes: async () => { const b = new Uint8Array(await exportGlb()); return { magic: String.fromCharCode(...b.slice(0, 4)), length: b.length }; },
