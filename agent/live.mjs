@@ -10,7 +10,7 @@ const PAGE = new URL('./monitor.html', import.meta.url);
 
 /** @returns {Promise<{send: (event: object) => void, close: () => Promise<void>}>} never throws; a no-op if the port is busy */
 export async function startLive() {
-  const state = { call: null, step: '', transcript: [] };   // replayed to a page that connects mid-call
+  const state = { call: null, step: '', transcript: [], brain: '', turns: [] };   // replayed to a page that connects mid-call
   const server = createServer(async (req, res) => {
     if (req.method === 'GET' && (req.url === '/' || req.url === '/index.html')) {
       res.writeHead(200, { 'content-type': 'text/html; charset=utf-8', 'cache-control': 'no-store' }).end(await readFile(PAGE));
@@ -31,6 +31,8 @@ export async function startLive() {
     send(event) {
       if (event.type === 'call') state.call = event;
       if (event.type === 'step') state.step = event.text;
+      if (event.type === 'brain') state.brain = event.brain;
+      if (event.type === 'turn') { state.turns.push(event); state.turns = state.turns.slice(-40); }
       if (event.type === 'heard' || event.type === 'say') { state.transcript.push(event); state.transcript = state.transcript.slice(-40); }
       const msg = JSON.stringify(event);
       for (const c of wss.clients) if (c.readyState === 1) c.send(msg);

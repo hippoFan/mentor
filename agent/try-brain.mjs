@@ -18,3 +18,4 @@ console.log(JSON.stringify(reply, null, 2));
 render(frame, reply.marks, { caption: reply.step });
 await writeFile(`${photo}.mentor.png`, await snapshotPng());
 console.log(`wrote ${photo}.mentor.png`);
+await brain.close?.();

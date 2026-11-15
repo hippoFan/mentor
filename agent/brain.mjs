@@ -28,7 +28,7 @@ USB-B vs USB-C, and LED positions) and point at that board's real parts, never a
 "step" is a short title for the current step (max 8 words). Set "done" true only when the whole task is finished.
 "note" is one line for the after-call recap (what was done or decided this turn), or empty.`;
 
-const SYSTEM = `${SYSTEM_CORE}\n\n${pointingRules('a pixel coordinate (x right, y down) in the attached image, whose size is given in the message')}`;
+export const SYSTEM = `${SYSTEM_CORE}\n\n${pointingRules('a pixel coordinate (x right, y down) in the attached image, whose size is given in the message')}`;
 
 export const SCHEMA = {
   type: 'object',
@@ -172,5 +172,6 @@ export async function createBrain({ task = '', provider } = {}) {
     || (process.env.ANTHROPIC_API_KEY ? 'claude' : (process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY) ? 'gemini' : '');
   if (want === 'claude') return new ClaudeBrain({ task });
   if (want === 'gemini') { const { GeminiBrain } = await import('./brain-gemini.mjs'); return new GeminiBrain({ task }); }
+  if (want === 'claude-code') { const { ClaudeCodeBrain } = await import('./brain-claude-code.mjs'); return new ClaudeCodeBrain({ task }); }
   throw new Error('No brain key: set ANTHROPIC_API_KEY or GEMINI_API_KEY in mentor/.env (or MENTOR_BRAIN)');
 }

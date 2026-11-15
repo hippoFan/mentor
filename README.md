@@ -146,7 +146,7 @@ All settings are environment variables in `mentor/.env` (see [`env.example`](env
 | `AGENT_NAME` | yes | Unique dispatch name, the same one passed to `chert dev --agent` |
 | `ANTHROPIC_API_KEY` | one brain key | Claude API key (Claude Fable 5.2 brain) |
 | `GEMINI_API_KEY` | one brain key | Gemini API key (Gemini brain, points on its native 0-1000 grid) |
-| `MENTOR_BRAIN` | no | `claude` or `gemini` to force one; otherwise Claude if its key is set, else Gemini |
+| `MENTOR_BRAIN` | no | `gemini`, `claude` (API key) or `claude-code` (**owner testing only**: the local Claude Code CLI signed in with your own Claude subscription; never for other people's calls); otherwise Claude if its key is set, else Gemini |
 | `ELEVENLABS_API_KEY` | yes | ElevenLabs key with Text to Speech + Speech to Text (`ELEVEN_API_KEY` also works) |
 | `ELEVEN_VOICE_ID` | no | Voice for Mentor; ElevenLabs default if unset |
 | `MENTOR_TASK` | no | The task Mentor guides, e.g. `Make the Arduino Uno's onboard LED blink` |

@@ -131,10 +131,16 @@ const agent = defineAgent({
       pushing = true;
       outJpeg().then(b => live.send({ type: 'frame', jpeg: b.toString('base64') })).catch(() => {}).finally(() => { pushing = false; });
     }, 500);
+    // What Mentor sees (the cropped caller picture), once a second, for the tester screen.
+    const seeTimer = setInterval(async () => {
+      const now = getLatest(); if (!now) return;
+      try { const j = await frameJpeg(now, 480); live.send({ type: 'input', jpeg: j.jpeg.toString('base64'), w: now.width, h: now.height }); } catch { /* skip */ }
+    }, 1000);
 
     // ---- voice: ElevenLabs Scribe (hearing) + ElevenLabs TTS (speaking); no session LLM ----
     const brain = await createBrain({ task: TASK });
     console.log(`[mentor] brain: ${brain.provider}`);
+    live.send({ type: 'brain', brain: brain.provider });
     let turnSeq = 0, stepNo = 0;
     const recap = [];
     const session = VOICE ? new voice.AgentSession({
@@ -172,6 +178,7 @@ const agent = defineAgent({
         const reply = await brain.turn(heard, image).finally(() => clearTimeout(filler));
         if (seq !== turnSeq || ended) return;   // they spoke again while we were thinking; answer the newer turn
         marks = reply.marks; marksAt = Date.now();
+        live.send({ type: 'turn', brain: brain.provider, model: reply.model || '', ms: reply.ms, marks: reply.marks, step: reply.step, done: !!reply.done });
         if (reply.step) caption = reply.step;
         if (reply.done) caption = 'Done. You made it home.';   // nostos: the Odyssey's homecoming
         if (reply.step || reply.done) live.send({ type: 'step', text: caption, done: !!reply.done });
@@ -195,6 +202,7 @@ const agent = defineAgent({
       clearInterval(timer);
       clearInterval(monitorTimer);
       clearInterval(shotTimer);
+      clearInterval(seeTimer);
       live.send({ type: 'call', state: 'ended' });
       ctx.room.off(RoomEvent.TrackSubscribed, maybeVideo);
       ctx.room.off(RoomEvent.TrackUnsubscribed, lostVideo);
@@ -213,7 +221,7 @@ const agent = defineAgent({
         }
       } catch (error) { console.error('[mentor] recap start failed', error?.message || error); }
       console.log(`[mentor] call ended; ${recap.length} recap steps in ${runDir}`);
-      for (const close of [() => session?.close(), () => track.close(), () => source.close(), () => live.close()]) {
+      for (const close of [() => session?.close(), () => track.close(), () => source.close(), () => live.close(), () => brain.close?.()]) {
         try { await close(); } catch { /* already closed */ }
       }
     });

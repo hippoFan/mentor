@@ -89,7 +89,7 @@ export class GeminiBrain {
           .map(m => ({ ...m, x: m.x / 1000, y: m.y / 1000, x2: m.x2 >= 0 ? m.x2 / 1000 : -1, y2: m.y2 >= 0 ? m.y2 / 1000 : -1 }))
           .filter(m => m.x >= 0 && m.x <= 1 && m.y >= 0 && m.y <= 1)
       : [];
-    out.ms = ms;
+    out.ms = ms; out.model = model;
     const u = response.usageMetadata || {};
     console.log(`[brain:gemini] ${model} ${ms}ms in=${u.promptTokenCount} cached=${u.cachedContentTokenCount ?? 0} out=${u.candidatesTokenCount}`);
     return out;
