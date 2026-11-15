@@ -113,3 +113,47 @@ export async function deleteDesign(id) {
   await rm(dir(id), { recursive: true, force: true });
   return true;
 }
+
+// ---------- schematics (The Forge's Schematic button, argos/server.mjs) ----------
+// Fixed file names only, written into the design's own folder. The live call circuit ('circuit-live' on the page) is not
+// a saved design, so its drawings go to designs/_circuit-live/ (the underscore keeps it out of the design list).
+export const LIVE_CIRCUIT_ID = 'circuit-live';
+export const SCHEMATIC_FILES = {
+  'schematic.svg': 'image/svg+xml', 'pcb.svg': 'image/svg+xml', 'netlist.json': 'application/json; charset=utf-8',
+  'ody-circuit.kicad_sch': 'text/plain; charset=utf-8', 'ody-circuit.kicad_pcb': 'text/plain; charset=utf-8', 'ody-circuit.kicad_pro': 'application/json; charset=utf-8',
+};
+const SCHEMATIC_INFO = 'schematic.json';   // {key, traces, errors, ms, at}: the cache of the last run
+const schematicDir = id => (id === LIVE_CIRCUIT_ID ? new URL('_circuit-live/', DESIGNS) : ID.test(String(id)) ? dir(id) : null);
+
+/** A saved design's circuit (its circuit.json, a circuit.mjs project), or null. */
+export async function designCircuit(id) {
+  const buf = await designFile(id, 'circuit.json');
+  try { const st = buf && JSON.parse(buf); return st?.components ? st : null; } catch { return null; }
+}
+
+/** Saves one schematic run (only SCHEMATIC_FILES names) and its info. The live circuit's folder is created on demand. */
+export async function saveSchematic(id, files, info) {
+  const d = schematicDir(id);
+  if (!d || (id !== LIVE_CIRCUIT_ID && !(await getDesign(id)))) return false;
+  await mkdir(d, { recursive: true });
+  for (const name of Object.keys(SCHEMATIC_FILES)) {
+    if (files[name] != null) await writeFile(new URL(name, d), files[name]);
+    else await rm(new URL(name, d), { force: true });
+  }
+  await writeFile(new URL(SCHEMATIC_INFO, d), JSON.stringify({ ...info, files: Object.keys(SCHEMATIC_FILES).filter(n => files[n] != null) }));
+  return true;
+}
+
+/** The last schematic run's info ({key, traces, errors, ms, at, files}), or null. */
+export async function schematicInfo(id) {
+  const d = schematicDir(id);
+  if (!d) return null;
+  try { return JSON.parse(await readFile(new URL(SCHEMATIC_INFO, d), 'utf8')); } catch { return null; }
+}
+
+/** One saved schematic file (fixed names only), or null. */
+export async function schematicFile(id, name) {
+  const d = schematicDir(id);
+  if (!d || !SCHEMATIC_FILES[name]) return null;
+  try { return await readFile(new URL(name, d)); } catch { return null; }
+}

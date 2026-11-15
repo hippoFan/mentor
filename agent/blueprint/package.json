@@ -1,0 +1,18 @@
+{
+  "name": "ody-blueprint",
+  "private": true,
+  "description": "Optional: schematics for Ody (schematic SVG, routed PCB, KiCad files) via tscircuit. Install with: cd agent/blueprint && npm ci (exact versions, >= 7 days old at pinning; no install scripts)",
+  "type": "module",
+  "dependencies": {
+    "@tscircuit/circuit-json-util": "0.0.131",
+    "circuit-json-to-kicad": "0.0.270",
+    "circuit-to-svg": "0.0.457",
+    "polygon-clipping": "0.15.7",
+    "react": "19.3.1",
+    "three": "0.187.0",
+    "tscircuit": "0.0.3120"
+  },
+  "overrides": {
+    "@tscircuit/circuit-json-util": "$@tscircuit/circuit-json-util"
+  }
+}

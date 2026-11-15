@@ -133,6 +133,43 @@ try {
     return ino.name;
   });
 
+  await test('Schematic: disabled on a scan; on the circuit it draws a schematic + routed PCB with KiCad downloads (needs agent/blueprint)', async () => {
+    const C = await import('../circuit.mjs');
+    let st = C.createProject({ board: 'arduino-uno' });
+    for (const u of ['add a distance sensor', 'add an LED']) st = C.apply(st, C.fastPlan(st, u).actions).state;
+    const ev = C.circuitEvent(st, {});
+    mock.argos.onPublished(ev); mock.send(ev);   // the hub does both for a call's circuit
+    await card('scan').first().locator('.forge-open').click();
+    assert.equal(await $('.forge-schematic').getAttribute('aria-disabled'), 'true');
+    assert.equal(await $('.forge-schematic').getAttribute('title'), 'No circuit in this design');
+    await $('.forge-schematic').focus(); await page.keyboard.press('Enter');   // still focusable (aria-disabled), but does nothing
+    await page.waitForTimeout(200);
+    assert.ok(await $('.forge-schem').isHidden(), 'a disabled Schematic button does nothing');
+    await back();
+    await card('circuit').locator('.forge-open').click();
+    assert.equal(await $('.forge-schematic').getAttribute('aria-disabled'), 'false');
+    await $('.forge-schematic').focus(); await page.keyboard.press('Enter');   // keyboard works
+    await page.waitForSelector('.forge-schem:not([hidden])');
+    await page.waitForFunction(() => !document.querySelector('.forge-schem').classList.contains('is-busy'), null, { timeout: 40_000 });
+    const msg = await $('.forge-schem-msg').textContent();
+    if (/optional drawing library/.test(msg)) { await back(); return `skipped drawings: ${msg}`; }
+    await page.waitForFunction(() => { const i = document.querySelector('.forge-schem-img'); return i.complete && i.naturalWidth > 0; });
+    assert.match(await $('.forge-schem-cap').textContent(), /how the parts connect/);
+    await page.screenshot({ path: join(SHOTS, 'schematic-schematic.png') });
+    await $('.forge-schem-tab[data-view=pcb]').click();
+    await page.waitForFunction(() => { const i = document.querySelector('.forge-schem-img'); return /pcb\.svg/.test(i.src) && i.complete && i.naturalWidth > 0; });
+    assert.match(await $('.forge-schem-cap').textContent(), /2-layer carrier board/);
+    await page.screenshot({ path: join(SHOTS, 'schematic-pcb.png') });
+    const sch = await dl($('.forge-dl-kicad-sch'));
+    assert.match(sch.buf.toString(), /^\(kicad_sch/); assert.equal(sch.name, 'ody-circuit.kicad_sch');
+    const pcb = await dl($('.forge-dl-kicad-pcb')); assert.match(pcb.buf.toString(), /^\(kicad_pcb/);
+    const net = await dl($('.forge-dl-netlist')); assert.ok(JSON.parse(net.buf).nets.some(n => n.name === 'GND'));
+    await $('.forge-schem-back').click();
+    assert.ok(await $('.forge-schem').isHidden() && await $('.forge-stage').isVisible());
+    await back();
+    return msg;
+  });
+
   const files = tinyFiles();
   const imported = {};
   for (const [name, buf, mime] of [['bracket.stl', files.stl, 'model/stl'], ['cube.obj', files.obj, 'text/plain'], ['pyramid.glb', files.glb, 'model/gltf-binary']]) {

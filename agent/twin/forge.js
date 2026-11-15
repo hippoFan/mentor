@@ -1,7 +1,8 @@
 // The Forge (right page): every design on this laptop, from three places — a call's scans (saved by Argos with their
 // photo), Argos refinements (new versions linked to their parent) and files imported from the user's computer.
 // Gallery (filters, version chains, honest badges) -> viewer (three.js, holo or forge-lit) -> convert (STL, OpenSCAD,
-// Arduino sketch), refine with Argos, import, delete. Data: /argos/designs (argos/server.mjs). Names and notes are
+// Arduino sketch), schematic on demand (schematic + routed PCB + KiCad files of the design's circuit, POST
+// /argos/designs/<id>/schematic), refine with Argos, import, delete. Data: /argos/designs (argos/server.mjs). Names and notes are
 // always set with textContent, never as HTML.
 //
 //   const forge = mountForge(rootEl, { subscribe, openRefine });
@@ -273,7 +274,7 @@ const countMeshes = root => { let n = 0; root.traverse(o => { if (o.isMesh) n++;
  * @returns {{refresh: () => Promise<void>, open: (id: string) => void, close: () => void, destroy: () => void}}
  */
 export function mountForge(rootEl, { subscribe, openRefine } = {}) {
-  const S = { designs: [], filter: 'all', open: null, look: 'forge', circuit: null, fresh: new Set(), busy: false, liveCall: false };
+  const S = { designs: [], filter: 'all', open: null, look: 'forge', circuit: null, fresh: new Set(), busy: false, liveCall: false, schem: null, schemBusy: false };
   const byId = id => id === CIRCUIT_ID ? S.circuit : S.designs.find(d => d.id === id);
   if (!document.querySelector('link[href="/twin/forge.css"]')) document.head.append(h('link', { rel: 'stylesheet', href: '/twin/forge.css' }));
   rootEl.classList.add('forge', 'is-offscreen');   // the first sight of the page plays its entrance
@@ -324,10 +325,13 @@ export function mountForge(rootEl, { subscribe, openRefine } = {}) {
     h('div', { class: 'forge-confirm-row' },
       h('button', { class: 'forge-btn forge-ink-btn forge-delete-yes', type: 'button', onclick: () => doDelete() }, 'Delete'),
       h('button', { class: 'forge-btn forge-quiet forge-delete-no', type: 'button', onclick: () => askDelete(false) }, 'Keep it')));
+  const schemBtn = h('button', { class: 'forge-btn forge-quiet forge-schematic', type: 'button', onclick: () => drawSchematic() }, 'Schematic');
+  const schemWhy = h('p', { class: 'forge-why forge-schem-why', id: 'forge-schem-why', hidden: true });
   const side = h('aside', { class: 'forge-side', 'aria-labelledby': 'forge-v-name' },
     vName, vMeta, vBadges, vNote, vSummary, vCaveats,
     h('h3', { class: 'forge-side-h', text: 'Versions' }), vChain,
     h('h3', { class: 'forge-side-h', text: 'Convert' }), actions,
+    h('h3', { class: 'forge-side-h', text: 'Circuit' }), schemBtn, schemWhy,
     refineBtn, refineMsg, delBtn, delAsk);
   const stageMsg = h('p', { class: 'forge-stage-msg', role: 'status' });
   const photo = h('img', { class: 'forge-photo', alt: '', hidden: true });
@@ -337,9 +341,23 @@ export function mountForge(rootEl, { subscribe, openRefine } = {}) {
   const frameBtn = h('button', { class: 'forge-btn forge-quiet forge-small forge-frame', type: 'button', onclick: () => stage?.frame() }, 'Frame');
   const tools = h('div', { class: 'forge-tools', role: 'group', 'aria-label': 'View' }, lookBtns, frameBtn);
   const stageEl = h('div', { class: 'forge-stage', 'data-look': S.look, role: 'img', 'aria-label': '3D view' }, photo, stageMsg, buildBtn, tools);
+  // schematic view (replaces the 3D stage while it's open): Schematic / PCB toggle, a caption for students, downloads
+  const SCHEM_VIEWS = { schematic: ['Schematic', 'Schematic: how the parts connect.', 'Schematic of the circuit'],
+    pcb: ['PCB', 'PCB: a 2-layer carrier board, auto-routed. Red is top copper, blue is bottom.', 'Printed circuit board layout of the circuit'] };
+  const schemTabs = Object.entries(SCHEM_VIEWS).map(([id, [label]]) => h('button', { class: 'forge-btn forge-quiet forge-small forge-schem-tab', type: 'button', 'data-view': id,
+    'aria-pressed': id === 'schematic' ? 'true' : 'false', onclick: () => setSchemView(id) }, label));
+  const schemTabsEl = h('div', { class: 'forge-schem-tabs', role: 'group', 'aria-label': 'Drawing' }, schemTabs);
+  const schemMsg = h('p', { class: 'forge-schem-msg', role: 'status' });
+  const schemImg = h('img', { class: 'forge-schem-img', alt: '', decoding: 'async' });
+  const schemCap = h('figcaption', { class: 'forge-schem-cap' });
+  const schemFig = h('figure', { class: 'forge-schem-fig', hidden: true, 'data-view': 'schematic' }, h('div', { class: 'forge-schem-frame' }, schemImg), schemCap);
+  const schemDl = h('div', { class: 'forge-schem-dl', role: 'group', 'aria-label': 'Download the circuit files' });
+  const schemBack = h('button', { class: 'forge-btn forge-quiet forge-small forge-schem-back', type: 'button', onclick: () => { hideSchem(); schemBtn.focus(); } }, 'Back to 3D view');
+  const schemEl = h('section', { class: 'forge-schem', hidden: true, 'aria-label': 'Schematic and PCB' },
+    h('div', { class: 'forge-schem-bar' }, schemTabsEl, schemBack), schemMsg, schemFig, schemDl);
   const backBtn = h('button', { class: 'forge-btn forge-quiet forge-small forge-back', type: 'button', onclick: () => close() }, '‹ All designs');
   const viewer = h('section', { class: 'forge-viewer', hidden: true, 'aria-labelledby': 'forge-v-name' },
-    h('div', { class: 'forge-v-top' }, backBtn), h('div', { class: 'forge-v-body' }, h('div', { class: 'forge-kiln' }, stageEl), side));
+    h('div', { class: 'forge-v-top' }, backBtn), h('div', { class: 'forge-v-body' }, h('div', { class: 'forge-kiln' }, stageEl, schemEl), side));
 
   const drop = h('div', { class: 'forge-drop', hidden: true, 'aria-hidden': 'true' }, h('p', { text: 'Drop .stl, .obj, .glb or .scad files to import them' }));
   const toasts = h('div', { class: 'forge-toasts' });
@@ -493,7 +511,13 @@ export function mountForge(rootEl, { subscribe, openRefine } = {}) {
     actions.replaceChildren(...acts);
     refineBtn.hidden = d.kind === 'circuit';
     delBtn.hidden = d.kind === 'circuit';
+    const circ = hasCircuit(d);
+    schemBtn.setAttribute('aria-disabled', String(!circ));
+    schemBtn.title = circ ? 'Draw the schematic and a routed PCB of this circuit' : 'No circuit in this design';
+    if (circ) schemBtn.removeAttribute('aria-describedby'); else schemBtn.setAttribute('aria-describedby', 'forge-schem-why');
+    schemWhy.hidden = circ; schemWhy.textContent = circ ? '' : 'No circuit in this design.';
   }
+  const hasCircuit = d => (d.kind === 'circuit' ? d.count > 0 : has(d, 'circuit.json'));
   async function showModel(d, seq) {
     const st = getStage();
     photo.hidden = true; buildBtn.hidden = true; tools.hidden = true;
@@ -513,7 +537,7 @@ export function mountForge(rootEl, { subscribe, openRefine } = {}) {
     const seq = ++openSeq;
     if (viewer.hidden) opener = document.activeElement;
     S.open = id; viewer.hidden = false; rootEl.classList.add('is-viewing');
-    askDelete(false); refineMsg.hidden = true;
+    askDelete(false); refineMsg.hidden = true; hideSchem();
     fillSide(d);
     stageEl.setAttribute('aria-label', `3D view of ${d.name || 'the design'}`);
     stageEl.dataset.has = ''; stage?.clear(); stage?.setActive(false);
@@ -531,7 +555,7 @@ export function mountForge(rootEl, { subscribe, openRefine } = {}) {
   }
   function close() {
     if (viewer.hidden) return;
-    openSeq++; S.open = null; viewer.hidden = true; rootEl.classList.remove('is-viewing');
+    openSeq++; hideSchem(); S.open = null; viewer.hidden = true; rootEl.classList.remove('is-viewing');
     stage?.setActive(false); stage?.clear();
     const back = opener && rootEl.contains(opener) ? opener : grid.querySelector('.forge-open');
     back?.focus({ preventScroll: true }); opener = null;
@@ -540,6 +564,52 @@ export function mountForge(rootEl, { subscribe, openRefine } = {}) {
     S.look = l; stageEl.dataset.look = l;
     for (const b of lookBtns) b.setAttribute('aria-pressed', String(b.dataset.look === l));
     stage?.setLook(l);
+  }
+
+  // ---------- schematic (on demand) ----------
+  let schemSeq = 0;
+  function showSchem() { stageEl.hidden = true; stage?.setActive(false); schemEl.hidden = false; }
+  function hideSchem() {
+    schemSeq++; S.schem = null; schemEl.hidden = true; schemEl.classList.remove('is-busy'); schemImg.removeAttribute('src');
+    if (stageEl.hidden) { stageEl.hidden = false; if (stageEl.dataset.has === 'model') stage?.setActive(true); }
+  }
+  function setSchemView(v) {
+    const r = S.schem, url = r && (v === 'pcb' ? r.pcbUrl : r.schematicUrl);
+    if (!url) return;
+    const [, caption, alt] = SCHEM_VIEWS[v];
+    for (const b of schemTabs) b.setAttribute('aria-pressed', String(b.dataset.view === v));
+    schemFig.dataset.view = v; schemImg.alt = alt; schemImg.src = `${url}?v=${r.stamp}`; schemCap.textContent = caption;
+  }
+  async function drawSchematic() {
+    const d = byId(S.open);
+    if (!d || !hasCircuit(d) || S.schemBusy) return;
+    const seq = ++schemSeq, id = d.id;
+    S.schemBusy = true; S.schem = null; schemBtn.setAttribute('aria-busy', 'true'); schemBtn.textContent = 'Drawing…';
+    showSchem(); schemFig.hidden = true; schemTabsEl.hidden = true; schemDl.replaceChildren(); schemEl.classList.add('is-busy');
+    schemMsg.textContent = 'Drawing schematic…';
+    const later = setTimeout(() => { if (seq === schemSeq) schemMsg.textContent = 'Drawing schematic… routing PCB…'; }, 500);
+    let r = null, body = null;
+    try {
+      r = await fetch(`/argos/designs/${encodeURIComponent(id)}/schematic`, { method: 'POST', cache: 'no-store' });
+      try { body = await r.json(); } catch { /* no JSON */ }
+    } catch { body = { error: "Couldn't reach Ody on this laptop. Check that the hub is running, then try again." }; }
+    finally { clearTimeout(later); S.schemBusy = false; schemBtn.removeAttribute('aria-busy'); schemBtn.textContent = 'Schematic'; }
+    if (seq !== schemSeq || S.open !== id) return;   // the user moved on meanwhile
+    schemEl.classList.remove('is-busy');
+    const netBtn = nets => h('button', { class: 'forge-btn forge-quiet forge-small forge-dl-netlist', type: 'button',
+      onclick: () => saveBlob(new Blob([JSON.stringify(nets, null, 2)], { type: 'application/json' }), 'netlist.json', 'Saved the netlist.') }, 'Netlist (JSON)');
+    if (!r?.ok || !body?.schematicUrl) {
+      schemMsg.textContent = body?.error || (r?.status === 403 ? 'The server refused this request (403). Reload the page and try again.' : `The server answered ${r?.status}.`);
+      if (Array.isArray(body?.netlist) && body.netlist.length) schemDl.append(netBtn(body.netlist));
+      return;
+    }
+    S.schem = { ...body, stamp: Date.now() };
+    schemMsg.textContent = `Ready: ${body.traces} copper trace${body.traces === 1 ? '' : 's'} routed${body.cached ? ' (unchanged since the last drawing)' : ''}.`;
+    schemTabsEl.hidden = false; schemFig.hidden = false;
+    const dls = [['sch', 'KiCad schematic'], ['pcb', 'KiCad PCB'], ['pro', 'KiCad project']].filter(([k]) => body.kicad?.[k])
+      .map(([k, label]) => link(`${body.kicad[k]}?download`, label, `forge-quiet forge-small forge-dl-kicad-${k}`));
+    schemDl.replaceChildren(...dls, body.netlistUrl ? link(`${body.netlistUrl}?download`, 'Netlist (JSON)', 'forge-quiet forge-small forge-dl-netlist') : netBtn(body.netlist || []));
+    setSchemView('schematic');
   }
 
   // ---------- convert ----------
