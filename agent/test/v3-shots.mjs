@@ -38,6 +38,23 @@ try {
   const ev = async e => (await cdp('Runtime.evaluate', { expression: e, awaitPromise: true, returnByValue: true })).result?.result?.value;
   await cdp('Runtime.enable'); await cdp('Page.enable');
   const only = process.argv[2];
+  if (only === 'v5') {   // the bar on every page and mid-move: v5-*.png
+    const snap = async (name, clip) => { const r = await cdp('Page.captureScreenshot', { format: 'png', ...(clip ? { clip: { ...clip, scale: 1 } } : {}) }); await writeFile(join(SHOTS, `v5-${name}.png`), Buffer.from(r.result.data, 'base64')); };
+    for (const [w, h] of [[1440, 900], [1280, 800]]) {
+      await cdp('Emulation.setDeviceMetricsOverride', { width: w, height: h, deviceScaleFactor: 1, mobile: false });
+      await cdp('Page.navigate', { url: `http://localhost:${PORT}/#main` });
+      for (let i = 0; i < 60 && !(await ev('!!(window.odyPages && window.odyAccount && document.fonts.status === "loaded")')); i++) await sleep(200);
+      await sleep(1800);
+      await snap(`home-${w}x${h}`);
+      for (const p of ['argo', 'forge', 'main']) {
+        if (p === 'forge') { await ev('window.odyPages.goTo("main")'); await sleep(1600); }
+        await ev(`window.odyPages.goTo(${JSON.stringify(p)})`); await sleep(420); await snap(`mid-to-${p}-${w}x${h}`);
+        await sleep(1600); await snap(`${p}-${w}x${h}`);
+        if (p === 'argo') { const r = await ev('(() => { const b = document.getElementById("rail").getBoundingClientRect(); return [b.x, b.y, b.width, b.height]; })()'); await snap(`argo-panel-${w}x${h}`, { x: Math.max(0, r[0] - 12), y: r[1] - 12, width: r[2] + 24, height: Math.min(h - r[1] + 12, r[3] + 24) }); }
+      }
+    }
+    throw Object.assign(new Error('v5 done'), { done: true });
+  }
   if (only === 'v4') {   // Home's exits and the nav: v4-*.png
     const snap = async (name, clip) => { const r = await cdp('Page.captureScreenshot', { format: 'png', ...(clip ? { clip: { ...clip, scale: 1 } } : {}) }); await writeFile(join(SHOTS, `v4-${name}.png`), Buffer.from(r.result.data, 'base64')); };
     const centre = async sel => ev(`(() => { const r = document.querySelector(${JSON.stringify(sel)}).getBoundingClientRect(); return [r.x + r.width / 2, r.y + r.height / 2]; })()`);

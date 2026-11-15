@@ -30,7 +30,7 @@ const STATIC = [
   // The Odyssey look (design guide v2): page stylesheets, our own ornament sprite, and the deck's three OFL fonts.
   [/^\/twin\/([a-z0-9-]+\.css)$/, m => new URL(`./twin/${m[1]}`, import.meta.url)],
   [/^\/twin\/(ornaments\.svg)$/, m => new URL(`./twin/${m[1]}`, import.meta.url)],
-  [/^\/fonts\/(GFSTheokritos\.otf|CinzelDecorative-(?:Regular|Bold)\.ttf|CooperHewitt-[456]00\.woff2)$/, m => new URL(`./fonts/${m[1]}`, import.meta.url)],
+  [/^\/fonts\/(GFSTheokritos\.otf|CinzelDecorative-(?:Regular|Bold)\.ttf|CooperHewitt-[456]00\.woff2|EBGaramond-[47]00\.woff2)$/, m => new URL(`./fonts/${m[1]}`, import.meta.url)],
   // Motion + ink (twin/motion.js, twin/ink.js): GSAP (standard no-charge licence), Rough.js, rough-notation, perfect-freehand (MIT).
   [/^\/vendor\/gsap\/((?:utils\/)?[A-Za-z0-9-]+\.js)$/, m => new URL(`./node_modules/gsap/${m[1]}`, import.meta.url)],
   [/^\/vendor\/rough\/(rough\.esm\.js)$/, m => new URL(`./node_modules/roughjs/bundled/${m[1]}`, import.meta.url)],

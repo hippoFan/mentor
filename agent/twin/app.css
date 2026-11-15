@@ -536,3 +536,103 @@ html.v2 #page-argo{padding-right:var(--gutter)}
 #page-main .page-wrap{padding-right:max(var(--pad-x),136px)}
 #page-main .home-column .col-ember{mix-blend-mode:normal;opacity:.5;filter:saturate(1.6) drop-shadow(0 0 2px #ea872f)}
 #page-main .home-column:hover .col-ember,#page-main .home-column:focus-visible .col-ember{opacity:1}
+
+/* =========================== v5: the bar — centred nav, an overhanging avatar, tinted to the page it shows =========================== */
+:root{--bar-navy:#0a1830;--bar-ember:#a84d2c}   /* cream on these: 16.1:1 and 5.1:1 */
+.appbar{isolation:isolate}
+.appbar .pager{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);z-index:1}
+/* the page tint: two layers fade in and out in step with the page move (push ~0.74 s after a 0.14 s stall; home ~0.82 s) */
+.bar-tint{position:absolute;inset:0;z-index:-1;opacity:0;pointer-events:none;transition:opacity .74s cubic-bezier(.62,.02,.22,1) .14s}
+.bar-tint.navy{background:linear-gradient(#c1ddd00d 1px,transparent 1px) 0 0/48px 48px,linear-gradient(90deg,#c1ddd00d 1px,transparent 1px) 0 0/48px 48px,var(--bar-navy)}
+.bar-tint.ember{background:var(--clay),var(--bar-ember)}
+body[data-page="argo"] .bar-tint.navy,body[data-page="forge"] .bar-tint.ember{opacity:1}
+body[data-page="main"] .bar-tint,body[data-page="profile"] .bar-tint,body[data-page="settings"] .bar-tint{transition:opacity .82s cubic-bezier(.22,1,.36,1)}
+.appbar::after{transition:opacity .5s var(--ease)}
+body[data-page="argo"] .appbar::after,body[data-page="forge"] .appbar::after{opacity:0}   /* no seam between the bar and a dark page */
+.pager a,.pager,.pager a::before{transition:color .6s var(--ease) .14s,background-color .6s var(--ease) .14s,box-shadow .6s var(--ease) .14s,opacity var(--dur-2) var(--ease),transform var(--dur-2) var(--spring)}
+body[data-page="argo"] .pager,body[data-page="forge"] .pager{background:#fdf5cc14;box-shadow:inset 0 0 0 1px #fdf5cc4d}
+body[data-page="argo"] .pager a,body[data-page="forge"] .pager a,body[data-page="argo"] .pager .nav-logo,body[data-page="forge"] .pager .nav-logo{color:#fdf5cce6}
+body[data-page="argo"] .pager a:hover,body[data-page="forge"] .pager a:hover{color:var(--parchment)}
+body[data-page="argo"] .pager a::before,body[data-page="forge"] .pager a::before{background:var(--parchment)}
+body[data-page="argo"] .pager a:hover::before,body[data-page="forge"] .pager a:hover::before{opacity:.12}
+body[data-page="argo"] .pager a[aria-current=page]{color:var(--bar-navy)}
+body[data-page="forge"] .pager a[aria-current=page]{color:var(--bar-ember)}
+body[data-page="argo"] .pager a[aria-current=page]::before,body[data-page="forge"] .pager a[aria-current=page]::before{opacity:1}
+body[data-page="argo"] .appbar :focus-visible,body[data-page="forge"] .appbar :focus-visible{outline-color:var(--parchment)}
+/* Argo's page meets the bar with the same navy (no seam) */
+html.v2 #page-argo{background-color:var(--bar-navy)}
+/* The Forge: its clay deepens to the bar's ember right under the bar */
+html.v2 .forge-page{background:linear-gradient(var(--bar-ember),#a84d2c00 70px),radial-gradient(120% 95% at 50% 30%,#e0844f33 0%,#b9583a66 50%,#7a2e1fcc 92%,#3a1610ee 100%),var(--clay),#d07a4c}
+html.v2 .forge-head{padding-top:clamp(36px,6vh,56px)}
+/* the profile avatar: twice the size, a circle that hangs below the bar on purpose */
+.bar-right{position:relative;z-index:2;align-self:start;padding-top:10px}
+.appbar .avatar{width:88px;height:88px;border-radius:50%;font-size:var(--fs-2xl);
+  box-shadow:0 0 0 3px var(--parchment),0 0 0 4.5px #12233fb3,0 12px 24px -8px #12233fa6}
+.appbar .avatar svg{width:40px;height:40px}
+.appbar .avatar:hover{box-shadow:0 0 0 3px var(--parchment),0 0 0 4.5px var(--navy),0 16px 28px -8px #12233fb3}
+.appbar .avatar[aria-expanded=true]{box-shadow:0 0 0 3px var(--parchment),0 0 0 5px var(--accent),0 16px 28px -8px #12233fb3}
+.appbar .avatar:focus-visible{outline:3px solid var(--accent);outline-offset:6px;border-radius:50%}
+.appbar .callpill{align-self:center;margin-top:14px}
+.menu{top:calc(var(--bar-h) + 44px)}
+/* keep the overhang clear of content: Argo's header buttons and The Forge's sun move in from the right */
+html.v2 #page-argo > header{padding-right:104px}
+html.v2 .forge-page::before{right:150px}
+#page-main .pk-sky{right:150px}
+.appbar .bar-right{grid-column:3;justify-self:end}
+.appbar .bar-left{grid-column:1}
+html.v2 .forge-head{padding-top:clamp(22px,3.6vh,36px)}
+html.v2 .forge-page{background:linear-gradient(var(--bar-ember),#a84d2c00 52px),radial-gradient(120% 95% at 50% 30%,#e0844f33 0%,#b9583a66 50%,#7a2e1fcc 92%,#3a1610ee 100%),var(--clay),#d07a4c}
+/* the pill and its label change together (never cream on cream mid-move) */
+.pager a::before{transition:opacity var(--dur-2) var(--ease),transform var(--dur-2) var(--spring)}
+.pager a,.pager .nav-logo{transition:color var(--dur-2) var(--ease)}
+html.v2 #page-argo > header{padding-right:124px}
+
+/* =========================== v5: Argo's call panel is a chart table of honey oak =========================== */
+@font-face{font-family:"EB Garamond";src:url(/fonts/EBGaramond-400.woff2) format("woff2");font-weight:400;font-display:swap}
+@font-face{font-family:"EB Garamond";src:url(/fonts/EBGaramond-700.woff2) format("woff2");font-weight:700;font-display:swap}
+:root{--oak:#865628;--walnut:#3b2414;--espresso:#2a170b;--oak-text:#fdf5cc;--oak-muted:#f3e6c0;   /* cream 5.7:1 and 5.0:1 on the oak; the grain only darkens */
+  --f-serif:"EB Garamond",Georgia,serif;--wood:url("data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 width=%27360%27 height=%27720%27%3E%3Cfilter id=%27w%27 x=%270%27 y=%270%27 width=%27100%25%27 height=%27100%25%27%3E%3CfeTurbulence type=%27fractalNoise%27 baseFrequency=%27.09 .0045%27 numOctaves=%273%27 seed=%2712%27 stitchTiles=%27stitch%27/%3E%3CfeColorMatrix values=%270 0 0 0 .2 0 0 0 0 .1 0 0 0 0 .03 0 0 0 1.5 -.55%27/%3E%3C/filter%3E%3Cfilter id=%27r%27 x=%270%27 y=%270%27 width=%27100%25%27 height=%27100%25%27%3E%3CfeTurbulence type=%27turbulence%27 baseFrequency=%27.025 .0025%27 numOctaves=%272%27 seed=%273%27 stitchTiles=%27stitch%27/%3E%3CfeColorMatrix values=%270 0 0 0 .16 0 0 0 0 .08 0 0 0 0 .02 0 0 0 -1.6 .5%27/%3E%3C/filter%3E%3Crect width=%27360%27 height=%27720%27 filter=%27url(%23w)%27/%3E%3Crect width=%27360%27 height=%27720%27 filter=%27url(%23r)%27 opacity=%27.7%27/%3E%3C/svg%3E")}
+html.v2 #page-argo .rail{--ink:var(--oak-text);--app-muted:var(--oak-muted);--quiet:var(--oak-muted);--line:#2a170b55;--deck:#5a3818;--app-bg:var(--oak);
+  --athena:var(--espresso);--wine:var(--oak-text);--holo:var(--oak-text);
+  font-family:var(--f-serif);color:var(--oak-text);
+  background:repeating-linear-gradient(90deg,transparent 0 71px,#2a170b8c 71px 72.5px,#c99a5f40 72.5px 73.5px,transparent 73.5px 144px) -20px 0/144px 100%,
+    var(--wood) 0 0/360px 720px,linear-gradient(90deg,#7d5025,#8c5b2b 40%,#81532a);
+  box-shadow:inset 0 0 0 1px #c99a5f55,inset 0 0 24px #2a170b66,0 0 0 3px var(--espresso),0 0 0 5px var(--walnut),0 18px 40px -18px #000c}
+html.v2 #page-argo .rail *{font-family:inherit}
+html.v2 #page-argo .rail #step{font:400 23px/1.15 var(--f-title);color:var(--oak-text);text-shadow:0 1px 0 #2a170b99}
+html.v2 #page-argo .rail .now{background:linear-gradient(#7d5025f2,#7d5025e6);box-shadow:0 12px 14px -12px #2a170bcc}
+html.v2 #page-argo .rail .mood{display:inline-flex;padding:3px 10px 3px 8px;border-radius:999px;background:var(--walnut);color:var(--oak-text);font:700 14px/1.2 var(--f-serif);letter-spacing:.02em}
+html.v2 #page-argo .rail .now .mood::before{border-color:var(--oak-text)}
+html.v2 #page-argo .rail h3{color:var(--oak-text);font:700 14px/1.2 var(--f-serif);letter-spacing:.08em;text-transform:uppercase}
+html.v2 #page-argo .rail h3 .count{color:var(--oak-text);background:var(--walnut);padding:1px 7px;border-radius:999px;letter-spacing:0}
+html.v2 #page-argo .rail section{background:linear-gradient(90deg,transparent,#2a170b80 10%,#2a170b80 90%,transparent) top/100% 1.5px no-repeat}
+html.v2 #page-argo .rail section:first-child{background:none}
+html.v2 #page-argo .rail .line .text,html.v2 #page-argo .rail ul.list .what,html.v2 #page-argo .rail .route li{font-size:16px}
+html.v2 #page-argo .rail .empty,html.v2 #page-argo .rail .pins-hint,html.v2 #page-argo .rail .keys,html.v2 #page-argo .rail .privacy,html.v2 #page-argo .rail .caveat,
+html.v2 #page-argo .rail .line.you .text,html.v2 #page-argo .rail .route li.done,html.v2 #page-argo .rail .ck-why,html.v2 #page-argo .rail .ck-pins,html.v2 #page-argo .rail .line .meta{color:var(--oak-muted)}
+html.v2 #page-argo .rail .route li.ithaca{font-family:var(--f-title);color:var(--oak-text)}
+html.v2 #page-argo .rail .route .water{stroke:#2a170b66}
+html.v2 #page-argo .rail .route .wake{stroke:var(--oak-text)}
+html.v2 #page-argo .rail .route .isle{fill:var(--oak);stroke:var(--oak-text)}
+html.v2 #page-argo .rail .route .isle.done,html.v2 #page-argo .rail .route .isle.now{fill:var(--oak-text);stroke:var(--oak-text)}
+html.v2 #page-argo .rail .route .eye{stroke:var(--espresso);stroke-width:3}
+html.v2 #page-argo .rail .line.mentor .who::before,html.v2 #page-argo .rail ul.list .ico{border-color:var(--espresso)}
+html.v2 #page-argo .rail ul.list .ico.part{border-color:var(--oak-text)}
+html.v2 #page-argo .rail ul.list li button:hover,html.v2 #page-argo .rail ul.list li button[aria-current="true"],html.v2 #page-argo .rail .pins [role="option"]:hover{background:#2a170b33}
+html.v2 #page-argo .rail ul.list li button[aria-pressed="true"]{background:#2a170b4d;box-shadow:inset 3px 0 0 var(--espresso)}
+html.v2 #page-argo .rail .btn{color:var(--oak-text);box-shadow:inset 0 0 0 1.5px #fdf5cc80;font-family:var(--f-serif);font-weight:700;font-size:15px}
+html.v2 #page-argo .rail .btn:hover{background:#2a170b33}
+html.v2 #page-argo .rail .btn.primary{background:var(--walnut);color:var(--oak-text);box-shadow:inset 0 0 0 1.5px #c99a5f88,0 2px 0 var(--espresso)}
+html.v2 #page-argo .rail .btn.primary:hover{background:var(--espresso)}
+html.v2 #page-argo .rail .more,html.v2 #page-argo .rail .keys-open,html.v2 #page-argo .rail .ck-how summary,html.v2 #page-argo .rail .next-card small,html.v2 #page-argo .rail ul.list .where.mod{color:var(--oak-text);text-decoration:underline;text-decoration-color:var(--espresso);text-decoration-thickness:2px;text-underline-offset:3px}
+html.v2 #page-argo .rail .next-card,html.v2 #page-argo .rail .an-verdict{border-left-color:var(--espresso)}
+html.v2 #page-argo .rail .estimate{color:var(--oak-text);background:#2a170b66;border-color:#fdf5cc55}
+html.v2 #page-argo .rail .estimate::before{background:var(--oak-text);box-shadow:none}
+html.v2 #page-argo .rail .pins{border-color:#2a170b66}
+html.v2 #page-argo .rail .pins [aria-selected="true"]{background:#2a170b4d;box-shadow:inset 2px 0 0 var(--espresso)}
+html.v2 #page-argo .rail .sketch pre{background:#2a170bd9;color:var(--oak-text);font-family:ui-monospace,monospace}
+html.v2 #page-argo .rail kbd{font-family:var(--f-serif)}
+html.v2 #page-argo .rail .ck-row input{accent-color:var(--walnut)}
+html.v2 #page-argo .rail :focus-visible{outline-color:var(--oak-text)}
+@media (max-width:1279px){ html.v2 #page-argo .rail{box-shadow:inset 0 0 0 1px #c99a5f55,inset 0 0 24px #2a170b66,0 0 0 3px var(--espresso),0 0 0 5px var(--walnut),0 30px 60px -10px #000e} }
+html.v2 #page-argo .rail .voyage.empty .route{opacity:.9}
