@@ -34,7 +34,8 @@ import { CONSENT_GREETING, CONSENT_ON, KEEP_DAYS, NO_RECORDING_SAY, createConsen
 
 // Accept the common alternative names for the same keys.
 // (process.env stores strings: assigning undefined would make the text "undefined", so only copy a real value.)
-if (!process.env.ELEVEN_API_KEY && process.env.ELEVENLABS_API_KEY) process.env.ELEVEN_API_KEY = process.env.ELEVENLABS_API_KEY;
+// The key saved from Settings (ELEVENLABS_API_KEY) wins over the older ELEVEN_API_KEY name.
+if (process.env.ELEVENLABS_API_KEY) process.env.ELEVEN_API_KEY = process.env.ELEVENLABS_API_KEY;
 
 // With consent on (the default), the greeting is the consent question (consent.mjs); MENTOR_GREETING is for ODY_CONSENT=0.
 const GREETING = CONSENT_ON ? CONSENT_GREETING : process.env.MENTOR_GREETING
