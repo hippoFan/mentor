@@ -14,7 +14,7 @@ import {
 import { createBrain } from './brain.mjs';
 import { runAgent } from './chert-rooms.mjs';
 import { greetOnBridgeReady } from './greet.mjs';
-import { FPS, HEIGHT, WIDTH, contentBox, crop, frameJpeg, outJpeg, render, rotate, snapshotPng } from './overlay.mjs';
+import { FPS, HEIGHT, WIDTH, contentBox, crop, focusFor, maskSelfView, frameJpeg, outJpeg, render, rotate, snapshotPng } from './overlay.mjs';
 import { startLive } from './live.mjs';
 import { createMarkTracker } from './tracker.mjs';
 import { cropJpeg, isScanIntent, scanLine } from './scan.mjs';
@@ -74,7 +74,7 @@ const agent = defineAgent({
         if (!box || ++boxAge > 30 || box.fw !== up.width || box.fh !== up.height) {
           box = { ...contentBox(up), fw: up.width, fh: up.height }; boxAge = 0;
         }
-        upright = crop(up, box);
+        upright = maskSelfView(crop(up, box));
         uprightOf = raw;
       }
       return upright;
@@ -111,6 +111,8 @@ const agent = defineAgent({
     // ---- video out: caller frame + Mentor's marks, 15 fps ----
     let marks = [], marksAt = 0, caption = '', speaking = false, tick = 0;
     const tracker = createMarkTracker();   // keeps each mark on its part as the caller's phone moves (tracker.mjs)
+    const view = { cx: 0.5, cy: 0.5, zoom: 1 };   // what part of the caller's picture fills their screen
+    const DETAIL_ZOOM = process.env.MENTOR_DETAIL_ZOOM !== '0';
     const source = new VideoSource(WIDTH, HEIGHT);
     const track = LocalVideoTrack.createVideoTrack('mentor-video', source);
     const frame = () => {
@@ -119,7 +121,11 @@ const agent = defineAgent({
       if (o.expired) marks = [];
       const latest = getLatest();
       const t0 = performance.now();
-      const px = render(latest, marks.length ? tracker.update(latest) : marks, { caption: o.caption, tick: tick++, speaking: o.speaking });
+      const shown = marks.length ? tracker.update(latest) : marks;
+      // Detail zoom: ease toward the marked parts (zoom ≤1.8x) while marks are on screen, back out when they fade.
+      const target = DETAIL_ZOOM && latest && shown.length ? focusFor(shown, latest.width, latest.height) : { cx: 0.5, cy: 0.5, zoom: 1 };
+      for (const k of ['cx', 'cy', 'zoom']) view[k] += (target[k] - view[k]) * 0.08;
+      const px = render(latest, shown, { caption: o.caption, tick: tick++, speaking: o.speaking, view });
       source.captureFrame(new VideoFrame(px, WIDTH, HEIGHT, VideoBufferType.RGBA));
       stats.outFrames++; stats.renderMs += performance.now() - t0; if (latest) stats.size = `${latest.width}x${latest.height}`;
     };

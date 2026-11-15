@@ -29,12 +29,33 @@ let src = createCanvas(16, 16);   // holds the caller frame at its native size; 
  * Where the caller frame lands on the output (letterboxed, whole frame visible, so points map 1:1).
  * @param {number} w source width  @param {number} h source height
  */
-export function fitRect(w, h) {
-  // Fill the screen when the shapes are close (crop at most ~15% a side); otherwise show the whole frame.
-  const cover = Math.max(WIDTH / w, HEIGHT / h), contain = Math.min(WIDTH / w, HEIGHT / h);
-  const s = cover / contain <= 1.35 ? cover : contain;
-  const dw = w * s, dh = h * s;
-  return { x: (WIDTH - dw) / 2, y: (HEIGHT - dh) / 2, w: dw, h: dh };
+export function fitRect(w, h, view = null) {
+  // Fill the caller's whole screen (crop the sides a little rather than letterbox), then optionally zoom toward a focus
+  // point (view = {cx, cy, zoom} in 0..1 of the frame) so the parts Ody is pointing at are big. Never shows black edges.
+  const cover = Math.max(WIDTH / w, HEIGHT / h);
+  const zoom = Math.max(1, Math.min(2.2, view?.zoom || 1));
+  const s = cover * zoom, dw = w * s, dh = h * s;
+  const cx = view ? view.cx : 0.5, cy = view ? view.cy : 0.5;
+  const x = Math.min(0, Math.max(WIDTH - dw, WIDTH / 2 - cx * dw));
+  const y = Math.min(0, Math.max(HEIGHT - dh, HEIGHT / 2 - cy * dh));
+  return { x, y, w: dw, h: dh };
+}
+
+/** Where the view should look: the box around the visible marks (and wire ends), padded; zoom to fit it. */
+export function focusFor(marks, frameW = 1, frameH = 1) {
+  const xs = [], ys = [];
+  for (const m of marks) {
+    if (m.x >= 0) { xs.push(m.x); ys.push(m.y); }
+    if (m.x2 >= 0) { xs.push(m.x2); ys.push(m.y2); }
+  }
+  if (!xs.length) return { cx: 0.5, cy: 0.5, zoom: 1 };
+  const x0 = Math.min(...xs), x1 = Math.max(...xs), y0 = Math.min(...ys), y1 = Math.max(...ys);
+  const pad = 0.12, bw = Math.max(0.18, x1 - x0 + pad * 2), bh = Math.max(0.18, y1 - y0 + pad * 2);
+  // zoom so the padded box fits the screen after the cover crop
+  const cover = Math.max(WIDTH / frameW, HEIGHT / frameH);
+  const visW = WIDTH / (frameW * cover), visH = HEIGHT / (frameH * cover);   // fraction of the frame visible at zoom 1
+  const zoom = Math.max(1, Math.min(1.8, Math.min(visW / bw, visH / bh)));
+  return { cx: (x0 + x1) / 2, cy: (y0 + y1) / 2, zoom };
 }
 
 /**
@@ -44,7 +65,7 @@ export function fitRect(w, h) {
  * @returns {Uint8Array} WIDTH*HEIGHT*4 RGBA
  */
 export function render(frame, marks = [], opts = {}) {
-  const { caption = '', tick = 0, speaking = false } = opts;
+  const { caption = '', tick = 0, speaking = false, view = null } = opts;
   g.fillStyle = '#1D1D1F';
   g.fillRect(0, 0, WIDTH, HEIGHT);
 
@@ -53,14 +74,15 @@ export function render(frame, marks = [], opts = {}) {
     if (src.width !== frame.width || src.height !== frame.height) src = createCanvas(frame.width, frame.height);
     const clamped = new Uint8ClampedArray(frame.data.buffer, frame.data.byteOffset, frame.width * frame.height * 4);
     src.getContext('2d').putImageData(new ImageData(clamped, frame.width, frame.height), 0, 0);
-    rect = fitRect(frame.width, frame.height);
+    rect = fitRect(frame.width, frame.height, view);
+    g.imageSmoothingEnabled = true; g.imageSmoothingQuality = 'high';
     g.drawImage(src, rect.x, rect.y, rect.w, rect.h);
   } else {
     g.textAlign = 'center';
     g.lineWidth = 3 * K; g.strokeStyle = ACCENT;
     g.beginPath(); g.arc(WIDTH / 2, HEIGHT / 2 - 34 * K, 13 * K, 0, Math.PI * 2); g.stroke();
     g.fillStyle = '#F5F5F7'; g.font = FONT(700, 22);
-    g.fillText('Mentor', WIDTH / 2, HEIGHT / 2 + 8 * K);
+    g.fillText('Ody', WIDTH / 2, HEIGHT / 2 + 8 * K);
     g.fillStyle = '#A1A1A6'; g.font = FONT(500, 14);
     g.fillText('Turn on your camera and show me your project', WIDTH / 2, HEIGHT / 2 + 32 * K);
     g.textAlign = 'left';
@@ -345,12 +367,28 @@ export function contentBox(f) {
   while (y0 < y1 && !rowLit(y0)) y0++;
   while (y1 > y0 && !rowLit(y1)) y1--;
   const bw = x1 - x0 + 1;
-  // FaceTime's own self-view (a picture-in-picture of Mentor's video) sits in the bottom ~20% of the picture, and a
-  // status icon in the top ~6%: drop both so Mentor never sees or re-shows its own output.
-  const top = y0 + Math.round((y1 - y0) * 0.06), bottom = y0 + Math.round((y1 - y0) * 0.80);
+  // Keep the full height (more of the caller's scene); only a thin status strip at the top is dropped. FaceTime's own
+  // self-view in the bottom-left corner is painted over by maskSelfView() instead of cropping the whole bottom away.
+  const top = y0 + Math.round((y1 - y0) * 0.05), bottom = y1;
   const bh = bottom - top + 1;
   if (bw < w * 0.25 || bh < h * 0.25) return { x: 0, y: 0, w, h };   // mostly dark scene: keep everything
   return { x: x0, y: top, w: bw, h: bh };
+}
+
+/**
+ * Paints over FaceTime's self-view box (a small picture of Ody's own video, bottom-left of the caller's picture) by
+ * mirroring the scene just above it, so Ody never sees or re-shows itself. MENTOR_SELFVIEW_MASK=0 turns it off.
+ * Box in 0..1 of the cropped picture (measured on real calls): x 0-0.30, y 0.78-1.
+ */
+export function maskSelfView(f) {
+  if (process.env.MENTOR_SELFVIEW_MASK === '0') return f;
+  const { width: w, height: h, data } = f;
+  const x1 = Math.round(w * 0.30), y0 = Math.round(h * 0.78);
+  for (let y = y0; y < h; y++) {
+    const srcY = Math.max(0, y0 - 1 - (y - y0));   // mirror upward
+    data.copyWithin(y * w * 4, srcY * w * 4, srcY * w * 4 + x1 * 4);
+  }
+  return f;
 }
 
 /** A copy of one rectangle of an RGBA frame. */
