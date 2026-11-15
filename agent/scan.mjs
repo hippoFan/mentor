@@ -12,6 +12,7 @@ export const isScanIntent = text => SCAN_INTENT.test(String(text || ''));
 export const SHAPES = ['box', 'rounded_box', 'cylinder', 'sphere', 'capsule', 'cone', 'torus'];
 export const MATERIALS = ['plastic', 'metal', 'pcb', 'glass', 'rubber', 'screen'];
 export const KNOWN = ['uno-r3', 'uno-r4-wifi', 'none'];
+export const FACES = ['top', 'bottom', 'front', 'back', 'left', 'right'];
 export const MAX_PARTS = 40;
 
 const xyz = { type: 'object', additionalProperties: false, required: ['x', 'y', 'z'],
@@ -39,7 +40,7 @@ export const SCAN_SCHEMA = {
       type: 'array',
       items: {
         type: 'object', additionalProperties: false,
-        required: ['name', 'shape', 'size_mm', 'position_mm', 'rotation_deg', 'color', 'material', 'label'],
+        required: ['name', 'shape', 'size_mm', 'position_mm', 'rotation_deg', 'color', 'material', 'label', 'attach', 'mirror_x'],
         properties: {
           name: { type: 'string' },
           shape: { type: 'string', enum: SHAPES },
@@ -47,6 +48,10 @@ export const SCAN_SCHEMA = {
           color: { type: 'string' },
           material: { type: 'string', enum: MATERIALS },
           label: { type: 'string' },
+          // where the part sits: on a face of an EARLIER part (parent = its index), or free (parent = -1, position_mm)
+          attach: { type: 'object', additionalProperties: false, required: ['parent', 'face', 'u', 'v'],
+            properties: { parent: { type: 'integer' }, face: { type: 'string', enum: FACES }, u: { type: 'number' }, v: { type: 'number' } } },
+          mirror_x: { type: 'boolean' },   // a symmetric pair: model the left one, Ody adds its mirror image on the right
         },
       },
     },
@@ -69,11 +74,21 @@ Coordinates (the object's own frame, right-handed, millimetres):
   sphere: an ellipsoid with diameters x, y, z (use it for domed shells like a mouse body).
   torus: lies flat in the x-y plane; x and y are its outer diameters, z is the tube thickness.
 - rotation_deg: Euler angles in degrees about x, then y, then z. Use 0s unless a part is really tilted.
+- attach: how a part sits on the object. The main body (part 0) and anything that is not ON another part: parent -1
+  (face "top", u 0, v 0; position_mm places it). A feature that sits on another part (a button on the body, a lens on
+  the camera bump, a cap on the barrel): parent = the index of that EARLIER part in the parts list (0 = the first part),
+  face = which face of the parent's bounding box it sits on: "top" (+z), "bottom" (-z), "front" (-y, the side facing
+  the camera), "back" (+y), "left" (-x), "right" (+x); u, v = where on that face, each from -1 to 1 (0, 0 = the face's
+  centre): on top/bottom u runs along x and v along y; on front/back u along x and v along z; on left/right u along y
+  and v along z. Ody then places the part flush on that face, so it can never float or sink; still give your best
+  position_mm. Prefer attaching features to the body over free positions.
+- mirror_x: true for one part of a left/right symmetric pair (two feet, two speakers, two side buttons): give ONLY the
+  left one (x < 0) and Ody adds its mirror image on the right. false otherwise; never list both sides yourself.
 
 Modelling:
 - Estimate real sizes from what the object is (a computer mouse is ~115 x 62 x 38 mm, an Arduino UNO 68.6 x 53.3 mm,
   a phone ~150 x 72 x 8 mm). dims_mm = the whole object's width (x), depth (y) and height (z).
-- Use 4 to 25 parts (never more than ${MAX_PARTS}). First the main body (the biggest part), then the features that make
+- Use 4 to 25 parts (never more than ${MAX_PARTS}, counting mirrored copies). First the main body (the biggest part), then the features that make
   it recognisable: screens, buttons, dials, ports, knobs, wheels, legs, lids; a cable or lead only as a short stub.
   Model only the object itself, not its case, bag or the leads lying around it.
   Features sit ON the body surface (touching it, slightly proud), not floating and not buried.
@@ -107,6 +122,46 @@ function hexColor(c, dflt = '#8a8f98') {
 }
 const vec = (o, lo, hi, dflt) => ({ x: num(o?.x, lo, hi, dflt), y: num(o?.y, lo, hi, dflt), z: num(o?.z, lo, hi, dflt) });
 
+// face -> [normal axis, its sign, u axis, v axis]
+const FACE_AXES = { top: ['z', 1, 'x', 'y'], bottom: ['z', -1, 'x', 'y'], front: ['y', -1, 'x', 'z'], back: ['y', 1, 'x', 'z'], left: ['x', -1, 'y', 'z'], right: ['x', 1, 'y', 'z'] };
+/** Half extents of a part's bounding box after its rotation (Euler XYZ, degrees), in the spec frame. */
+function halfExtents(p) {
+  const [a, b, c] = ['x', 'y', 'z'].map(k => p.rotation_deg[k] * Math.PI / 180);
+  const ca = Math.cos(a), sa = Math.sin(a), cb = Math.cos(b), sb = Math.sin(b), cc = Math.cos(c), sc = Math.sin(c);
+  // R = Rx(a) * Ry(b) * Rz(c) (three.js 'XYZ' order)
+  const R = [[cb * cc, -cb * sc, sb], [ca * sc + sa * sb * cc, ca * cc - sa * sb * sc, -sa * cb], [sa * sc - ca * sb * cc, sa * cc + ca * sb * sc, ca * cb]];
+  const h = [p.size_mm.x / 2, p.size_mm.y / 2, p.size_mm.z / 2];
+  return { x: R[0].reduce((s, r, j) => s + Math.abs(r) * h[j], 0), y: R[1].reduce((s, r, j) => s + Math.abs(r) * h[j], 0), z: R[2].reduce((s, r, j) => s + Math.abs(r) * h[j], 0) };
+}
+const SIDE = [[/\bleft\b/i, 'right'], [/\bright\b/i, 'left']];
+const mirrorName = n => { for (const [re, to] of SIDE) if (re.test(n)) return n.replace(re, m => (m[0] === m[0].toUpperCase() ? to[0].toUpperCase() + to.slice(1) : to)); return n; };
+/**
+ * Places attached parts flush on their parent's face (parents are earlier parts, already placed) and adds the mirror
+ * image of every mirror_x part across the main body's centre plane. Works on sanitised parts; returns a new list.
+ */
+export function resolveParts(parts, max = MAX_PARTS) {
+  const out = parts.map(p => ({ ...p, position_mm: { ...p.position_mm } }));
+  out.forEach((p, i) => {
+    const at = p.attach;
+    if (!at || !(at.parent >= 0 && at.parent < i)) return;
+    const par = out[at.parent], [n, sgn, ua, va] = FACE_AXES[at.face] || FACE_AXES.top;
+    const ph = halfExtents(par), ch = halfExtents(p);
+    const pos = { ...par.position_mm };
+    pos[n] = par.position_mm[n] + sgn * (ph[n] + ch[n] * 0.8);   // flush, a fifth of its depth sunk in: touching, never floating
+    pos[ua] = par.position_mm[ua] + at.u * Math.max(0, ph[ua] - ch[ua]);
+    pos[va] = par.position_mm[va] + at.v * Math.max(0, ph[va] - ch[va]);
+    p.position_mm = pos;
+  });
+  const cx = out[0]?.position_mm.x ?? 0, mirrors = [];
+  for (const p of out) if (p.mirror_x && out.length + mirrors.length < max) {
+    const x = 2 * cx - p.position_mm.x;
+    if (Math.abs(x - p.position_mm.x) < Math.max(1, p.size_mm.x * 0.5)) continue;   // on the centre line: no pair
+    mirrors.push({ ...p, name: mirrorName(p.name), label: p.label ? mirrorName(p.label) : '', mirror_of: out.indexOf(p),
+      position_mm: { ...p.position_mm, x }, rotation_deg: { x: p.rotation_deg.x, y: -p.rotation_deg.y, z: -p.rotation_deg.z } });
+  }
+  return [...out, ...mirrors].map(({ attach, mirror_x, ...p }) => p);
+}
+
 /**
  * Validates and normalises a raw scan from any brain. bbox comes in the model's units (sx, sy = full width/height of the
  * image in those units) and leaves as 0..1 of the image. Never throws; garbage becomes a plain box.
@@ -123,9 +178,13 @@ export function sanitizeScan(raw, sx = 1, sy = 1) {
     color: hexColor(p?.color),
     material: MATERIALS.includes(p?.material) ? p.material : 'plastic',
     label: clean(p?.label, 40),
+    ...(p?.attach && typeof p.attach === 'object' && Number.isInteger(Number(p.attach.parent)) && Number(p.attach.parent) >= 0
+      ? { attach: { parent: Number(p.attach.parent), face: FACES.includes(p.attach.face) ? p.attach.face : 'top', u: num(p.attach.u, -1, 1, 0), v: num(p.attach.v, -1, 1, 0) } } : {}),
+    mirror_x: p?.mirror_x === true,
   }));
   if (!parts.length) parts.push({ name: 'Body', shape: 'rounded_box', size_mm: { x: dims.w, y: dims.d, z: dims.h },
     position_mm: { x: 0, y: 0, z: dims.h / 2 }, rotation_deg: { x: 0, y: 0, z: 0 }, color: '#8a8f98', material: 'plastic', label: '' });
+  const placed = resolveParts(parts);
   let bbox = Array.isArray(r.bbox) && r.bbox.length === 4 && r.bbox.every(v => Number.isFinite(Number(v)))
     ? r.bbox.map((v, i) => Number(v) / (i % 2 ? sy : sx)) : [0, 0, 1, 1];
   bbox = [Math.min(bbox[0], bbox[2]), Math.min(bbox[1], bbox[3]), Math.max(bbox[0], bbox[2]), Math.max(bbox[1], bbox[3])].map(v => Math.min(1, Math.max(0, v)));
@@ -146,7 +205,7 @@ export function sanitizeScan(raw, sx = 1, sy = 1) {
     bbox,
     top_face: topFace,
     camera_elev_deg: num(r.camera_elev_deg, 0, 90, topFace === 'xy' ? 70 : 15),
-    parts,
+    parts: placed,
   };
 }
 

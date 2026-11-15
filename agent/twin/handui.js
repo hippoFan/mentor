@@ -70,7 +70,7 @@ function legendGlyph(kind) {
 const STEPS = [
   { art: ['hover'], title: 'Open hand to point', body: 'Hold one hand up, palm to the screen. The ring follows your index finger and lights up the part under it. Hold a pointing finger still to read a pin.' },
   { art: ['pinch'], title: 'Pinch to grab', body: 'Pinch thumb and index finger, then move to turn the model. After Explode, pinch a part to pick it up and bring your hand closer or further to move it in depth. Open your hand to drop it.' },
-  { art: ['zoom', 'fist'], title: 'Two hands to zoom, a fist to reset', body: 'Move both hands apart to zoom in and together to zoom out. Hold a fist for a moment to reset the view.',
+  { art: ['zoom', 'fist'], title: 'Two hands to zoom, a fist to reset', body: 'Move both hands apart to zoom in and together to zoom out. Twist them like a steering wheel to tilt the view. Hold a fist for a moment to reset it.',
     extra: 'Flick a part sideways to remove it (Undo brings it back). Thumbs up combines the parts.' },
 ];
 const STATUS = {

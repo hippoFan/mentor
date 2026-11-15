@@ -382,6 +382,7 @@
   .estimate::before { content: ""; width: 7px; height: 7px; border-radius: 50%; background: var(--holo); box-shadow: 0 0 6px var(--holo); }
   .scaninfo dl { margin: 8px 0 0; display: grid; grid-template-columns: auto 1fr; gap: 2px 10px; font-size: 13px; }
   .scaninfo dt { color: var(--muted); } .scaninfo dd { margin: 0; font-weight: 500; font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
+  .scanlook { display: flex; gap: 4px; margin-top: 8px; } .scanlook[hidden] { display: none; } .scanlook .tool { padding: 6px 10px; font-size: 13px; } .scanlook .tool:disabled { opacity: .5; cursor: not-allowed; }
   .scaninfo .caveat { grid-column: 1 / -1; margin: 0; color: var(--muted); font-size: 12.5px; }
   /* researched interior: what is inside, layer by layer, and where that came from */
   .stage-head .researched { margin-top: 10px; background: rgba(4,10,16,.82); }
@@ -755,6 +756,7 @@
         <div>
           <span class="estimate">AI estimate</span>
           <dl><dt>Confidence</dt><dd id="scanconf"></dd><dt>Built from</dt><dd id="scanparts"></dd></dl>
+          <div class="scanlook" id="scanlook" role="group" aria-label="How the scan is shown" hidden><button class="tool" id="t-relief" type="button" aria-pressed="true">Photo relief</button><button class="tool" id="t-parts" type="button" aria-pressed="false">Parts</button></div>
         </div>
         <p class="caveat">Approximate model from one camera view. Sizes are guesses, not measurements.</p>
       </div>
@@ -790,6 +792,7 @@
     <dt>Call</dt><dd id="callState">No call</dd>
     <dt>Brain</dt><dd id="model">Not set</dd>
     <dt>Pictures</dt><dd id="rates">None yet</dd>
+    <dt>Hands</dt><dd id="handPerf">Off</dd>
   </dl>
   <h3>Answers</h3>
   <dl class="stats">

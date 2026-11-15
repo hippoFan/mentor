@@ -15,7 +15,7 @@ import { buildUno, buildBreadboard } from './board.js';
 import { partTable, normAlias, UNO_MODELS } from './partpins.js';
 import { buildPart, PART_MODELS } from './parts3d.js';
 import { clock, COLORS, holoMaterial, edgeMaterial, makeRing, makeArrow, makeWire, makeProjectorFloor, easeInOut } from './holo.js';
-import { createGestures, applyToCamera } from './gestures.js';
+import { createGestures, applyToCamera, createInertia } from './gestures.js';
 import { createHandUI, toStage } from './handui.js';
 import { cleanChange, describeChange, capture, transition as morphPart } from './modify.js';
 import { buildScan, explodeScan, disposeScan } from './scan.js';
@@ -85,6 +85,7 @@ twin.add(marksGroup, wiresGroup);
 scene.add(partTags);
 const hover = makeRing(0xffffff, { radius: 1.7 }); hover.visible = false; hover.userData.noExport = true; scene.add(hover);
 
+let viewRoll = 0;   // radians about the view axis (two-hand twist), > 0 = the model turned clockwise on screen
 const S = {
   table: null, model: null, uno: null, unos: {}, bb: null, holo: true, explode: 0, explodeTo: 0,
   turns: [], callMarks: [], wires: new Map(), current: [], step: '', done: false, bbIn: 0, fly: null, tipPinned: null,
@@ -471,13 +472,14 @@ function flyScan(dur = 1.3, zoom = 1) {
 function startFly(from, to, dur) {
   controls.maxDistance = Math.max(520, to.radius * 1.4);   // a narrow stage (phone) can need more room than the default
   let dTheta = to.theta - from.theta; dTheta = Math.atan2(Math.sin(dTheta), Math.cos(dTheta));
-  S.fly = { from, to: { ...to, theta: from.theta + dTheta, off: to.off || from.off }, t: 0, dur: REDUCED || dur <= 0 ? 0.01 : dur };
+  S.fly = { from, to: { ...to, theta: from.theta + dTheta, off: to.off || from.off }, t: 0, dur: REDUCED || dur <= 0 ? 0.01 : dur, rollFrom: viewRoll };
 }
 function stepFly(dt) {
   if (!S.fly) return;
   const f = S.fly; f.t = Math.min(1, f.t + dt / f.dur); const e = easeInOut(f.t), L = THREE.MathUtils.lerp;
   setCam({ target: f.from.target.clone().lerp(f.to.target, e), radius: L(f.from.radius, f.to.radius, e), phi: L(f.from.phi, f.to.phi, e), theta: L(f.from.theta, f.to.theta, e),
     off: { x: L(f.from.off.x, f.to.off.x, e), y: L(f.from.off.y, f.to.off.y, e) } });
+  viewRoll = (f.rollFrom || 0) * (1 - e);   // every framing move stands the view upright again (a two-hand twist rolls it)
   if (f.t >= 1) S.fly = null;
 }
 /** Keyboard orbit / zoom (arrows, + and −), the same moves as a drag or a wheel. */
@@ -489,7 +491,7 @@ function nudge({ dTheta = 0, dPhi = 0, zoom = 1 }) {
   startFly(camState(), s, 0.22);
 }
 let dragging = false;
-controls.addEventListener('start', () => { S.fly = null; controls.autoRotate = false; dragging = true; });
+controls.addEventListener('start', () => { S.fly = null; controls.autoRotate = false; dragging = true; spin.stop(); });
 controls.addEventListener('end', () => { dragging = false; });
 
 // ---------- picking + tooltip ----------
@@ -1105,11 +1107,27 @@ const HANDSIM = new URLSearchParams(location.search).get('handsim');   // '1' sc
 const gestures = createGestures();
 const handUI = createHandUI({ reduced: REDUCED, returnFocus: () => $('t-hands'), onRetry: () => toggleHands() });
 let hands = null, gestureOut = null, handInfo = { lowLight: false }, handTip = false, handHover = null, combineAsk = 0;
+const spin = createInertia({ decay: 0.92 });   // a turn let go mid-move coasts to a stop (not with reduced motion)
+const MAX_ROLL = Math.PI / 3;
+/** Screen-space turn [dx, dy] -> the unrolled camera's frame, so dragging right still turns right on a rolled view. */
+const unroll = ([x, y]) => (viewRoll ? [x * Math.cos(-viewRoll) - y * Math.sin(-viewRoll), x * Math.sin(-viewRoll) + y * Math.cos(-viewRoll)] : [x, y]);
+function turnBy(rotate) {
+  const now = camState();
+  const next = applyToCamera({ ...now, target: now.target.toArray() }, { rotate: unroll(rotate), pan: [0, 0], zoom: 1, reset: false }, null);
+  setCam({ ...next, target: new THREE.Vector3().fromArray(next.target) });
+}
+/** Render-loop step of the coasting turn: stops for any other camera move. */
+function stepSpin(dt) {
+  if (!spin.active) return;
+  if (dragging || S.fly || !hands) { spin.stop(); return; }
+  const d = spin.step(dt); if (d[0] || d[1]) turnBy(d);
+}
 /** Detection can outpace the render loop: keep the newest pose, but add up the motion and keep every one-shot event. */
 function mergeGestures(a, b) {
   if (!a) return b;
   return { ...b, rotate: [a.rotate[0] + b.rotate[0], a.rotate[1] + b.rotate[1]], pan: [a.pan[0] + b.pan[0], a.pan[1] + b.pan[1]], zoom: a.zoom * b.zoom, pull: a.pull + b.pull,
     reset: a.reset || b.reset, thumbsUp: a.thumbsUp || b.thumbsUp, flick: b.flick || a.flick, select: b.select || a.select,
+    roll: (a.roll || 0) + (b.roll || 0), fling: b.fling || a.fling,
     grab: a.grab === 'start' && b.grab !== 'end' ? 'start' : b.grab || (a.grab === 'end' ? 'end' : null) };
 }
 /** Hands stays in the toolbar; when it can't work it says why instead of vanishing. */
@@ -1143,7 +1161,7 @@ async function toggleHands() {
   btn.setAttribute('aria-busy', 'true'); btn.textContent = 'Starting camera…';
   try {
     const mod = HANDSIM ? await import('./handsim.js') : await import('./hands.js');
-    const timeout = new Promise((_, rej) => setTimeout(() => rej(new Error('camera or model took too long')), 20000));
+    const timeout = new Promise((_, rej) => setTimeout(() => rej(new Error('camera or model took too long')), 45000));   // hands.js times both delegates; software GL is slow
     gestures.reset();
     hands = await Promise.race([mod.startHands({ deny: HANDSIM === 'deny', onHands: (h, t, info) => { if (info) handInfo = info; gestureOut = mergeGestures(gestureOut, gestures.update(h, t, info)); } }), timeout]);
     btn.setAttribute('aria-pressed', 'true'); handUI.start(hands.video);
@@ -1160,7 +1178,7 @@ async function toggleHands() {
   }
 }
 function stopHands() {
-  hands?.stop(); hands = null; gestureOut = null;
+  hands?.stop(); hands = null; gestureOut = null; spin.stop();
   $('t-hands').setAttribute('aria-pressed', 'false'); handUI.stop(); dropHandDrag(true);
   if (handTip) { showTip(null); handTip = false; } handHover = null;
   $('announce').textContent = 'Hand control off.';
@@ -1180,8 +1198,15 @@ function thumbsCombine() {
   combineAsk = now;
   toast('Combine the parts? Thumbs up again to confirm', { ms: 6000, action: { label: 'Combine', run: () => { combineAsk = 0; combine(); } } });
 }
+/** The tester drawer's Hands row: which MediaPipe delegate won the start-up timing and what one detection costs. */
+function handPerf() {
+  const el = $('handPerf'); if (!el) return;
+  const t = !hands ? 'Off' : hands.sim ? 'Simulated' : `${handInfo.delegate || '…'} in the ${handInfo.where || 'page'}, detect ${handInfo.detectMs != null ? handInfo.detectMs.toFixed(1) : '–'} ms, page ${handInfo.mainMs != null ? handInfo.mainMs.toFixed(1) : '–'} ms${handInfo.bench ? ` (start: GPU ${handInfo.bench.GPU ?? '–'}, CPU ${handInfo.bench.CPU ?? '–'} ms)` : ''}`;
+  if (el.textContent !== t) el.textContent = t;
+}
 function stepHands() {
   const g = gestureOut; if (!g || !hands) return; gestureOut = null;
+  const carried = !!P.handDrag;   // a part was held: letting go drops it, it doesn't throw the view
   const r = stage.getBoundingClientRect(), at = p => toStage(p, r.width, r.height);
   const coach = handUI.coachOpen(), act = !coach;   // with the coach open, hands can practise turning and zooming, nothing else
   handUI.frame(g);
@@ -1224,11 +1249,17 @@ function stepHands() {
   else if (g.mode === 'zoom') { state = 'zoom'; label = 'Zooming'; }
   handUI.cursor(c?.x, c?.y, { state, closeness: g.closeness, dwell: g.dwell, label });
   if (!act) g.reset = false;
+  if (g.pinching || g.mode === 'zoom' || g.reset) spin.stop();
+  if (g.fling && !carried && !REDUCED) spin.fling(...g.fling);
+  if (g.roll) {   // two-hand twist: roll about the view axis, within +-60 degrees
+    S.fly = null; controls.autoRotate = false;
+    viewRoll = THREE.MathUtils.clamp(viewRoll + g.roll, -MAX_ROLL, MAX_ROLL);
+  }
   if (g.rotate[0] || g.rotate[1] || g.pan[0] || g.pan[1] || g.zoom !== 1 || g.reset) {
     S.fly = null; controls.autoRotate = false;
     const home = homeView();
     const now = camState();
-    const next = applyToCamera({ ...now, target: now.target.toArray() }, g, { ...home, target: home.target.toArray() });
+    const next = applyToCamera({ ...now, target: now.target.toArray() }, { ...g, rotate: unroll(g.rotate) }, { ...home, target: home.target.toArray() });
     if (g.reset) { flyHome(REDUCED ? 0 : 0.9); toast('View reset'); } else setCam({ ...next, target: new THREE.Vector3().fromArray(next.target) });
   }
   if (!act) return;
@@ -1693,10 +1724,11 @@ function frame(now) {
   requestAnimationFrame(frame);
   const raw = (now - last) / 1000, dt = Math.min(0.05, raw); last = now;
   clock.value += dt;
-  stepFly(Math.min(0.25, raw)); stepExplode(Math.min(0.25, raw)); stepHands(); stepParts(Math.min(0.25, raw));   // camera moves and explode keep wall-clock time on a slow GPU
+  stepFly(Math.min(0.25, raw)); stepExplode(Math.min(0.25, raw)); stepHands(); stepSpin(Math.min(0.25, raw)); stepParts(Math.min(0.25, raw));   // camera moves and explode keep wall-clock time on a slow GPU
   if (S.bb && S.bbIn > 0 && S.bbIn < 1) { S.bbIn = Math.min(1, S.bbIn + dt / 0.9); }
   if (S.bb) { const e = easeInOut(Math.min(1, S.bbIn)); S.bb.group.scale.set(1, Math.max(0.001, e), 1); S.bb.group.visible = S.bbIn > 0 && S.explode < 0.02 && boardShown(); }
   controls.update(dt);
+  if (viewRoll) camera.rotateZ(viewRoll);   // after OrbitControls' lookAt, which always stands the camera upright
   scene.traverseVisible(o => { if (o.userData.update) o.userData.update(); });
   if (S.uno) for (const l of S.uno.layers.leds.children) if (l.userData.blink) {
     const on = S.done ? (Math.floor(clock.value * 2) % 2 === 0) : false;
@@ -1711,6 +1743,7 @@ function frame(now) {
   acc += dt; frames++;
   if (acc >= 1) {
     stats.fps = frames / acc; stats.ms = 1000 * acc / frames; acc = 0; frames = 0;
+    handPerf();
     if (showFps) fpsEl.textContent = `${stats.fps.toFixed(0)} fps, ${stats.ms.toFixed(1)} ms, bloom ${bloomScale}, dpr ${pixelRatio}`;
     if (stats.fps < 52 && document.visibilityState === 'visible') { if (++slow >= 3) { slow = 0; if (bloomScale > 0.3) bloomScale = 0.3; else if (pixelRatio > 1.25) pixelRatio = 1.25; else if (pixelRatio > 1) pixelRatio = 1; resize(); } } else slow = 0;
   }
@@ -1822,9 +1855,10 @@ window.mentorTwin = {
   voice: (a, t) => voice(a, t), inject: ev => handle(ev),
   partsState: () => ({ scope: scopeNow(), active: partsActive(), sel: P.sel?.id || null, before: P.before, parts: stageParts().map(p => ({ id: p.id, name: p.name, removed: p.removed, moved: p.moved, mod: p.mod || null })), analysis: P.analysis, waiting: P.waiting, guide: G.on ? { i: G.i, n: G.list.length } : null }),
   partWorld: id => { const p = stageParts().find(q => q.id === id); return p ? partCenter(p).toArray() : null; },
-  camera: () => { const c = camState(); return { radius: c.radius, theta: c.theta, phi: c.phi, pos: camera.position.toArray() }; },
+  camera: () => { const c = camState(); return { radius: c.radius, theta: c.theta, phi: c.phi, pos: camera.position.toArray(), roll: viewRoll, coasting: spin.active }; },
   handsState: () => ({ on: !!hands, sim: !!hands?.sim, coach: handUI.coachOpen(), help: !$('handhelp').hidden, status: handUI.statusKind(), statusText: $('hstatusText').textContent,
     cursor: $('cursor').hidden ? null : $('cursor').style.transform, cursorState: $('cursor').dataset.state || '', label: $('cursor').querySelector('.cur-label').textContent,
+    detectMs: handInfo.detectMs ?? null, mainMs: handInfo.mainMs ?? null, where: handInfo.where || null, delegate: handInfo.delegate || null, bench: handInfo.bench || null, perf: $('handPerf')?.textContent || '',
     hover: handHover?.id || null, holding: P.handDrag?.part.id || null, tip: tipEl.hidden ? null : tipEl.querySelector('strong').textContent,
     legend: [...document.querySelectorAll('#handlegend li.on')].map(li => li.dataset.g), toast: $('toast').hidden ? '' : $('toast').textContent }),
   handsPlay: frames => (hands?.play ? hands.play(frames).then(() => true) : Promise.resolve(false)),

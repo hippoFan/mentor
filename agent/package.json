@@ -19,7 +19,9 @@
     "watchdog": "node watchdog.mjs",
     "replay": "node replay.mjs",
     "record": "node record.mjs",
-    "usage": "node --env-file=../.env usage.mjs"
+    "usage": "node --env-file=../.env usage.mjs",
+    "fetch-models": "node tools/fetch-models.mjs",
+    "depth-test": "node test/depth-test.mjs"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "1.8.0",
@@ -30,6 +32,7 @@
     "@livekit/rtc-node": "0.13.35",
     "@mediapipe/tasks-vision": "1.2.0",
     "@napi-rs/canvas": "1.1.1",
+    "onnxruntime-node": "1.31.1",
     "three": "0.186.1",
     "ws": "^8.23.0"
   },

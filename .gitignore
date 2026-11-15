@@ -17,6 +17,8 @@ agent/test/qa/name*
 agent/test/qa/out-*.txt
 agent/test/qa/*.gen.mjs
 agent/test/qa/photo.jpg
+agent/models/*.onnx
+agent/models/*.part
 
 # backup demo: built from a real call (camera frames), keep it on this laptop only
 agent/demo-data/

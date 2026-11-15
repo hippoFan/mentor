@@ -65,7 +65,8 @@ try {
   };
   const S = 0.12;
   const palmAt = p => ['palm', p.x + 0.3 * S, p.y + 1.14 * S, S];          // tip = (cx - 0.3 s, cy - 1.14 s)
-  const pinchAt = (p, size = S) => ['pinch', p.x + 0.575 * size, p.y + 0.735 * size, size];   // pinch point
+  const pinchAt = (p, size = S, o) => ['pinch', p.x + 0.575 * size, p.y + 0.735 * size, size, ...(o ? [o] : [])];   // pinch point
+  const openAt = (p, size = S) => pinchAt(p, size, { gap: 1 });   // the same hand, fingers open (a pinch must close to engage)
 
   const st = await load('?handsim=1');
   await test('page built with ?handsim=1', () => { assert.ok(st, `no board ${errors.join(' | ').slice(0, 400)}`); return `${st.name}`; });
@@ -133,6 +134,7 @@ try {
   if (target) {
     const before = await evalJs(`window.mentorTwin.partWorld(${JSON.stringify(target)})`);
     await hold([]); await sleep(300);
+    await play(range(6, () => [openAt(targetCam)]));
     await hold([pinchAt(targetCam)]); await sleep(450);
     await test('pinch on a part grabs it', async () => { const s = await hs(); assert.equal(s.holding, target, JSON.stringify(s)); assert.equal(s.cursorState, 'grab'); return s.label; });
     await play(range(20, t => [pinchAt({ x: targetCam.x + 0.12 * t, y: targetCam.y })]));
@@ -151,6 +153,25 @@ try {
       const s = await hs(); assert.equal(s.holding, null);
       const p = (await evalJs('window.mentorTwin.partsState()')).parts.find(q => q.id === target); assert.ok(p.moved && !p.removed); return 'dropped';
     });
+    // pinch-onset rewind: aim at the part, then drift sideways while the fingers close; the grab lands where you aimed
+    const sc2 = await evalJs(`window.mentorTwin.partScreen(${JSON.stringify(target)})`);
+    if (sc2) {
+      const c2 = await camAt(sc2), dx = 0.045;
+      await hold([openAt(c2)]); await sleep(450);
+      const aimedOver = (await hs()).hover;
+      await play([...range(3, (t, i) => [pinchAt({ x: c2.x + dx * (i + 1) / 3, y: c2.y }, S, { gap: 0.66 - 0.33 * i })]), ...range(8, () => [pinchAt({ x: c2.x + dx, y: c2.y })])]);
+      await sleep(100);
+      await test('pinch-onset rewind: drifting while pinching still grabs the part you aimed at', async () => {
+        const s = await hs(); assert.equal(aimedOver, target, `aimed over ${aimedOver}`); assert.equal(s.holding, target, JSON.stringify(s));
+        await shot('hands-v3-rewind.png'); return `held ${s.holding} after a ${(dx * 100).toFixed(1)} % drift`;
+      });
+      await play(range(8, () => [openAt({ x: c2.x + dx, y: c2.y })])); await sleep(300);
+      await test('an edge-on hand (tips overlap on screen, not in depth) does not grab', async () => {
+        await hold([pinchAt(c2, S, { thumbZ: 0.5 })]); await sleep(500);
+        const s = await hs(); assert.equal(s.holding, null); assert.notEqual(s.cursorState, 'grab'); return s.cursorState;
+      });
+      await hold([palmAt(c2)]); await sleep(300);
+    }
   }
 
   // ---------- flick a part to the tray, Undo ----------
@@ -201,9 +222,46 @@ try {
   const r2 = (await evalJs('window.mentorTwin.camera()')).radius;
   await test('two hands together zoom out', () => { assert.ok(r2 > r1 * 1.25, `radius ${r1.toFixed(0)} -> ${r2.toFixed(0)}`); return `${r1.toFixed(0)} -> ${r2.toFixed(0)}`; });
 
+  // ---------- two-hand twist rolls the view ----------
+  const pair = (deg, r = 0.17) => { const a = deg * Math.PI / 180, dx = Math.cos(a) * r, dy = Math.sin(a) * r; return [['palm', 0.5 - dx, 0.55 - dy, 0.11], ['palm', 0.5 + dx, 0.55 + dy, 0.11]]; };
+  await hold([]); await sleep(300);
+  const ids = (await evalJs('window.mentorTwin.partsState()')).parts.map(p => p.id);
+  const stageC = await evalJs("(r => [r.left + r.width / 2, r.top + r.height / 2])(document.getElementById('stage').getBoundingClientRect())");
+  const angles = async () => { const out = {}; for (const id of ids) { const p = await evalJs(`window.mentorTwin.partScreen(${JSON.stringify(id)})`); if (p && Math.hypot(p[0] - stageC[0], p[1] - stageC[1]) > 60) out[id] = Math.atan2(p[1] - stageC[1], p[0] - stageC[0]); } return out; };
+  const a0 = await angles();
+  await play([...range(6, () => pair(0)), ...range(26, t => pair(35 * t))]); await sleep(200);
+  const a1 = await angles(), roll1 = (await evalJs('window.mentorTwin.camera()')).roll;
+  await shot('hands-v3-twist.png');
+  await test('two hands twisted clockwise roll the model clockwise on screen', () => {
+    assert.ok(roll1 > 0.3, `roll ${roll1}`);
+    const turns = Object.keys(a0).filter(id => a1[id] != null).map(id => Math.atan2(Math.sin(a1[id] - a0[id]), Math.cos(a1[id] - a0[id])));
+    assert.ok(turns.length >= 1, 'no part to watch'); const m = turns.sort((x, y) => x - y)[turns.length >> 1];
+    assert.ok(m > 0.2, `parts turned ${m.toFixed(2)} rad on screen (clockwise > 0)`);
+    return `roll ${(roll1 * 180 / Math.PI).toFixed(0)} deg, parts turned ${(m * 180 / Math.PI).toFixed(0)} deg`;
+  });
+  await hold([]); await sleep(300);
+
   // ---------- fist reset ----------
   await hold([['fist', 0.5, 0.5, S]]); await sleep(1300);
-  await test('a held fist resets the view', async () => { await settle(); const r = (await evalJs('window.mentorTwin.camera()')).radius; assert.ok(Math.abs(r - r0) / r0 < 0.05, `radius ${r.toFixed(0)} vs home ${r0.toFixed(0)}`); return `radius ${r.toFixed(0)}`; });
+  await test('a held fist resets the view (and stands it upright)', async () => { await settle(); const c = await evalJs('window.mentorTwin.camera()'), r = c.radius; assert.ok(Math.abs(r - r0) / r0 < 0.05, `radius ${r.toFixed(0)} vs home ${r0.toFixed(0)}`); assert.ok(Math.abs(c.roll) < 1e-3, `roll ${c.roll}`); return `radius ${r.toFixed(0)}`; });
+
+  // ---------- inertia: let go of a turn while moving and the view coasts to a stop ----------
+  await hold([]); await sleep(300);
+  {
+    const p0 = { x: 0.3, y: 0.5 };
+    const go = (x, o) => pinchAt({ x, y: p0.y }, S, o);
+    await play([...range(6, () => [go(p0.x, { gap: 1 })]), ...range(6, () => [go(p0.x)]), ...range(10, t => [go(p0.x + 0.25 * t)]),
+      ...range(7, (t, i) => [go(p0.x + 0.25 + 0.015 * (i + 1), { gap: 1.2 })])]);
+    const t1 = (await evalJs('window.mentorTwin.camera()')).theta;
+    await sleep(1400);
+    const c2 = await evalJs('window.mentorTwin.camera()');
+    await shot('hands-v3-coast.png');
+    await test('a turn let go mid-move coasts on, then stops', () => {
+      assert.ok(Math.abs(c2.theta - t1) > 0.05, `theta after release ${t1.toFixed(3)} -> ${c2.theta.toFixed(3)}`);
+      assert.equal(c2.coasting, false, 'still coasting after 1.4 s'); return `coasted ${((c2.theta - t1) * 180 / Math.PI).toFixed(0)} deg`;
+    });
+    await evalJs("document.getElementById('t-reset').click()"); await settle();
+  }
 
   // ---------- a tiny background hand changes nothing ----------
   await hold([]); await sleep(300);
@@ -211,6 +269,11 @@ try {
   await play(range(30, t => [['pinch', 0.3 + 0.4 * t, 0.5, 0.035], ['fist', 0.7, 0.3, 0.03]]));
   await sleep(200);
   await test('tiny background hands are ignored', async () => { const c1 = await evalJs('window.mentorTwin.camera()'); assert.ok(Math.abs(c1.theta - c0.theta) < 1e-3 && Math.abs(c1.radius - c0.radius) < 0.5); assert.equal((await hs()).status, 'none'); return 'no change'; });
+  await test('tester drawer shows the hand detector', async () => {
+    const s = await hs(); await evalJs("document.getElementById('t-tester').click()"); await sleep(400);
+    const t = await evalJs("document.getElementById('handPerf').textContent"); await shot('hands-v3-drawer-sim.png');
+    await evalJs("document.getElementById('panelclose').click()"); assert.equal(t, 'Simulated'); assert.equal(s.perf, 'Simulated'); return t;
+  });
   await test('Hands off stops everything (button toggles)', async () => { await evalJs("document.getElementById('t-hands').click()"); const s = await hs(); assert.equal(s.on, false); assert.equal(s.cursor, null); return 'off'; });
   await test('hands made no network requests beyond this laptop', () => {
     const outside = requests.filter(u => !u.startsWith(`http://localhost:${PORT}`) && !/^(data|blob):/.test(u) && !u.startsWith(`ws://localhost:${PORT}`));

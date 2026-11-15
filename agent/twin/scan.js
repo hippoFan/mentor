@@ -4,6 +4,7 @@
 // so the same plain MeshStandardMaterial looks right on screen AND in the exported .glb.
 import * as THREE from 'three';
 import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.js';
+import { syncRelief } from './relief.js';
 
 const ATLAS = 1024, STRIP = 96, SWATCHES = 40;   // atlas px; bottom strip height; one swatch per part (<= 40 parts)
 const PHOTO_V0 = STRIP / ATLAS;                   // uv v where the photo starts (CanvasTexture flipY: v=0 is the bottom)
@@ -51,16 +52,21 @@ export function primitive(p) {
 
 function swatchUv(i) { return [((i % SWATCHES) + 0.5) / SWATCHES, PHOTO_V0 / 2]; }
 
-/**
- * The crop still shows table/background around the object, and the primitives are only approximately the object's
- * silhouette, so background pixels would land on the model's edges. Flood-fill the background in from the crop's
- * border (pixels close to the border's average colour) and paint it with the main body's colour.
- */
-function cutBackground(img, fill) {
+/** The crop drawn into a canvas, longest side <= 512 (what both cut-outs work on). */
+function cropCanvas(img) {
   const w = Math.max(1, Math.min(512, img.naturalWidth)), h = Math.max(1, Math.round(w * img.naturalHeight / Math.max(1, img.naturalWidth)));
   const c = document.createElement('canvas'); c.width = w; c.height = h;
-  const g = c.getContext('2d', { willReadFrequently: true }); g.drawImage(img, 0, 0, w, h);
-  const im = g.getImageData(0, 0, w, h), d = im.data;
+  c.getContext('2d', { willReadFrequently: true }).drawImage(img, 0, 0, w, h);
+  return c;
+}
+
+/**
+ * The old cut-out (the fallback): flood-fill the background in from the crop's border (pixels close to the border's
+ * average colour). Returns the object mask (1 = object), or null when the border is too busy to have one colour.
+ */
+export function floodMask(c) {
+  const w = c.width, h = c.height;
+  const d = c.getContext('2d', { willReadFrequently: true }).getImageData(0, 0, w, h).data;
   let r = 0, gg = 0, b = 0, n = 0;
   const edge = (x, y) => { const i = (y * w + x) * 4; r += d[i]; gg += d[i + 1]; b += d[i + 2]; n++; };
   for (let x = 0; x < w; x++) { edge(x, 0); edge(x, h - 1); }
@@ -69,7 +75,7 @@ function cutBackground(img, fill) {
   // a busy border (object touching the edges, cluttered desk) has no one background colour: leave the photo alone
   let spread = 0;
   for (let x = 0; x < w; x += 4) { const i = x * 4; spread += Math.abs(d[i] - r) + Math.abs(d[i + 1] - gg) + Math.abs(d[i + 2] - b); }
-  if (spread / Math.ceil(w / 4) > 90) return c;
+  if (spread / Math.ceil(w / 4) > 90) return null;
   const near = i => Math.abs(d[i] - r) + Math.abs(d[i + 1] - gg) + Math.abs(d[i + 2] - b) < 75;
   const seen = new Uint8Array(w * h), stack = [];
   const push = (x, y) => { const k = y * w + x; if (!seen[k] && near(k * 4)) { seen[k] = 1; stack.push(k); } };
@@ -79,14 +85,49 @@ function cutBackground(img, fill) {
     const k = stack.pop(), x = k % w, y = (k - x) / w;
     if (x > 0) push(x - 1, y); if (x < w - 1) push(x + 1, y); if (y > 0) push(x, y - 1); if (y < h - 1) push(x, y + 1);
   }
-  const hx = /^#[0-9a-f]{6}$/i.test(fill) ? parseInt(fill.slice(1), 16) : 0x808080, fr = hx >> 16, fg = (hx >> 8) & 255, fb = hx & 255;   // sRGB, like the photo
-  for (let k = 0; k < w * h; k++) if (seen[k]) { d[k * 4] = fr; d[k * 4 + 1] = fg; d[k * 4 + 2] = fb; }
-  g.putImageData(im, 0, 0);
-  return c;
+  for (let k = 0; k < seen.length; k++) seen[k] = seen[k] ? 0 : 1;
+  return seen;
 }
 
-/** Atlas: swatches now, the photo when it has loaded. */
-function makeAtlas(parts, photoUrl) {
+/**
+ * The crop still shows table/background around the object, and the primitives are only approximately the object's
+ * silhouette, so background pixels would land on the model's edges. Cut the object out (the Interactive Segmenter
+ * seeded inside its bbox; the border flood fill if that isn't available) and paint the background with the body colour.
+ * @param {number[]} box the object's bbox inside the crop, 0..1
+ * @returns {Promise<{canvas: HTMLCanvasElement, mask: {w: number, h: number, data: Uint8Array, source: string} | null}>}
+ */
+export async function cutBackground(img, fill, box) {
+  const c = cropCanvas(img), w = c.width, h = c.height;
+  let data = null, source = 'none';
+  try {
+    const { segmentObject } = await import('./segment.js');
+    const s = await segmentObject(c, box || [0, 0, 1, 1]);
+    if (s) { data = s.mask; source = 'segmenter'; }
+  } catch (e) { console.warn('[twin] segmenter', e?.message || e); }
+  if (!data) { data = floodMask(c); if (data) source = 'flood'; }
+  if (!data) return { canvas: c, mask: null };
+  const g = c.getContext('2d', { willReadFrequently: true }), im = g.getImageData(0, 0, w, h), d = im.data;
+  const hx = /^#[0-9a-f]{6}$/i.test(fill) ? parseInt(fill.slice(1), 16) : 0x808080, fr = hx >> 16, fg = (hx >> 8) & 255, fb = hx & 255;   // sRGB, like the photo
+  // grow the object's own edge colours a few pixels outward first (steep rims and the parts' edges sample just outside
+  // the silhouette, where the body colour would show as streaks), then the body colour beyond
+  const done = Uint8Array.from(data);
+  for (let pass = 0; pass < 6; pass++) {
+    const add = [];
+    for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
+      const k = y * w + x; if (done[k]) continue;
+      let r = 0, g2 = 0, b = 0, n = 0;
+      for (const kk of [x > 0 ? k - 1 : -1, x < w - 1 ? k + 1 : -1, y > 0 ? k - w : -1, y < h - 1 ? k + w : -1]) if (kk >= 0 && done[kk]) { r += d[kk * 4]; g2 += d[kk * 4 + 1]; b += d[kk * 4 + 2]; n++; }
+      if (n) add.push(k, r / n, g2 / n, b / n);
+    }
+    for (let a = 0; a < add.length; a += 4) { const k = add[a]; d[k * 4] = add[a + 1]; d[k * 4 + 1] = add[a + 2]; d[k * 4 + 2] = add[a + 3]; done[k] = 1; }
+  }
+  for (let k = 0; k < w * h; k++) if (!done[k]) { d[k * 4] = fr; d[k * 4 + 1] = fg; d[k * 4 + 2] = fb; }
+  g.putImageData(im, 0, 0);
+  return { canvas: c, mask: { w, h, data, source } };
+}
+
+/** Atlas: swatches now, the photo when it has loaded (cut out; the mask is kept in tex.userData.mask). */
+function makeAtlas(parts, photoUrl, box) {
   const c = document.createElement('canvas'); c.width = c.height = ATLAS;
   const g = c.getContext('2d');
   g.fillStyle = '#808080'; g.fillRect(0, 0, ATLAS, ATLAS);
@@ -95,9 +136,13 @@ function makeAtlas(parts, photoUrl) {
   tex.colorSpace = THREE.SRGBColorSpace; tex.anisotropy = 8; tex.generateMipmaps = true;
   if (photoUrl) {
     const img = new Image();
-    img.onload = () => {
-      g.drawImage(cutBackground(img, parts[0]?.color || '#808080'), 0, 0, ATLAS, ATLAS - STRIP);
+    img.onload = async () => {
+      let cut;
+      try { cut = await cutBackground(img, parts[0]?.color || '#808080', box); } catch (e) { console.warn('[twin] cut-out', e); cut = { canvas: img, mask: null }; }
+      g.drawImage(cut.canvas, 0, 0, ATLAS, ATLAS - STRIP);
+      tex.userData.mask = cut.mask; tex.userData.img = img;
       tex.needsUpdate = true; tex.userData.photo = true;
+      for (const fn of tex.userData.onPhoto || []) { try { fn(tex); } catch (e) { console.warn('[twin] photo hook', e); } }
     };
     img.src = photoUrl;
   }
@@ -128,14 +173,14 @@ export function buildScan(spec, photoUrl, crop) {
   const e = THREE.MathUtils.clamp(spec.camera_elev_deg ?? 60, 0, 90) * DEG;
   const toCam = new THREE.Vector3(0, Math.sin(e), Math.cos(e));          // direction from the object toward the camera
   const up = new THREE.Vector3(0, Math.cos(e), -Math.sin(e));            // image "up" on the projection plane
-  let umin = Infinity, umax = -Infinity, vmin = Infinity, vmax = -Infinity;
+  let umin = Infinity, umax = -Infinity, vmin = Infinity, vmax = -Infinity, wmin = Infinity, wmax = -Infinity;
   const tmp = new THREE.Vector3();
   for (const g of geoms) {
     const pos = g.attributes.position;
     for (let i = 0; i < pos.count; i++) {
       tmp.fromBufferAttribute(pos, i);
-      const u = tmp.x, v = tmp.dot(up);
-      if (u < umin) umin = u; if (u > umax) umax = u; if (v < vmin) vmin = v; if (v > vmax) vmax = v;
+      const u = tmp.x, v = tmp.dot(up), w = tmp.dot(toCam);
+      if (u < umin) umin = u; if (u > umax) umax = u; if (v < vmin) vmin = v; if (v > vmax) vmax = v; if (w < wmin) wmin = w; if (w > wmax) wmax = w;
     }
   }
   // where the object's box sits inside the cropped photo (the crop has a little margin around the bbox)
@@ -143,7 +188,7 @@ export function buildScan(spec, photoUrl, crop) {
   const cw = Math.max(1e-6, cx1 - cx0), ch = Math.max(1e-6, cy1 - cy0);
   const ix0 = (bx0 - cx0) / cw, ix1 = (bx1 - cx0) / cw, iy0 = (by0 - cy0) / ch, iy1 = (by1 - cy0) / ch;
 
-  const atlas = makeAtlas(parts, photoUrl);
+  const atlas = makeAtlas(parts, photoUrl, [ix0, iy0, ix1, iy1]);
   const meshes = [], anchors = [];
   const a = new THREE.Vector3(), b = new THREE.Vector3(), c = new THREE.Vector3(), n = new THREE.Vector3();
   geoms.forEach((g, pi) => {
@@ -169,7 +214,7 @@ export function buildScan(spec, photoUrl, crop) {
       ...(p.material === 'screen' ? { emissive: 0x111111 } : {}) });
     const mesh = new THREE.Mesh(g, mat);
     mesh.name = p.name; mesh.castShadow = true; mesh.receiveShadow = true;
-    mesh.userData.holo = tint; mesh.userData.holoMap = atlas; mesh.userData.scanPart = pi; mesh.userData.scanSpec = p;
+    mesh.userData.holo = tint; mesh.userData.holoMap = atlas; mesh.userData.scanPart = pi; mesh.userData.scanSpec = p; mesh.userData.geo0 = g;
     g.computeBoundingBox();
     mesh.userData.centre = g.boundingBox.getCenter(new THREE.Vector3());
     group.add(mesh); meshes.push(mesh);
@@ -184,7 +229,11 @@ export function buildScan(spec, photoUrl, crop) {
   // very large objects are shown smaller so they fit the projector (the panel still gives the real size)
   const scale = Math.min(1, 300 / Math.max(size.x, size.y, size.z, 1));
   group.scale.setScalar(scale);
-  return { group, meshes, anchors: anchors.slice(0, 8), size, scale, atlas };
+  // the photo relief (twin/relief.js) uses the same projection; it is built and swapped in once a depth map arrives
+  const proj = { umin, umax, vmin, vmax, wmin, wmax, ix0, ix1, iy0, iy1, up, toCam, v0: PHOTO_V0 };
+  const built = { group, meshes, anchors: anchors.slice(0, 8), size, scale, atlas, proj, relief: null };
+  group.userData.update = () => { try { syncRelief(built); } catch (e) { console.warn('[twin] relief sync', e); group.userData.update = null; } };
+  return built;
 }
 
 /** Explode: every part slides away from the object's centre, higher parts rise more. e = 0..1 (eased). */
@@ -199,6 +248,7 @@ export function explodeScan(scan, e) {
 }
 
 export function disposeScan(scan) {
+  try { scan.relief?.dispose?.(); } catch { /* already gone */ }
   scan.group.traverse(o => { if (o.geometry) o.geometry.dispose(); if (o.material && !Array.isArray(o.material)) o.material.dispose(); });
   scan.atlas.dispose();
 }

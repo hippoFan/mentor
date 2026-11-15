@@ -15,7 +15,7 @@ const APP_PATHS = new Set(['/', '/index.html', '/twin', '/twin.html']);
 // The 3D twin (/twin) and its files. Each route is a fixed pattern of plain path segments (no dots except the one
 // extension), so nothing outside these folders can be named: no traversal, no directory listing.
 const TYPES = { js: 'text/javascript; charset=utf-8', mjs: 'text/javascript; charset=utf-8', json: 'application/json; charset=utf-8',
-  wasm: 'application/wasm', task: 'application/octet-stream', ttf: 'font/ttf' };
+  wasm: 'application/wasm', task: 'application/octet-stream', tflite: 'application/octet-stream', ttf: 'font/ttf' };
 const STATIC = [
   [/^\/twin\/([a-z0-9-]+\.(?:js|json))$/, m => new URL(`./twin/${m[1]}`, import.meta.url)],
   [/^\/data\/(uno-pins\.json)$/, m => new URL(`./data/${m[1]}`, import.meta.url)],
@@ -24,7 +24,7 @@ const STATIC = [
   // Optional hand control: MediaPipe Tasks Vision (Apache-2.0) and its hand model, all served from this laptop.
   [/^\/vendor\/mediapipe\/(vision_bundle\.mjs|wasm\/vision_wasm_(?:nosimd_)?internal\.(?:js|wasm))$/,
     m => new URL(`./node_modules/@mediapipe/tasks-vision/${m[1]}`, import.meta.url)],
-  [/^\/twin\/models\/(hand_landmarker\.task)$/, m => new URL(`./twin/models/${m[1]}`, import.meta.url)],
+  [/^\/twin\/models\/(hand_landmarker\.task|magic_touch\.tflite)$/, m => new URL(`./twin/models/${m[1]}`, import.meta.url)],
   [/^\/fonts\/(InterVariable\.ttf)$/, m => new URL(`./fonts/${m[1]}`, import.meta.url)],   // OFL, served locally: no font CDN
 ];
 async function appPage() {   // the page's one inline script is its import map; CSP allows exactly that script by hash
@@ -274,6 +274,7 @@ export async function createLiveServer(opts = {}) {
         if (!event.revert) state.modifications = [...state.modifications, event].slice(-EDIT.maxMods);
       }
       if (event.type === 'checklist') state.checklist = event;   // the whole parts list each time
+      if (event.type === 'scan-depth') { const sc = state.scans.find(x => x.id === event.id); if (sc) sc.depth = { depth: event.depth, width: event.width, height: event.height, near: event.near, far: event.far }; }   // replayed with its scan (<= ~20 KB PNG)
       if (event.type === 'interior') { const sc = state.scans.find(x => x.id === event.id); if (sc) sc.interior = event.interior; }   // replayed with its scan
       if (event.type === 'analysis') state.analysis = event;
       if (event.type === 'consent') state.consent = event;

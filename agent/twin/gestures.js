@@ -4,9 +4,14 @@
 //   pinch + move       turn the view, or (taken apart) grab a part; pull the hand closer / away to move it in depth
 //   two hands          zoom by the distance between them: apart = in    fist, held ~0.7 s    reset the view
 //   flick sideways     remove the part under the ring                    thumbs up, held      combine (the app confirms)
+//   two hands, twist   roll the view (like a steering wheel)             let go mid-turn      the view coasts to a stop
 // Robust by design: One-Euro filtered landmarks, pinch hysteresis normalised by palm size, every pose must hold
 // >= 150 ms before it counts, a dead-zone + gain curve on turning and zooming, hands smaller than minPalm are ignored
 // (people behind you), the largest hand leads (left or right alike), and a missed detection frame is bridged.
+// Pinch feel (after Vision Pro / Quest indirect pinch): the gap is measured in 3D (an edge-on hand whose tips only
+// overlap on screen is not a pinch) and a pinch only engages while the gap is closing; the grab lands where the ring
+// was when the fingers started closing (not where the tip drifted to); while pinching the ring follows a stable aim
+// point (index knuckle blended with the pinch midpoint) instead of the tip; the ring is drawn ~1 frame ahead.
 
 /** One-euro filter (Casiez et al. 2012): smooth when still, responsive when moving. */
 export class OneEuro {
@@ -23,10 +28,12 @@ export class OneEuro {
     return this.x;
   }
 }
-class Euro2 {
-  constructor(o) { this.fx = new OneEuro(o); this.fy = new OneEuro(o); }
-  reset() { this.fx.reset(); this.fy.reset(); }
-  filter(p, t) { return { x: this.fx.filter(p.x, t), y: this.fy.filter(p.y, t) }; }
+class Euro3 {
+  constructor(o) { this.fx = new OneEuro(o); this.fy = new OneEuro(o); this.fz = new OneEuro(o); }
+  reset() { this.fx.reset(); this.fy.reset(); this.fz.reset(); }
+  filter(p, t) { return { x: this.fx.filter(p.x, t), y: this.fy.filter(p.y, t), z: this.fz.filter(p.z || 0, t) }; }
+  /** Filtered velocity (units per second), from the One-Euro derivative. */
+  get v() { return { x: this.fx.dx, y: this.fy.dx }; }
 }
 
 /** Every threshold in one place. Distances are in image heights (x is scaled by the camera's aspect). */
@@ -42,12 +49,24 @@ export const TUNING = {
   zoomDead: 0.04,         // the hands' distance must change 4 % before zooming starts
   pullDead: 0.05,         // the hand must grow / shrink 5 % before a held part moves in depth
   flickSpeed: 1.8, flickDist: 0.16, flickWindowMs: 180, flickCooldownMs: 900,   // widths per second, widths, ms
+  closeDrop: 0.15, closeWindowMs: 350,   // a pinch engages only if the gap shrank by closeDrop palms within closeWindowMs
+  rewindMs: 300,          // the grab lands where the ring was when the fingers started closing, at most this far back
+  aimMix: 0.5,            // pinch aim point: this much pinch midpoint, the rest index knuckle (lm 5)
+  leadMs: 33, leadMax: 0.03,   // the ring is drawn this far ahead along the filtered velocity (at most leadMax)
+  flingMin: 0.12, flingWindowMs: 120,   // letting go of a turn faster than this (screen fractions / s) coasts
+  twistDead: 0.14,        // radians the two hands' line must turn before rolling starts
 };
 
 const FINGERS = [[8, 6], [12, 10], [16, 14], [20, 18]];   // tip, pip: index, middle, ring, pinky
 const clamp01 = v => Math.max(0, Math.min(1, v));
 const smooth = v => { const t = clamp01(v); return t * t * (3 - 2 * t); };
 const centreOf = lm => ({ x: (lm[0].x + lm[5].x + lm[17].x) / 3, y: (lm[0].y + lm[5].y + lm[17].y) / 3 });
+const wrapPi = a => Math.atan2(Math.sin(a), Math.cos(a));
+/** Thumb-index gap in 3D (z is in the same units as x, so it gets the aspect too), divided by the palm size. */
+export const pinchGap = (lm, k = 1, palm = palmSize(lm, k)) =>
+  Math.hypot((lm[4].x - lm[8].x) * k, lm[4].y - lm[8].y, ((lm[4].z || 0) - (lm[8].z || 0)) * k) / (palm || 1e-3);
+/** The stable pinch aim point: the pinch midpoint blended with the index knuckle, which barely moves as fingers close. */
+const aimOf = (lm, m) => ({ x: m * (lm[4].x + lm[8].x) / 2 + (1 - m) * lm[5].x, y: m * (lm[4].y + lm[8].y) / 2 + (1 - m) * lm[5].y });
 
 /** Palm size: mean of four bones that barely change with the pose, so a fist and a palm measure alike. */
 export function palmSize(lm, k = 1) {
@@ -55,16 +74,19 @@ export function palmSize(lm, k = 1) {
   return (D(0, 5) + D(0, 9) + D(0, 17) + D(5, 17)) / 4;
 }
 
-/** Pose of one hand: 'pinch' | 'palm' | 'thumbs' | 'fist' | 'point' | 'open' (relaxed) | 'none', plus useful points. */
-export function classify(lm, wasPinching = false, k = 1, T = TUNING) {
+/**
+ * Pose of one hand: 'pinch' | 'palm' | 'thumbs' | 'fist' | 'point' | 'open' (relaxed) | 'none', plus useful points.
+ * closing: whether the thumb-index gap has just been shrinking (a new pinch needs it; holding one does not).
+ */
+export function classify(lm, wasPinching = false, k = 1, T = TUNING, closing = true) {
   if (!Array.isArray(lm) || lm.length < 21) return { pose: 'none' };
   const D = (a, b) => Math.hypot((lm[a].x - lm[b].x) * k, lm[a].y - lm[b].y);
   const palm = palmSize(lm, k) || 1e-3;
-  const gap = D(4, 8) / palm;
+  const gap = pinchGap(lm, k, palm);
   const ext = FINGERS.map(([t, p]) => D(t, 0) > D(p, 0) * 1.15);
   const thumbOut = D(4, 17) / palm > 1.0;
   // a pinch holds the index tip out from the palm; in a fist the thumb also touches the index, but curled in
-  const pinch = gap < (wasPinching ? T.pinchOff : T.pinchOn) && D(8, 0) / palm > 0.95;
+  const pinch = (wasPinching ? gap < T.pinchOff : gap < T.pinchOn && closing) && D(8, 0) / palm > 0.95;
   const thumbsUp = !ext.some(Boolean) && lm[2].y - lm[4].y > 0.5 * palm && lm[4].y < lm[5].y - 0.25 * palm && lm[4].y < lm[3].y;
   const pinchPt = { x: (lm[4].x + lm[8].x) / 2, y: (lm[4].y + lm[8].y) / 2 };
   let pose = 'open';
@@ -73,7 +95,7 @@ export function classify(lm, wasPinching = false, k = 1, T = TUNING) {
   else if (thumbsUp) pose = 'thumbs';
   else if (!ext.some(Boolean)) pose = 'fist';
   else if (ext[0] && !ext[1] && !ext[2] && !ext[3]) pose = 'point';
-  return { pose, palm, size: palm, gap, closeness: clamp01((0.9 - gap) / (0.9 - T.pinchOn)), centre: centreOf(lm), pinchPt, tip: { x: lm[8].x, y: lm[8].y } };
+  return { pose, palm, size: palm, gap, closeness: clamp01((0.9 - gap) / (0.9 - T.pinchOn)), centre: centreOf(lm), pinchPt, aim: aimOf(lm, T.aimMix ?? 0.5), tip: { x: lm[8].x, y: lm[8].y } };
 }
 
 const HOVER = new Set(['open', 'palm', 'point']);
@@ -86,16 +108,31 @@ const HOVER = new Set(['open', 'palm', 'point']);
  *   grab 'start' | 'end' | null (pinch edges), rotate [dx, dy] (screen fractions, after dead-zone + gain),
  *   pull (log change of hand size while pinching: > 0 = toward the camera), zoom (multiplier on distance, < 1 = closer),
  *   reset / thumbsUp (once per hold), dwell 0..1 (hold progress), select {x,y} (once per point dwell),
- *   flick {dir, from:{x,y}, speed} (once per flick), status 'none' | 'ok' | 'close', hands, ignored, skeleton.
+ *   flick {dir, from:{x,y}, speed} (once per flick), status 'none' | 'ok' | 'close', hands, ignored, skeleton,
+ *   roll (radians, two-hand twist; > 0 = clockwise on screen), fling [vx, vy] (once, when a turning pinch lets go
+ *   while moving: screen fractions per second, for createInertia).
  */
 export function createGestures(opts = {}) {
   const T = { ...TUNING, ...opts };
   let tracks = [], primaryId = null, nextId = 1, count = 0, countCand = 0, countSince = 0, zoom = null, flickAt = -1e9;
   const newTrack = (c, t) => ({
-    id: nextId++, f: Array.from({ length: 21 }, () => new Euro2({ minCutoff: 1.1, beta: 6, dCutoff: 1.6 })), size: new OneEuro({ minCutoff: 0.8, beta: 0.4 }),
+    id: nextId++, f: Array.from({ length: 21 }, () => new Euro3({ minCutoff: 1.1, beta: 6, dCutoff: 1.6 })), size: new OneEuro({ minCutoff: 0.8, beta: 0.4 }),
     lm: null, c: null, rawC: c.c, palm: c.palm, logPalm: Math.log(c.palm), lastT: t, born: t, pinching: false,
     stable: 'open', cand: 'open', candSince: t, stableSince: t, fired: false, rot: null, pull: null, dwell: null, hist: [], rest: null,
+    gaps: [], curHist: [], rotHist: [], cOff: { x: 0, y: 0 }, cKind: null, cLast: null, cShown: null, pinchFrom: null, relT: null,
   });
+  /** Where the ring was when the fingers started closing: the widest gap in [t - rewindMs, pinch start]. */
+  const rewind = (tr, t) => {
+    const from = t - T.rewindMs, to = tr.pinchFrom ?? t;
+    let peak = null; for (const q of tr.gaps) if (q.t >= from && q.t <= to && (!peak || q.g >= peak.g)) peak = q;
+    const at = peak ? peak.t : to;
+    let s = null; for (const h of tr.curHist) { if (h.t <= at) s = h; else break; }
+    return s || tr.curHist.find(h => h.t >= from) || null;
+  };
+  const aimVel = tr => {
+    const m = T.aimMix, a = tr.f[4].v, b = tr.f[8].v, c = tr.f[5].v;
+    return { x: m * (a.x + b.x) / 2 + (1 - m) * c.x, y: m * (a.y + b.y) / 2 + (1 - m) * c.y };
+  };
   function reset() { tracks = []; primaryId = null; count = 0; countCand = 0; zoom = null; }
   return {
     reset,
@@ -103,7 +140,7 @@ export function createGestures(opts = {}) {
     update(hands, t, info = {}) {
       const k = info.aspect || 1;
       const out = { mode: 'none', pose: 'none', rotate: [0, 0], pan: [0, 0], zoom: 1, reset: false, select: null, cursor: null, dwell: 0, closeness: 0,
-        pinching: false, grab: null, pull: 0, flick: null, thumbsUp: false, status: 'none', palm: 0, hands: 0, ignored: 0, skeleton: [] };
+        pinching: false, grab: null, pull: 0, flick: null, thumbsUp: false, status: 'none', palm: 0, hands: 0, ignored: 0, skeleton: [], roll: 0, fling: null };
       // 1. which hands count: big enough, largest first, a second only if it is about as big (the same person)
       const cands = [];
       for (const h of hands || []) {
@@ -126,15 +163,20 @@ export function createGestures(opts = {}) {
       for (const c of use) {
         const tr = c.tr; tr.lastT = t; tr.rawC = c.c; tr.raw = c.lm;
         tr.lm = c.lm.map((p, i) => tr.f[i].filter(p, t));
-        const cl = classify(tr.lm, tr.pinching, k, T); tr.pinching = cl.pose === 'pinch'; tr.cl = cl;
+        // a new pinch must be closing: the gap shrank by closeDrop palms lately (a hand turned edge-on, whose tips
+        // happen to overlap, or one that arrives already pinched, does not grab until it opens and pinches again)
+        const gapNow = pinchGap(tr.lm, k);
+        tr.gaps.push({ t, g: gapNow }); while (tr.gaps.length && t - tr.gaps[0].t > T.closeWindowMs) tr.gaps.shift();
+        const closing = tr.gaps.reduce((m, q) => Math.max(m, q.g), 0) - gapNow >= T.closeDrop;
+        const cl = classify(tr.lm, tr.pinching, k, T, closing); tr.pinching = cl.pose === 'pinch'; tr.cl = cl;
         tr.palm = cl.palm; tr.logPalm = tr.size.filter(Math.log(Math.max(1e-3, c.palm)), t);
         // debounce: a pose counts once it has held stableMs
         if (cl.pose === tr.stable) tr.cand = cl.pose;
         else if (cl.pose !== tr.cand) { tr.cand = cl.pose; tr.candSince = t; }
         else if (t - tr.candSince >= T.stableMs) {
           const was = tr.stable; tr.stable = cl.pose; tr.stableSince = t; tr.fired = false;
-          if (was === 'pinch') { tr.grabEnd = true; tr.rot = null; tr.pull = null; }
-          if (cl.pose === 'pinch') tr.grabStart = true;
+          if (was === 'pinch') { tr.grabEnd = true; tr.relT = tr.candSince; tr.rot = null; tr.pull = null; }
+          if (cl.pose === 'pinch') { tr.grabStart = true; tr.pinchFrom = tr.candSince; }
         }
       }
       if (!tracks.length) { primaryId = null; count = 0; countCand = 0; zoom = null; return out; }
@@ -155,35 +197,64 @@ export function createGestures(opts = {}) {
       const grabStart = P.grabStart, grabEnd = P.grabEnd; P.grabStart = P.grabEnd = false;
       for (const tr of tracks) { if (tr !== P) tr.grabStart = tr.grabEnd = false; }
 
-      // 4. two hands: zoom by the distance between the palms
+      // 4. two hands: zoom by the distance between the palms, roll by twisting the line between them
       if (count === 2 && live.length === 2) {
-        const [a, b] = live.map(tr => centreOf(tr.lm));
-        const dist = Math.hypot((a.x - b.x) * k, a.y - b.y);
-        if (!zoom) zoom = { anchor: dist, last: dist, on: false };
+        const [a, b] = live.map(tr => centreOf(tr.lm));   // track order, so a hand crossing the other never flips it
+        const dist = Math.hypot((a.x - b.x) * k, a.y - b.y), ang = Math.atan2(b.y - a.y, (b.x - a.x) * k);
+        if (!zoom) zoom = { anchor: dist, last: dist, on: false, ang0: ang, angLast: ang, twist: false };
         if (!zoom.on && Math.abs(Math.log(dist / zoom.anchor)) > T.zoomDead) { zoom.on = true; zoom.last = dist; }
         if (zoom.on && fresh) { out.zoom = Math.max(0.85, Math.min(1.18, zoom.last / Math.max(dist, 1e-3))); zoom.last = dist; }
+        if (!zoom.twist && Math.abs(wrapPi(ang - zoom.ang0)) > T.twistDead) { zoom.twist = true; zoom.angLast = ang; }
+        if (zoom.twist && fresh) { const d = wrapPi(ang - zoom.angLast); if (Math.abs(d) >= 0.004) { out.roll = Math.max(-0.3, Math.min(0.3, d)); zoom.angLast = ang; } }
         out.mode = 'zoom'; out.cursor = { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 };
         if (P.stable === 'pinch') out.grab = 'end';
-        for (const tr of live) { tr.rot = null; tr.pull = null; tr.dwell = null; tr.hist = []; }
+        for (const tr of live) { tr.rot = null; tr.pull = null; tr.dwell = null; tr.hist = []; tr.cKind = null; tr.rotHist = []; tr.curHist = []; }
         return out;
       }
       zoom = null;
 
       // 5. one hand
       const cl = P.cl, pinch = P.stable === 'pinch';
-      out.cursor = pinch ? cl.pinchPt : cl.tip;
       out.closeness = pinch ? 1 : cl.closeness; out.pinching = pinch;
       if (grabStart) out.grab = 'start'; else if (grabEnd) out.grab = 'end';
-      if (!fresh) { out.mode = pinch ? 'rotate' : HOVER.has(P.stable) ? (P.stable === 'point' ? 'point' : 'hover') : P.stable; return out; }   // bridged frame: hold still
+      if (grabEnd && P.rotHist.length) {   // let go of a turn while still moving: hand the speed to createInertia
+        // measured up to when the fingers began to open (the last moment the gap was near its smallest), so the
+        // opening itself, which shifts the aim point, never reads as a throw
+        const rel = P.relT ?? t, near = P.gaps.filter(q => q.t <= rel), lo = near.reduce((m, q) => Math.min(m, q.g), Infinity);
+        const end = near.filter(q => q.g <= lo + 0.05).at(-1)?.t ?? rel; let sx = 0, sy = 0;
+        for (const q of P.rotHist) if (q.t > end - T.flingWindowMs && q.t <= end) { sx += q.x; sy += q.y; }
+        const vx = sx / (T.flingWindowMs / 1000), vy = sy / (T.flingWindowMs / 1000);
+        if (Math.hypot(vx, vy) >= T.flingMin) out.fling = [vx, vy];
+        P.rotHist = [];
+      }
+      if (!fresh) {   // bridged frame: hold still
+        out.cursor = P.cShown || (pinch ? cl.aim : cl.tip);
+        out.mode = pinch ? 'rotate' : HOVER.has(P.stable) ? (P.stable === 'point' ? 'point' : 'hover') : P.stable; return out;
+      }
+      // the ring: the fingertip while hovering, the stable aim point while pinching; the switch never jumps (an offset
+      // carries it and fades after letting go), the grab rewinds to where the fingers started closing, and the ring is
+      // drawn ~1 frame ahead along the filtered velocity
+      const kind = pinch ? 'aim' : 'tip', base = pinch ? cl.aim : cl.tip;
+      if (grabStart) { const r = rewind(P, t) || P.cLast || base; P.cOff = { x: r.x - base.x, y: r.y - base.y }; }
+      else if (P.cKind !== kind) P.cOff = P.cKind && P.cLast ? { x: P.cLast.x - base.x, y: P.cLast.y - base.y } : { x: 0, y: 0 };
+      else if (!pinch) { P.cOff.x *= 0.7; P.cOff.y *= 0.7; if (Math.hypot(P.cOff.x, P.cOff.y) < 1e-4) P.cOff = { x: 0, y: 0 }; }
+      P.cKind = kind;
+      const ring = { x: base.x + P.cOff.x, y: base.y + P.cOff.y }; P.cLast = ring;
+      const v = pinch ? aimVel(P) : P.f[8].v, L = T.leadMs / 1000;
+      let px = v.x * L, py = v.y * L; const pm = Math.hypot(px, py); if (pm > T.leadMax) { px *= T.leadMax / pm; py *= T.leadMax / pm; }
+      out.cursor = { x: ring.x + px, y: ring.y + py }; P.cShown = out.cursor;
+      if (!pinch) { P.curHist.push({ t, x: out.cursor.x, y: out.cursor.y }); while (P.curHist.length && t - P.curHist[0].t > T.rewindMs + 100) P.curHist.shift(); }
 
       if (pinch) {
         out.mode = 'rotate';
-        const p = cl.pinchPt;
+        const p = cl.aim;
         if (!P.rot) P.rot = { anchor: p, last: p, on: false };
         if (!P.rot.on && Math.hypot((p.x - P.rot.anchor.x) * k, p.y - P.rot.anchor.y) > T.rotDead) { P.rot.on = true; P.rot.last = p; }
+        else if (P.rot.on && !P.pinching) P.rot.last = p;   // the fingers are opening (release pending): no turning
         else if (P.rot.on) {
           const dx = p.x - P.rot.last.x, dy = p.y - P.rot.last.y, m = Math.hypot(dx, dy);
           if (m >= T.rotJitter) { const g = 0.7 + 1.3 * smooth((m - 0.002) / 0.018); out.rotate = [dx * g, dy * g]; P.rot.last = p; }
+          P.rotHist.push({ t, x: out.rotate[0], y: out.rotate[1] }); while (P.rotHist.length && t - P.rotHist[0].t > 400) P.rotHist.shift();
         }
         const lp = P.logPalm;
         if (!P.pull) P.pull = { anchor: lp, last: lp, on: false };
@@ -227,6 +298,28 @@ export function createGestures(opts = {}) {
 }
 
 /**
+ * Coasting after a turn is let go (createGestures' fling): the speed decays by `decay` per 60 Hz frame (frame-rate
+ * independent) until it is tiny. step(dt) returns the [dx, dy] to turn by this frame, in rotate units.
+ */
+export function createInertia({ decay = 0.92, stopBelow = 0.05, maxSpeed = 1.5 } = {}) {
+  let v = null;
+  return {
+    fling(vx, vy) {
+      if (!Number.isFinite(vx) || !Number.isFinite(vy)) { v = null; return; }
+      const m = Math.hypot(vx, vy), k = m > maxSpeed ? maxSpeed / m : 1; v = [vx * k, vy * k];
+    },
+    stop() { v = null; },
+    get active() { return !!v; },
+    step(dt) {   // exact integral of v * decay^(60 t) over dt: the same coast at any frame rate, by wall-clock time
+      if (!v || !(dt > 0)) return [0, 0];
+      const k = Math.pow(decay, dt * 60), f = (1 - k) / (-Math.log(decay) * 60), out = [v[0] * f, v[1] * f];
+      v = [v[0] * k, v[1] * k]; if (Math.hypot(v[0], v[1]) < stopBelow) v = null;
+      return out;
+    },
+  };
+}
+
+/**
  * Applies gesture controls to an orbit camera {theta, phi, radius, target:[x,y,z]} (radians, scene units) and returns
  * the new state. `home` is the state a reset returns to. Pure, so tests can check the camera really responds.
  */
@@ -246,9 +339,10 @@ export function applyToCamera(cam, g, home, { rotSpeed = 4.2, panSpeed = 260, mi
 
 /**
  * Synthetic hand for tests, the coach's glyphs and ?handsim=1: centre (cx, cy), size = wrist→middle-knuckle distance.
- * pose: 'palm' | 'point' | 'fist' | 'pinch' | 'thumbs' | 'open'. opts.gap (pinch only): thumb-index gap in palm sizes.
+ * pose: 'palm' | 'point' | 'fist' | 'pinch' | 'thumbs' | 'open'. opts.gap (pinch only): thumb-index gap in palm sizes;
+ * opts.thumbZ: the thumb tip's depth offset in sizes.
  */
-export function synthHand(pose, cx = 0.5, cy = 0.5, size = 0.12, { gap = null, mirror = false } = {}) {
+export function synthHand(pose, cx = 0.5, cy = 0.5, size = 0.12, { gap = null, mirror = false, thumbZ = 0 } = {}) {
   const P = (x, y) => ({ x: cx + (mirror ? -x : x) * size, y: cy + y * size, z: 0 });
   const lm = new Array(21);
   const base = { 1: [-0.35, 0.65], 5: [-0.3, 0], 9: [0, -0.1], 13: [0.25, -0.05], 17: [0.45, 0.1] };
@@ -267,5 +361,6 @@ export function synthHand(pose, cx = 0.5, cy = 0.5, size = 0.12, { gap = null, m
     if (gap != null) { const palm = palmSize(lm) / size; lm[4] = P(-0.55 - gap * palm, -0.75); lm[3] = P(-0.6 - gap * palm * 0.5, -0.2); }
   } else if (pose === 'thumbs') { lm[2] = P(-0.5, 0.3); lm[3] = P(-0.55, -0.15); lm[4] = P(-0.6, -0.6); }
   else { lm[2] = P(-0.45, 0.45); lm[3] = P(-0.3, 0.3); lm[4] = P(-0.1, 0.25); }   // thumb tucked
+  if (thumbZ) lm[4] = { ...lm[4], z: thumbZ * size };   // thumb tip nearer / further than the index tip (edge-on hand)
   return lm;
 }

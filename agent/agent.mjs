@@ -21,6 +21,7 @@ import { startLive } from './live.mjs';
 import { createMarkTracker } from './tracker.mjs';
 import { cropJpeg, isScanIntent, parseModelCorrection, scanLine } from './scan.mjs';
 import { researchInterior } from './research.mjs';
+import { depthAvailable, estimateDepth } from './depth.mjs';
 import { CIRCUIT_BOARDS, boardPins, circuitEvent, circuitIntent, createProject, describe as describeCircuit, findComponent, handleUtterance, markDone, nextStep, partFromWords, setBoard } from './circuit.mjs';
 import { MARK_TTL_MS, OVERLAY, overlayFrame, shouldDraw } from './overlay-policy.mjs';
 import { matchPart, parseTwin, partList } from './twin-voice.mjs';
@@ -363,6 +364,13 @@ const agent = defineAgent({
         // Researched interior: what's inside this object (public teardowns, for its exact model when the scan named
         // one), so the laptop's explode is realistic. Runs in the background (20-30 s, cached); the scan works without it.
         if (spec.known_model === 'none') void research(n, spec, cut);
+        // Depth (Depth Anything V2 Small, local CPU, ~0.2-0.5 s): sent after the scan so the model shows first; the page
+        // turns it into a photo relief. Off the critical path; a missing model or any failure just leaves the parts view.
+        if (spec.known_model === 'none' && depthAvailable()) {
+          estimateDepth(cut.jpeg, { size: 518, out: 256 })
+            .then(d => { if (!ended) live.send({ type: 'scan-depth', id: n, depth: d.png.toString('base64'), width: d.width, height: d.height, near: d.near, far: d.far, ms: d.ms }); console.log(`[scan] depth ${d.width}x${d.height} in ${d.ms} ms`); })
+            .catch(e => console.warn('[scan] depth failed:', e?.message || e));
+        }
         if (spec.known_model !== 'none' && spec.known_model !== lastPart) {
           lastPart = spec.known_model;
           live.send({ type: 'part', model: lastPart, label: { 'uno-r3': 'Arduino UNO R3', 'uno-r4-wifi': 'Arduino UNO R4 WiFi' }[lastPart] });

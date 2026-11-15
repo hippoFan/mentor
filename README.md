@@ -144,6 +144,7 @@ flowchart LR
 git clone https://github.com/hippoFan/ody && cd ody
 cp env.example .env              # fill it in; never commit .env
 cd agent && npm install
+npm run fetch-models             # optional: the depth model for scan reliefs (Depth Anything V2 Small, 27 MB, sha256-checked)
 npm run check-keys               # verifies every key without printing it or spending model requests
 
 npm start                        # terminal 1: the agent
@@ -273,7 +274,8 @@ Gemini · Claude · three.js · MediaPipe Tasks Vision · @napi-rs/canvas · Nod
 
 MIT for Ody's own code ([LICENSE](LICENSE)), with these exceptions:
 - `agent/chert-rooms.mjs` and `agent/greet.mjs` come from Chert's starter, and Chert's terms apply.
-- Inter is under the SIL Open Font License, and the MediaPipe hand model is under Apache-2.0.
+- Inter is under the SIL Open Font License, and the MediaPipe hand and interactive-segmenter models are under Apache-2.0.
+- Scan reliefs use Depth Anything V2 Small (Apache-2.0; the larger checkpoints are non-commercial and not used) via onnxruntime-node (MIT); see `agent/models/LICENSES.md`.
 - Parts pin data comes from wokwi-elements (MIT) and Fritzing (CC-BY-SA 3.0); see `agent/data/parts/LICENSES.md`.
 - `agent/data/uno-pins.json` pin names/positions derive from [wokwi-elements](https://github.com/wokwi/wokwi-elements) (MIT, Copyright (c) 2019 Uri Shaked).
 - The film and README images use a public-domain (CC0) Arduino photo from Wikimedia Commons.

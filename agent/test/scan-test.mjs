@@ -59,6 +59,28 @@ await test('sanitiser caps and validates', () => {
   assert.equal(empty.parts.length, 1); assert.deepEqual(empty.bbox, [0, 0, 1, 1]);
 });
 
+await test('attached parts sit flush on their parent; mirror_x adds the other side', () => {
+  const box = (name, size, pos, extra = {}) => ({ name, shape: 'box', size_mm: size, position_mm: pos, rotation_deg: { x: 0, y: 0, z: 0 }, color: '#222222', material: 'plastic', label: '', ...extra });
+  const s = sanitizeScan({ name: 'Speaker', dims_mm: { w: 200, d: 80, h: 100 }, parts: [
+    box('Body', { x: 200, y: 80, z: 100 }, { x: 0, y: 0, z: 50 }, { attach: { parent: -1, face: 'top', u: 0, v: 0 }, mirror_x: false }),
+    box('Left foot', { x: 20, y: 20, z: 4 }, { x: -80, y: 0, z: 30 }, { attach: { parent: 0, face: 'bottom', u: -0.9, v: 0 }, mirror_x: true }),
+    box('Knob', { x: 10, y: 10, z: 10 }, { x: 0, y: 0, z: 300 }, { attach: { parent: 0, face: 'top', u: 0, v: 1 }, mirror_x: false }),
+    box('Badge', { x: 30, y: 2, z: 10 }, { x: 0, y: 0, z: 0 }, { attach: { parent: 7, face: 'front', u: 0, v: 0 }, mirror_x: false }),   // bad parent: kept as given
+  ] });
+  const [body, foot, knob, badge, foot2] = s.parts;
+  assert.equal(s.parts.length, 5);
+  assert.equal(body.position_mm.z, 50);
+  assert.ok(Math.abs(foot.position_mm.z - (0 - 2 * 0.8)) < 1e-6, `foot z ${foot.position_mm.z}`);   // under the body, flush
+  assert.ok(Math.abs(foot.position_mm.x - -0.9 * 90) < 1e-6);
+  assert.ok(Math.abs(knob.position_mm.z - (100 + 5 * 0.8)) < 1e-6 && Math.abs(knob.position_mm.y - 35) < 1e-6);
+  assert.deepEqual(badge.position_mm, { x: 0, y: 0, z: 0 });
+  assert.equal(foot2.name, 'Right foot'); assert.equal(foot2.position_mm.x, 81);
+  assert.ok(s.parts.every(p => !('attach' in p) && !('mirror_x' in p)));
+  // old-format parts (no attach / mirror_x) are untouched
+  const old = sanitizeScan({ parts: [box('Body', { x: 10, y: 10, z: 10 }, { x: 3, y: 4, z: 5 })] });
+  assert.deepEqual(old.parts[0].position_mm, { x: 3, y: 4, z: 5 });
+});
+
 // ---------- brain scans (owner testing; one call per photo, cached) ----------
 const photos = args.includes('--scan') ? args.slice(args.indexOf('--scan') + 1).filter(a => !a.startsWith('--') && /\.(jpe?g|png)$/i.test(a)) : [];
 if (photos.length > 6) throw new Error('at most 6 brain calls per run');

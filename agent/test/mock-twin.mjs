@@ -221,9 +221,10 @@ if (has('--parts')) {
   const files = (await readdir(dir)).filter(f => f.endsWith('.scan.json')).sort();
   start(); live.send({ type: 'brain', brain: 'claude-code' });
   for (const [i, f] of files.entries()) {
-    const { spec, photo, crop } = JSON.parse(await readFile(`${dir}/${f}`, 'utf8'));
+    const { spec, photo, crop, depth } = JSON.parse(await readFile(`${dir}/${f}`, 'utf8'));
     live.send({ type: 'heard', text: 'Scan this.' });
     live.send({ type: 'scan', id: i + 1, at: Date.now(), spec, photo, crop });
+    if (depth?.depth) live.send({ type: 'scan-depth', id: i + 1, ...depth });   // as agent.mjs sends it, after the scan
     live.send({ type: 'say', text: `Got it. It's on your laptop.` });
     console.log(`[mock] scan ${f}: ${spec.name}`);
     await sleep(Number(process.env.MOCK_SCAN_GAP_MS || 300));
