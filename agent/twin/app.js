@@ -1,5 +1,6 @@
-// Mentor's digital twin: when Mentor recognises the board on the call, this page shows it in 3D, with Mentor's rings,
-// warnings and wires on the exact pins. Same WebSocket as the call view (monitor.html); it only listens.
+// Ody's digital twin, the hero of the laptop app: when Ody recognises the board on the call, it shows it in 3D, with
+// Ody's rings, warnings and wires on the exact pins. Events come from the app shell's one WebSocket (shell.js); this
+// module only listens (and obeys the agent's voice commands for the view: {type:'twin', action}).
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
@@ -16,6 +17,8 @@ import { buildPart, PART_MODELS } from './parts3d.js';
 import { clock, COLORS, holoMaterial, edgeMaterial, makeRing, makeArrow, makeWire, makeProjectorFloor, easeInOut } from './holo.js';
 import { createGestures, applyToCamera } from './gestures.js';
 import { buildScan, explodeScan, disposeScan } from './scan.js';
+import { subscribe, swapped } from './shell.js';
+import { customPart, customKey } from './custom.js';
 
 const $ = id => document.getElementById(id);
 const stage = $('stage'), canvas = $('view');
@@ -83,9 +86,10 @@ const S = {
   turns: [], callMarks: [], wires: new Map(), current: [], step: '', done: false, bbIn: 0, fly: null, tipPinned: null,
   scans: [], scan: null, view: 'board',   // "scan anything": every object scanned this call; view = what the stage shows
   parts: {}, tables: {}, lookup: {}, pos: UNO_POS.clone(),   // library boards (twin/parts.json) and where the board sits
+  callState: null, customKey: '', off: { x: 0, y: 0 }, tipKey: null, pinIdx: -1, handsWhy: '',
 };
 // ---------- which board: the UNO (pins.js + board.js) or a library board (partpins.js + parts3d.js) ----------
-const isPart = m => PART_MODELS.includes(m) && !!S.parts[m];
+const isPart = m => PART_MODELS.includes(m) && !!S.parts[m];   // 'custom' too, once a spec arrived
 const isBoard = m => UNO_MODELS.includes(m) || isPart(m);
 function tableFor(m) {
   if (!isPart(m)) return S.table;
@@ -144,13 +148,31 @@ function showModel(model) {
       u.group.position.set(Math.min(UNO_POS.x, -6 - u.W / 2), 0, 0);   // keep clear of the breadboard on the right
     } else { u = buildUno(S.table, want); u.group.position.copy(UNO_POS); }
     decorate(u.group); S.unos[want] = u;
+    u.group.updateMatrixWorld(true); u.box = new THREE.Box3().setFromObject(u.group);   // for framing (layers at rest)
   }
   S.uno = S.unos[want];
   S.pos.copy(S.uno.group.position);
   S.uno.group.visible = S.view === 'board';
   twin.add(S.uno.group);
   applyLook(S.uno.group);
-  buildLayerTags(); updatePartTags();
+  buildLayerTags(); updatePartTags(); renderPins();
+}
+
+/** A `part` event for a board described by its headers: (re)builds the 'custom' model when the spec changes. */
+function registerCustom(ev) {
+  const p = customPart(ev);
+  if (!p) { console.warn('[twin] custom board without a usable headers spec; keeping the current view'); return false; }
+  const k = customKey(p);
+  if (k === S.customKey) return true;
+  S.customKey = k; S.parts.custom = p; delete S.tables.custom;
+  const old = S.unos.custom;
+  if (old) {
+    if (S.uno === old) { twin.remove(old.group); S.uno = null; }
+    old.group.traverse(o => { if (o.geometry) o.geometry.dispose(); });
+    delete S.unos.custom;
+    if (S.model === 'custom') { showModel('custom'); boardPanel(); if (!S.replaying) flyHome(1.2); }
+  }
+  return true;
 }
 
 function boardPanel() {
@@ -160,7 +182,7 @@ function boardPanel() {
 }
 function setPart(model, label) {
   if (!isBoard(model)) {
-    if (model === 'other' && !S.model) { $('part').textContent = String(label || 'A board Ody can’t model yet').slice(0, 60); $('partsub').textContent = 'The twin covers Arduino UNO, Nano and Mega, ESP32, NodeMCU, Raspberry Pi and Pico.'; }
+    if (model === 'other' && !S.model) { $('part').textContent = String(label || 'A board Ody can’t model yet').slice(0, 60); $('partsub').textContent = 'The twin covers Arduino UNO, Nano and Mega, ESP32, NodeMCU, Raspberry Pi and Pico, and boards Ody can describe pin by pin.'; }
     return;
   }
   const first = !S.model, changed = S.model !== model;
@@ -199,7 +221,7 @@ function clearGroup(g) {
 }
 
 function applyTurn(turn, { animate = true } = {}) {
-  const marks = Array.isArray(turn.marks) ? turn.marks.slice(0, 12) : [];
+  const marks = Array.isArray(turn.marks) ? turn.marks.filter(m => m && typeof m === 'object').slice(0, 12) : [];
   const model = inferModel({ board: turn.board, marks }, PART_MODELS.filter(isPart), S.model) || S.model;
   if (model && model !== S.model) setPart(model);
   if (turn.board && !Array.isArray(turn.board) && turn.board.model === 'other' && !S.model) setPart('other');
@@ -219,14 +241,18 @@ function applyTurn(turn, { animate = true } = {}) {
         const w = makeWire(a, b, { plugA, plugB, warn: r.kind === 'warn' });
         w.userData.id = id; wiresGroup.add(w);
         const mid = w.userData.curve.getPoint(0.5);
-        if (r.kind !== 'warn') { const t = tag(`${targetName(T(), S.model, r.from)} → ${targetName(T(), S.model, r.to)}`, 'wire'); t.position.copy(mid); w.add(t); }
+        if (r.kind !== 'warn') {   // the label waits for the wire to arrive, then sits on its apex
+          const t = tag(`${targetName(T(), S.model, r.from)} → ${targetName(T(), S.model, r.to)}`, 'wire'); t.position.copy(mid); t.visible = false; w.add(t);
+          const grow = w.userData.update, born = clock.value;
+          w.userData.update = () => { grow(); t.visible = clock.value - born > 1.15; };
+        }
         S.wires.set(id, { ...r, obj: w });
       }
       if (r.kind === 'warn') {
         for (const [p, end] of [[a, r.from], [b, r.to]]) { const ring = makeRing(COLORS.warn, { radius: 2.1, warn: true }); ring.position.copy(p).add(new THREE.Vector3(0, 0.15, 0)); marksGroup.add(ring); }
         const t = tag(r.label || 'Stop', 'warn', /^stop/i.test(r.label) ? '' : 'Stop'); t.position.copy(a); marksGroup.add(t);
       }
-      focus.push(a, b);
+      focus.push(a, b, S.wires.get(id)?.obj.userData.curve.getPoint(0.5));   // the arc's top too, so its label stays in view
     } else if (a) {
       const col = r.kind === 'warn' ? COLORS.warn : COLORS.mentor;
       const rad = r.from.on === 'feature' ? (S.uno.features?.[r.from.key]?.r || RING_R[r.from.key] || 3) : 2.0;
@@ -240,14 +266,19 @@ function applyTurn(turn, { animate = true } = {}) {
   }
   if (turn.step) setStep(turn.step, turn.done);
   if (turn.done) S.done = true;
+  pointing();
   renderLists();
   updatePartTags();
   if (animate && !S.replaying) { if (turn.done) flyHome(1.6); else if (focus.length) flyTo(focus); }
 }
 
-function setStep(text, done) {
-  S.step = String(text || '').slice(0, 160); $('step').textContent = done ? 'Done. You made it home.' : (S.step || '…');
-  $('stepbox').classList.toggle('done', !!done);
+function setStep(text) { S.step = String(text || '').slice(0, 160); }   // the rail's step is drawn by shell.js
+/** "Ody is pointing at …" on the stage: the current marks, in the same words as on the phone. */
+function pointing() {
+  const labels = [...new Set(S.current.filter(c => c.from).map(c => c.label || targetName(T(), S.model, c.from)).filter(Boolean))];
+  const on = labels.length && S.view === 'board';
+  $('pointing').hidden = !on;
+  if (on) $('pointingText').textContent = `Ody is pointing at ${labels.slice(0, 3).join(', ')}${labels.length > 3 ? ` and ${labels.length - 3} more` : ''}`;
 }
 
 function li(icon, what, where, onClick, old) {
@@ -282,6 +313,7 @@ function wiringText() {
 // ---------- part labels (hologram) and explode ----------
 function updatePartTags() {
   clearGroup(partTags);
+  if (!builtIn(S.view)) return;
   if (S.view === 'scan') {
     if (!S.scan || S.explode > 0.01) return;
     for (const a of S.scan.built.anchors) { const t = tag(a.text, 'part'); t.position.copy(a.pos).multiplyScalar(S.scan.built.scale); partTags.add(t); }
@@ -312,14 +344,18 @@ function buildLayerTags() {
 function setExplode(on) {
   S.explodeTo = on ? 1 : 0; $('t-explode').setAttribute('aria-pressed', String(on));
   if (S.view === 'scan') { flyScan(1.1, on ? 1.45 : 1); return; }
-  if (on) { flyTo([S.pos.clone().add(new THREE.Vector3(14, 30, 0))], { radius: 250, phi: 1.22, theta: 0.32 }); }
-  else flyHome(1.1);
+  if (!builtIn(S.view)) return;   // a mounted mode animates its own explode in stepExplode
+  if (on && S.uno?.box) {   // frame the whole stack: layers rise up to ~60 mm, their name tags sit to the right
+    const b = S.uno.box.clone(); b.max.y += 64; b.max.x += 48; b.min.x -= 4;
+    startFly(camState(), fitBox(b, { phi: 1.18, theta: 0.32 }, 1.04), 1.3);
+  } else flyHome(1.1);
 }
 function stepExplode(dt) {
   if (!S.uno) return;
   const before = S.explode;
   S.explode += Math.sign(S.explodeTo - S.explode) * Math.min(Math.abs(S.explodeTo - S.explode), dt / (REDUCED ? 0.01 : 0.9));
   const e = easeInOut(S.explode);
+  if (!builtIn(S.view)) { if (before !== S.explode) { try { MODES.get(S.view)?.explode?.(e); } catch (err) { console.warn('[twin] mode explode', err); } } return; }
   if (S.view === 'scan') {
     if (S.scan && before !== S.explode) explodeScan(S.scan.built, e);
     if ((before < 0.02) !== (S.explode < 0.02) || (before > 0.01) !== (S.explode > 0.01)) updatePartTags();
@@ -334,47 +370,113 @@ function stepExplode(dt) {
 }
 
 // ---------- camera ----------
+// The stage is shared with the phone card and the toolbar, so "framed" means: everything that matters (board +
+// breadboard, or the scan) fits inside the free part of the stage, measured, not guessed. The camera's principal point
+// is moved to the middle of that free area with a view offset, so orbiting still turns around the content.
 const sph = new THREE.Spherical();
-const HOME = { target: new THREE.Vector3(2, 6, 4), radius: 300, phi: 0.95, theta: 0.18 };
-/** HOME framed for the board in view: the UNO's view, widened for a board that reaches further left (Mega, Pi). */
-function homeView() {
-  const left = S.pos.x - (S.uno?.W ?? 68.58) / 2, extra = Math.max(0, (UNO_POS.x - 68.58 / 2) - left);
-  if (extra) return { ...HOME, target: HOME.target.clone().add(new THREE.Vector3(-extra / 2, 0, 0)), radius: HOME.radius + extra * 1.6 };
-  // a stick-sized board (ESP32, Nano, Pico): come closer, a little toward it
-  if (S.uno?.W && S.uno.W * S.uno.H < 2000) return { ...HOME, target: HOME.target.clone().add(new THREE.Vector3(-14, 4, 0)), radius: 235 };
-  return HOME;
+const HOME = { phi: 0.95, theta: 0.18 }, WAIT_ANGLES = { phi: 0.95, theta: 0.5 };
+const stageSize = () => { const r = stage.getBoundingClientRect(); return { w: Math.max(1, r.width), h: Math.max(1, r.height), r }; };
+function setOffset(cam, o, w, h) {
+  const ax = Math.abs(o.x), ay = Math.abs(o.y), fw = w + 2 * ax, fh = h + 2 * ay;
+  cam.aspect = fw / fh;
+  if (ax < 0.5 && ay < 0.5) cam.clearViewOffset(); else cam.setViewOffset(fw, fh, o.x > 0 ? 0 : 2 * ax, o.y > 0 ? 0 : 2 * ay, w, h);
+  cam.updateProjectionMatrix();
 }
-const WAIT = { target: UNO_POS.clone().add(new THREE.Vector3(0, 4, 0)), radius: 190, phi: 0.95, theta: 0.5 };
-function camState() { sph.setFromVector3(camera.position.clone().sub(controls.target)); return { target: controls.target.clone(), radius: sph.radius, phi: sph.phi, theta: sph.theta }; }
-function setCam(s) { sph.set(s.radius, s.phi, s.theta); camera.position.copy(s.target).add(new THREE.Vector3().setFromSpherical(sph)); controls.target.copy(s.target); camera.lookAt(s.target); }
+function applyOffset(o) { S.off = { x: o.x, y: o.y }; const { w, h } = stageSize(); setOffset(camera, S.off, w, h); }
+/** Free rectangles of the stage (stage px): the whole stage minus the title, the toolbar, and each side of the phone. */
+function freeRects() {
+  const { w, h, r } = stageSize();
+  if (swapped() || w < 300) return [{ l: 6, t: 6, r: w - 6, b: h - 6 }];
+  const base = { l: 20, t: w < 700 ? 70 : 92, r: w - 20, b: h - (w < 700 ? 70 : 78) };
+  const pr = $('phone').getBoundingClientRect();
+  const p = { l: pr.left - r.left, t: pr.top - r.top, r: pr.right - r.left, b: pr.bottom - r.top };
+  if (p.r <= 0 || p.l >= w || p.b <= 0 || p.t >= h) return [base];
+  return [{ ...base, l: Math.max(base.l, p.r + 14) }, { ...base, r: Math.min(base.r, p.l - 14) }, { ...base, b: Math.min(base.b, p.t - 14) }, { ...base, t: Math.max(base.t, p.b + 14) }]
+    .filter(q => q.r - q.l > 140 && q.b - q.t > 120);
+}
+const fitCam = new THREE.PerspectiveCamera(), corner = new THREE.Vector3();
+/** Closest orbit radius at (phi, theta) that keeps the whole box inside one of the free rects; returns the camera state. */
+function fitBox(box, { phi, theta }, pad = 1) {
+  const { w, h } = stageSize(), c = box.getCenter(new THREE.Vector3());
+  const pts = []; for (let i = 0; i < 8; i++) pts.push(new THREE.Vector3(i & 1 ? box.max.x : box.min.x, i & 2 ? box.max.y : box.min.y, i & 4 ? box.max.z : box.min.z));
+  let best = null;
+  for (const q of freeRects()) {
+    const off = { x: (q.l + q.r) / 2 - w / 2, y: (q.t + q.b) / 2 - h / 2 };
+    fitCam.copy(camera); setOffset(fitCam, off, w, h);
+    const x0 = q.l / w * 2 - 1, x1 = q.r / w * 2 - 1, y0 = 1 - q.b / h * 2, y1 = 1 - q.t / h * 2;
+    const fits = d => {
+      sph.set(d, phi, theta); fitCam.position.copy(c).add(new THREE.Vector3().setFromSpherical(sph)); fitCam.lookAt(c); fitCam.updateMatrixWorld();
+      for (const p of pts) {
+        corner.copy(p).applyMatrix4(fitCam.matrixWorldInverse); if (corner.z > -fitCam.near) return false;
+        corner.applyMatrix4(fitCam.projectionMatrix);
+        if (corner.x < x0 || corner.x > x1 || corner.y < y0 || corner.y > y1) return false;
+      }
+      return true;
+    };
+    let lo = 20, hi = 3000; if (!fits(hi)) continue;
+    for (let i = 0; i < 26; i++) { const m = (lo + hi) / 2; if (fits(m)) hi = m; else lo = m; }
+    if (!best || hi < best.radius) best = { target: c, radius: hi * pad, phi, theta, off };
+  }
+  return best || { target: c, radius: 320, phi, theta, off: { x: 0, y: 0 } };
+}
+/** What the board view shows: the board, plus the breadboard (it grows in once a board is known). */
+function boardBox() {
+  const box = new THREE.Box3();
+  if (S.uno?.box) box.copy(S.uno.box); else box.setFromCenterAndSize(UNO_POS.clone().add(new THREE.Vector3(0, 6, 0)), new THREE.Vector3(68.6, 14, 53.3));
+  if (S.model) box.union(new THREE.Box3(new THREE.Vector3(BB_POS.x - BB.w / 2, 0, -BB.d / 2), new THREE.Vector3(BB_POS.x + BB.w / 2, BB.h + 2, BB.d / 2)));
+  return box;
+}
+function homeView() { return fitBox(boardBox(), S.model ? HOME : WAIT_ANGLES, 1.04); }
+function camState() { sph.setFromVector3(camera.position.clone().sub(controls.target)); return { target: controls.target.clone(), radius: sph.radius, phi: sph.phi, theta: sph.theta, off: { ...S.off } }; }
+function setCam(s) {
+  if (s.off) applyOffset(s.off);
+  sph.set(s.radius, s.phi, s.theta); camera.position.copy(s.target).add(new THREE.Vector3().setFromSpherical(sph)); controls.target.copy(s.target); camera.lookAt(s.target);
+}
 function flyTo(points, opts = {}) {
   const pts = points.filter(Boolean); if (!pts.length) return;
   const box = new THREE.Box3().setFromPoints(pts), c = box.getCenter(new THREE.Vector3()), size = box.getSize(new THREE.Vector3()).length();
-  const now = camState();
-  const to = { target: c, radius: opts.radius ?? Math.min(320, Math.max(185, size * 2.0 + 120)), phi: opts.phi ?? Math.min(1.05, Math.max(0.7, now.phi)), theta: opts.theta ?? now.theta };
-  startFly(now, to, opts.dur ?? 1.3);
+  const now = camState(), phi = opts.phi ?? Math.min(1.05, Math.max(0.7, now.phi)), theta = opts.theta ?? now.theta;
+  // measured, like home: the marks (+ 18 mm around them) fill the free part of the stage, never closer than a hand's width
+  const pad = new THREE.Vector3(18, 10, 18), v = fitBox(new THREE.Box3(box.min.clone().sub(pad), box.max.clone().add(pad)), { phi, theta }, 1.05);
+  void size; v.radius = opts.radius ?? Math.min(520, Math.max(170, v.radius));
+  startFly(now, v, opts.dur ?? 1.3);
 }
-const fit = v => ({ ...v, radius: v.radius * Math.max(1, 1.3 / camera.aspect) });   // portrait screens: step back
-function flyHome(dur = 1.3) { if (S.view === 'scan' && S.scan) { flyScan(dur); return; } startFly(camState(), fit(S.model ? homeView() : WAIT), dur); }
-/** Frames the scanned object: radius from its displayed size and the 30° lens. */
+function flyHome(dur = 1.3) {
+  if (S.view === 'scan' && S.scan) { flyScan(dur); return; }
+  if (!builtIn(S.view)) { const b = MODES.get(S.view)?.box?.(); if (b && !b.isEmpty()) startFly(camState(), fitBox(b, HOME, 1.06), dur); return; }
+  startFly(camState(), homeView(), dur);
+}
+/** Frames the scanned object (zoom > 1 steps back for the exploded view). */
 function flyScan(dur = 1.3, zoom = 1) {
   const b = S.scan.built, sz = b.size.clone().multiplyScalar(b.scale);
-  const span = Math.max(sz.x, sz.z, sz.y * 1.4, 30);
-  const radius = Math.max(110, span / (2 * Math.tan(15 * Math.PI / 180)) * 1.25 * zoom);
-  controls.maxDistance = Math.max(520, radius * 1.6);
-  startFly(camState(), fit({ target: new THREE.Vector3(0, sz.y * (zoom > 1 ? 0.9 : 0.4), 0), radius, phi: 0.98, theta: 0.32 }), dur);
+  const box = new THREE.Box3(new THREE.Vector3(-sz.x / 2, 0, -sz.z / 2), new THREE.Vector3(sz.x / 2, sz.y * (zoom > 1 ? 2.2 : 1), sz.z / 2));
+  const v = fitBox(box, { phi: 0.98, theta: 0.32 }, 1.1 * zoom);
+  v.radius = Math.max(90, v.radius);
+  controls.maxDistance = Math.max(520, v.radius * 1.6);
+  startFly(camState(), v, dur);
 }
 function startFly(from, to, dur) {
   let dTheta = to.theta - from.theta; dTheta = Math.atan2(Math.sin(dTheta), Math.cos(dTheta));
-  S.fly = { from, to: { ...to, theta: from.theta + dTheta }, t: 0, dur: REDUCED ? 0.01 : dur };
+  S.fly = { from, to: { ...to, theta: from.theta + dTheta, off: to.off || from.off }, t: 0, dur: REDUCED || dur <= 0 ? 0.01 : dur };
 }
 function stepFly(dt) {
   if (!S.fly) return;
-  const f = S.fly; f.t = Math.min(1, f.t + dt / f.dur); const e = easeInOut(f.t);
-  setCam({ target: f.from.target.clone().lerp(f.to.target, e), radius: THREE.MathUtils.lerp(f.from.radius, f.to.radius, e), phi: THREE.MathUtils.lerp(f.from.phi, f.to.phi, e), theta: THREE.MathUtils.lerp(f.from.theta, f.to.theta, e) });
+  const f = S.fly; f.t = Math.min(1, f.t + dt / f.dur); const e = easeInOut(f.t), L = THREE.MathUtils.lerp;
+  setCam({ target: f.from.target.clone().lerp(f.to.target, e), radius: L(f.from.radius, f.to.radius, e), phi: L(f.from.phi, f.to.phi, e), theta: L(f.from.theta, f.to.theta, e),
+    off: { x: L(f.from.off.x, f.to.off.x, e), y: L(f.from.off.y, f.to.off.y, e) } });
   if (f.t >= 1) S.fly = null;
 }
-controls.addEventListener('start', () => { S.fly = null; controls.autoRotate = false; });
+/** Keyboard orbit / zoom (arrows, + and −), the same moves as a drag or a wheel. */
+function nudge({ dTheta = 0, dPhi = 0, zoom = 1 }) {
+  S.fly = null; controls.autoRotate = false;
+  const s = camState();
+  s.theta += dTheta; s.phi = THREE.MathUtils.clamp(s.phi + dPhi, 0.12, controls.maxPolarAngle);
+  s.radius = THREE.MathUtils.clamp(s.radius * zoom, controls.minDistance, controls.maxDistance);
+  startFly(camState(), s, 0.22);
+}
+let dragging = false;
+controls.addEventListener('start', () => { S.fly = null; controls.autoRotate = false; dragging = true; });
+controls.addEventListener('end', () => { dragging = false; });
 
 // ---------- picking + tooltip ----------
 const ray = new THREE.Raycaster(), ndc = new THREE.Vector2();
@@ -383,7 +485,7 @@ function pickAt(x, y) {   // x, y in stage pixels
   const r = stage.getBoundingClientRect();
   ndc.set((x / r.width) * 2 - 1, -(y / r.height) * 2 + 1);
   ray.setFromCamera(ndc, camera);
-  if (S.view === 'scan') return null;
+  if (S.view !== 'board') return null;
   const objs = [S.uno?.pick, S.bb?.group.visible && S.bbIn >= 1 ? S.bb.pick : null].filter(Boolean);
   const hit = ray.intersectObjects(objs, false)[0];
   if (!hit) return null;
@@ -409,8 +511,59 @@ function showTip(p, x, y) {
   tipEl.style.left = `${Math.min(x, r.width - 280)}px`; tipEl.style.top = `${Math.max(40, y)}px`;
   hover.position.copy(p.pos).add(new THREE.Vector3(0, 0.2, 0)); hover.visible = true;
 }
+// ---------- pins from the keyboard: the rail's listbox, and [ / ] anywhere ----------
+function pinTip(k) {
+  const info = infoFor(k), said = S.current.find(c => c.from?.key === k || c.to?.key === k);
+  return { pos: S.uno.pinPos(k).add(S.pos), title: info.name, body: info.fn, said: said ? `Ody: ${said.label}` : '' };
+}
+function placeKeyTip() {   // the keyboard tooltip follows its pin while the view moves
+  if (!S.tipKey || !S.uno || S.view !== 'board') return;
+  const p = pinTip(S.tipKey), { w, h } = stageSize(), v = p.pos.clone().project(camera);
+  if (v.z > 1) { tipEl.hidden = true; return; }
+  showTip(p, (v.x + 1) / 2 * w, (1 - v.y) / 2 * h);
+}
+function renderPins() {
+  const box = $('pins'); box.replaceChildren();
+  const keys = S.view === 'board' && S.uno ? S.uno.pickKeys : [];
+  $('pinsCount').textContent = keys.length ? String(keys.length) : '';
+  S.pinIdx = -1; box.removeAttribute('aria-activedescendant');
+  keys.forEach((k, i) => {
+    const info = infoFor(k), o = document.createElement('div');
+    o.id = `pin-${i}`; o.setAttribute('role', 'option'); o.setAttribute('aria-selected', 'false'); o.dataset.key = k;
+    const b = document.createElement('b'); b.textContent = info.name; const sp = document.createElement('span'); sp.textContent = info.fn || 'Pin';
+    o.append(b, sp); o.addEventListener('click', () => { selectPin(i); box.focus(); });
+    box.append(o);
+  });
+  if (!keys.length) { const e = document.createElement('p'); e.className = 'empty'; e.textContent = S.view === 'scan' ? 'A scanned object has no pins.' : 'Pins appear when Ody knows the board.'; box.append(e); }
+  box.tabIndex = keys.length ? 0 : -1;
+}
+function selectPin(i, { fly = false } = {}) {
+  const box = $('pins'), opts = box.querySelectorAll('[role="option"]');
+  if (!opts.length) return;
+  i = (i + opts.length) % opts.length;
+  opts[S.pinIdx]?.setAttribute('aria-selected', 'false');
+  S.pinIdx = i; const o = opts[i]; o.setAttribute('aria-selected', 'true'); box.setAttribute('aria-activedescendant', o.id);
+  o.scrollIntoView({ block: 'nearest' });
+  S.tipKey = o.dataset.key; S.tipPinned = null;
+  const t = pinTip(S.tipKey); $('announce').textContent = `${t.title}. ${t.body}${t.said ? `. ${t.said}` : ''}`;
+  if (fly) flyTo([t.pos], { radius: 150 }); else placeKeyTip();
+}
+function clearKeyTip() { S.tipKey = null; showTip(null); }
+$('pins').addEventListener('keydown', e => {
+  const n = $('pins').querySelectorAll('[role="option"]').length; if (!n) return;
+  const map = { ArrowDown: 1, ArrowRight: 1, ArrowUp: -1, ArrowLeft: -1 };
+  if (e.key in map) selectPin(S.pinIdx < 0 ? 0 : S.pinIdx + map[e.key]);
+  else if (e.key === 'Home') selectPin(0); else if (e.key === 'End') selectPin(n - 1);
+  else if (e.key === 'Enter' || e.key === ' ') selectPin(S.pinIdx < 0 ? 0 : S.pinIdx, { fly: true });
+  else if (e.key === 'Escape') clearKeyTip();
+  else return;
+  e.preventDefault(); e.stopPropagation();
+});
+$('pins').addEventListener('focus', () => { if (S.pinIdx < 0) selectPin(0); });
+$('pins').addEventListener('blur', () => { if (!$('pins').contains(document.activeElement)) clearKeyTip(); });
+
 let pointer = null, pointerDirty = false;
-canvas.addEventListener('pointermove', e => { const r = stage.getBoundingClientRect(); pointer = { x: e.clientX - r.left, y: e.clientY - r.top }; pointerDirty = true; });
+canvas.addEventListener('pointermove', e => { const r = stage.getBoundingClientRect(); pointer = { x: e.clientX - r.left, y: e.clientY - r.top }; pointerDirty = true; S.tipKey = null; });
 canvas.addEventListener('pointerleave', () => { pointer = null; if (!S.tipPinned) showTip(null); });
 let downAt = null;
 canvas.addEventListener('pointerdown', e => { downAt = { x: e.clientX, y: e.clientY }; });
@@ -436,17 +589,32 @@ async function exportGlb() {
     return await new GLTFExporter().parseAsync(twin, { binary: true, onlyVisible: true, maxTextureSize: 2048 });
   } finally { for (const [o, k, v] of swapped.reverse()) o[k] = v; }
 }
+const stamp = () => { const d = new Date(), p = n => String(n).padStart(2, '0'); return `${d.getFullYear()}${p(d.getMonth() + 1)}${p(d.getDate())}-${p(d.getHours())}${p(d.getMinutes())}${p(d.getSeconds())}`; };
+function glbName() {
+  const what = S.view === 'scan' && S.scan ? S.scan.spec.name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 30) || 'scan' : 'twin';
+  return `ody-${what}-${stamp()}.glb`;
+}
+function save(buf, name) {
+  const url = URL.createObjectURL(new Blob([buf], { type: 'model/gltf-binary' }));
+  const a = document.createElement('a'); a.href = url; a.download = name; a.hidden = true; document.body.append(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 4000);
+}
+/** Export button / X key: build, save, say so, and give focus back to where it was (never strand it on <body>). */
 async function downloadGlb() {
+  const back = document.activeElement;
   try {
-    const buf = await exportGlb();
-    const d = new Date(), p = n => String(n).padStart(2, '0');
-    const what = S.view === 'scan' && S.scan ? S.scan.spec.name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 30) || 'scan' : 'twin';
-    const name = `ody-${what}-${d.getFullYear()}${p(d.getMonth() + 1)}${p(d.getDate())}-${p(d.getHours())}${p(d.getMinutes())}${p(d.getSeconds())}.glb`;
-    const url = URL.createObjectURL(new Blob([buf], { type: 'model/gltf-binary' }));
-    const a = document.createElement('a'); a.href = url; a.download = name; document.body.append(a); a.click(); a.remove();
-    setTimeout(() => URL.revokeObjectURL(url), 4000);
-    toast(`Exported ${name}`);
-  } catch (e) { toast('Export failed. Try again after the board loads.'); console.warn('[twin] export', e); }
+    const buf = await exportGlb(), name = glbName();
+    save(buf, name); toast(`Exported ${name}`);
+  } catch (e) { toast('Export failed. Try again once the board has loaded.'); console.warn('[twin] export', e); }
+  finally { requestAnimationFrame(() => { if (back && back !== document.body && back.isConnected) back.focus({ preventScroll: true }); }); }
+}
+/** Voice "export": a browser may refuse a download nobody clicked for, so without a recent click we offer one. */
+async function voiceExport() {
+  let buf;
+  try { buf = await exportGlb(); } catch (e) { toast('Ody: export failed, the model isn’t ready yet', { voice: true }); console.warn('[twin] export', e); return; }
+  const name = glbName();
+  if (navigator.userActivation?.isActive) { save(buf, name); toast(`Ody: exported ${name}`, { voice: true }); return; }
+  toast('Ody: export ready', { voice: true, ms: 15000, action: { label: 'Click to save', run: () => { save(buf, name); toast(`Exported ${name}`); } } });
 }
 async function copyWiring() {
   const text = wiringText();
@@ -455,23 +623,55 @@ async function copyWiring() {
   catch { const t = document.createElement('textarea'); t.value = text; document.body.append(t); t.select(); document.execCommand('copy'); t.remove(); toast('Wiring copied'); }
 }
 let toastTimer;
-function toast(msg) { const t = $('toast'); t.textContent = msg; t.hidden = false; clearTimeout(toastTimer); toastTimer = setTimeout(() => { t.hidden = true; }, 2400); }
+/** A short status line on the stage. voice: Ody did it from the call. action: one button (e.g. save an export). */
+function toast(msg, { voice = false, ms = 2600, action = null } = {}) {
+  const t = $('toast'); t.replaceChildren();
+  const span = document.createElement('span'); span.textContent = msg; t.append(span);
+  if (action) { const b = document.createElement('button'); b.type = 'button'; b.textContent = action.label; b.addEventListener('click', () => { t.hidden = true; action.run(); }); t.append(b); }
+  t.classList.toggle('voice', voice); t.hidden = false;
+  clearTimeout(toastTimer); toastTimer = setTimeout(() => { t.hidden = true; }, ms);
+}
 
 // ---------- hands ----------
 const gestures = createGestures();
 let hands = null, gestureOut = null;
+/** Hands stays in the toolbar; when it can't work it says why instead of vanishing. */
+function setHandsWhy(why) {
+  const btn = $('t-hands'); S.handsWhy = why;
+  btn.replaceChildren('Hands');
+  if (why) {
+    btn.setAttribute('aria-disabled', 'true'); btn.title = why;
+    const sm = document.createElement('small'); sm.textContent = 'unavailable'; btn.append(' ', sm);
+    $('handsWhy').textContent = `Hand control is off: ${why.replace(/\.$/, '')}.`;
+  } else { btn.removeAttribute('aria-disabled'); btn.title = 'Control the view with your hands (camera)'; $('handsWhy').textContent = 'Hand control uses this laptop’s camera. Video never leaves it.'; }
+}
+async function checkHands() {
+  let why = '';
+  try { const m = await import('./hands.js'); if (!(await m.handsAvailable())) why = 'this browser can’t open a camera or the hand model is missing'; }
+  catch { why = 'the hand tracking files are missing on this laptop'; }
+  if (!why && navigator.mediaDevices?.enumerateDevices) {
+    try { const d = await navigator.mediaDevices.enumerateDevices(); if (!d.some(x => x.kind === 'videoinput')) why = 'no camera found on this laptop'; } catch { /* ask on click */ }
+  }
+  setHandsWhy(why);
+}
+const handsError = e => /NotAllowed|Security/.test(e?.name) ? 'camera permission was blocked; allow it in the address bar and try again'
+  : /NotFound|NotReadable|Overconstrained|NotSupported/.test(e?.name) ? 'no usable camera found on this laptop'
+  : /too long/.test(e?.message) ? 'the hand model took too long to load' : 'hand tracking couldn’t start here';
 async function toggleHands() {
   const btn = $('t-hands');
+  if (S.handsWhy) { toast(`Hands unavailable: ${S.handsWhy}`); return; }
   if (hands) { hands.stop(); hands = null; btn.setAttribute('aria-pressed', 'false'); $('handview').hidden = true; $('cursor').hidden = true; return; }
-  btn.disabled = true; btn.textContent = 'Starting camera…';
+  btn.setAttribute('aria-busy', 'true'); btn.textContent = 'Starting camera…';
   try {
     const { startHands } = await import('./hands.js');
     const timeout = new Promise((_, rej) => setTimeout(() => rej(new Error('camera or model took too long')), 20000));
     hands = await Promise.race([startHands({ preview: $('handcanvas'), onHands: (h, t) => { gestureOut = gestures.update(h, t); } }), timeout]);
     btn.setAttribute('aria-pressed', 'true'); $('handview').hidden = false; $('privacy').hidden = false;
+    btn.removeAttribute('aria-busy'); btn.textContent = 'Hands';
   } catch (e) {
-    console.warn('[twin] hands', e); toast('Camera or hand tracking isn’t available here'); btn.hidden = true;
-  } finally { btn.disabled = false; btn.textContent = 'Hands'; }
+    console.warn('[twin] hands', e?.name || e);
+    btn.removeAttribute('aria-busy'); setHandsWhy(handsError(e)); toast(`Hands unavailable: ${S.handsWhy}`);
+  }
 }
 function stepHands() {
   const g = gestureOut; if (!g) return; gestureOut = null;
@@ -481,7 +681,7 @@ function stepHands() {
   else cur.hidden = true;
   if (g.rotate[0] || g.rotate[1] || g.pan[0] || g.pan[1] || g.zoom !== 1 || g.reset) {
     S.fly = null; controls.autoRotate = false;
-    const home = S.model ? homeView() : WAIT;
+    const home = homeView();
     const now = camState();
     const next = applyToCamera({ ...now, target: now.target.toArray() }, g, { ...home, target: home.target.toArray() });
     if (g.reset) { flyHome(0.9); toast('View reset'); } else setCam({ ...next, target: new THREE.Vector3().fromArray(next.target) });
@@ -507,6 +707,7 @@ function addScan(ev, { show = true } = {}) {
   renderScans();
 }
 function showScan(entry) {
+  leaveExternal();
   if (S.scan && S.scan !== entry) scanGroup.remove(S.scan.built.group);
   if (!entry.built) {
     entry.built = buildScan(entry.spec, entry.photo, entry.crop); decorate(entry.built.group);
@@ -530,10 +731,11 @@ function showScan(entry) {
   $('scanphoto').hidden = !entry.photo; if (entry.photo) $('scanphoto').src = entry.photo;
   $('scanconf').textContent = `${Math.round(s.confidence * 100)}% sure`;
   $('scanparts').textContent = `${s.parts.length} part${s.parts.length === 1 ? '' : 's'}${entry.built.scale < 1 ? `, shown at ${Math.round(entry.built.scale * 100)}%` : ''}`;
-  updatePartTags(); renderScans();
+  updatePartTags(); renderScans(); renderPins(); clearKeyTip(); pointing();
   if (!S.replaying) flyScan(1.5);
 }
 function showBoard({ fly = true } = {}) {
+  leaveExternal();
   if (S.scan) scanGroup.remove(S.scan.built.group);
   S.scan = null; S.view = 'board';
   scanGroup.visible = false;
@@ -541,7 +743,7 @@ function showBoard({ fly = true } = {}) {
   marksGroup.visible = wiresGroup.visible = S.explode < 0.02;
   controls.maxDistance = 520;
   document.body.classList.toggle('has-part', !!S.model);
-  boardPanel(); updatePartTags(); renderScans();
+  boardPanel(); updatePartTags(); renderScans(); renderPins(); pointing();
   if (fly && !S.replaying) flyHome(1.3);
 }
 function renderScans() {
@@ -558,7 +760,43 @@ function renderScans() {
     ul.append(el);
   }
   $('scans-empty').hidden = items.length > 0;
+  renderModes();
 }
+
+// ---------- modes: Board, Scan, and modes other modules mount (e.g. Circuit, from twin/circuit3d.js) ----------
+// A mode module calls host.registerMode(name, { enter(), exit(), box?() -> THREE.Box3, explode?(e 0..1) }) once; the
+// tab with id mode-<name> (twin.html) appears, and host.setMode(name) shows it. Board and Scan stay built in.
+const MODES = new Map();
+const builtIn = v => v === 'board' || v === 'scan';
+function leaveExternal() { if (!builtIn(S.view)) { const m = MODES.get(S.view); S.view = 'board'; try { m?.exit?.(); } catch (e) { console.warn('[twin] mode exit', e); } } }
+function setMode(name) {
+  if (name === 'board') return showBoard();
+  if (name === 'scan') { const e = S.scan || [...S.scans].reverse().find(x => !x.known); if (e) showScan(e); return; }
+  const m = MODES.get(name); if (!m || S.view === name) return;
+  leaveExternal();
+  if (S.scan) { scanGroup.remove(S.scan.built.group); S.scan = null; }
+  scanGroup.visible = false; if (S.uno) S.uno.group.visible = false; if (S.bb) S.bb.group.visible = false;
+  marksGroup.visible = wiresGroup.visible = false;
+  S.view = name; clearKeyTip(); updatePartTags(); renderPins(); pointing(); renderScans();
+  try { m.enter?.(); } catch (e) { console.warn('[twin] mode enter', e); }
+  flyHome(1.2);
+}
+function renderModes() {
+  const tabs = [...$('modes').querySelectorAll('[role="tab"]')];
+  for (const t of tabs) {
+    const n = t.dataset.mode;
+    t.hidden = n === 'board' ? false : n === 'scan' ? !S.scans.some(x => !x.known) : !MODES.has(n);
+    const on = S.view === n; t.setAttribute('aria-selected', String(on)); t.tabIndex = on ? 0 : -1;
+  }
+  $('modes').hidden = tabs.filter(t => !t.hidden).length < 2;
+}
+$('modes').addEventListener('click', e => { const t = e.target.closest('[role="tab"]'); if (t) setMode(t.dataset.mode); });
+$('modes').addEventListener('keydown', e => {
+  if (e.key !== 'ArrowLeft' && e.key !== 'ArrowRight') return;
+  const tabs = [...$('modes').querySelectorAll('[role="tab"]:not([hidden])')], i = tabs.indexOf(document.activeElement);
+  const next = tabs[(i + (e.key === 'ArrowRight' ? 1 : -1) + tabs.length) % tabs.length];
+  next.focus(); setMode(next.dataset.mode); e.preventDefault(); e.stopPropagation();
+});
 
 // ---------- WebSocket (same feed as the call view) ----------
 function resetCall() {
@@ -567,67 +805,86 @@ function resetCall() {
   for (const e of S.scans) if (e.built) disposeScan(e.built);
   S.scans = []; renderScans();
   for (const w of S.wires.values()) void w; S.wires.clear();
-  clearGroup(marksGroup); clearGroup(wiresGroup); renderLists(); setStep('Waiting for the call to start');
+  clearGroup(marksGroup); clearGroup(wiresGroup); renderLists(); setStep(''); pointing();
+}
+/** The agent's voice commands for the view ("Ody, explode it"). Unknown actions are ignored. */
+function voice(action) {
+  const say = m => toast(`Ody: ${m}`, { voice: true });
+  switch (action) {
+    case 'explode': setExplode(true); say('exploded'); break;
+    case 'assemble': setExplode(false); say('assembled'); break;
+    case 'rotate': S.fly = null; controls.autoRotate = true; controls.autoRotateSpeed = REDUCED ? 0.3 : 1.1; say('turning slowly'); break;
+    case 'stop': controls.autoRotate = false; say('stopped turning'); break;
+    case 'reset': clearKeyTip(); flyHome(1.0); say('view reset'); break;
+    case 'realistic': setHolo(false); say('realistic look'); break;
+    case 'hologram': setHolo(true); say('hologram'); break;
+    case 'export': voiceExport(); break;
+    default: break;
+  }
 }
 function handle(ev) {
   if (!ev || typeof ev.type !== 'string') return;
   switch (ev.type) {
     case 'hello':
       resetCall();
-      callState(ev.call?.state);
-      if (ev.brain) $('brain').textContent = String(ev.brain).slice(0, 24);
+      S.callState = ev.call?.state || null;
       S.replaying = true;
-      if (ev.part) setPart(ev.part.model, ev.part.label);
+      if (ev.part && (ev.part.model !== 'custom' || registerCustom(ev.part))) setPart(ev.part.model, ev.part.label);
       for (const t of (Array.isArray(ev.turns) ? ev.turns : []).slice(-20)) applyTurn(t, { animate: false });
       { const sc = (Array.isArray(ev.scans) ? ev.scans : []).slice(-12); sc.forEach((x, i) => addScan(x, { show: i === sc.length - 1 })); }
       S.replaying = false;
-      if (ev.step) setStep(ev.step, S.done);
+      if (ev.step) setStep(ev.step);
       if (S.model) S.bbIn = 1;
       if (S.model || S.scan) flyHome(1.2);
       break;
     case 'call':
-      if (ev.state === 'live' && !document.body.classList.contains('live')) resetCall();
-      callState(ev.state); break;
-    case 'brain': $('brain').textContent = String(ev.brain || '').slice(0, 24); break;
-    case 'part': setPart(ev.model, ev.label); break;
+      if (ev.state === 'live' && S.callState !== 'live') resetCall();
+      S.callState = ev.state || null; break;
+    case 'part':
+      if (ev.model === 'custom' && !registerCustom(ev)) break;
+      setPart(ev.model, ev.label); break;
     case 'turn': applyTurn(ev); break;
     case 'scan': addScan(ev); break;
-    case 'step': setStep(ev.text, ev.done); if (ev.done) S.done = true; break;
+    case 'step': setStep(ev.text); if (ev.done) S.done = true; break;
+    case 'twin': if (typeof ev.action === 'string') voice(ev.action); break;
     default: break;
   }
-}
-function callState(state) {
-  document.body.classList.toggle('live', state === 'live');
-  $('status').textContent = state === 'live' ? 'Live call' : state === 'ended' ? 'Call ended' : 'Waiting for a call';
-}
-let wsDelay = 500;
-function connect() {
-  let ws;
-  try { ws = new WebSocket(`ws://${location.host}`); } catch { setTimeout(connect, wsDelay); return; }
-  ws.onopen = () => { wsDelay = 500; };
-  ws.onmessage = e => { try { handle(JSON.parse(e.data)); } catch (err) { console.warn('[twin] bad event', err); } };
-  ws.onclose = () => { callState(null); setTimeout(connect, wsDelay); wsDelay = Math.min(wsDelay * 2, 5000); };
 }
 
 // ---------- controls ----------
 $('t-holo').addEventListener('click', () => setHolo(!S.holo));
 $('t-explode').addEventListener('click', () => setExplode(S.explodeTo < 1));
+// X-ray: hidden until a module (twin/interior.js) offers it through host.enableXray(onToggle)
+let xray = null;
+function setXray(on) { if (!xray) return; xray.on = on; $('t-xray').setAttribute('aria-pressed', String(on)); try { xray.onToggle(on); } catch (e) { console.warn('[twin] x-ray', e); } }
+$('t-xray').addEventListener('click', () => setXray(!xray?.on));
 $('t-reset').addEventListener('click', () => { S.tipPinned = null; showTip(null); flyHome(1.0); });
 $('reset2').addEventListener('click', () => { S.tipPinned = null; showTip(null); flyHome(1.0); });
 $('t-hands').addEventListener('click', toggleHands);
 $('export').addEventListener('click', downloadGlb);
 $('copy').addEventListener('click', copyWiring);
 addEventListener('keydown', e => {
-  if (e.metaKey || e.ctrlKey || e.altKey || e.target.closest?.('input, textarea')) return;
+  if (e.metaKey || e.ctrlKey || e.altKey || e.target.closest?.('input, textarea, select, [role="listbox"]')) return;
   const k = e.key.toLowerCase();
+  const onStage = e.target === document.body || e.target === stage || e.target === canvas;
   if (k === 'h') setHolo(!S.holo);
   else if (k === 'e') setExplode(S.explodeTo < 1);
-  else if (k === 'r') flyHome(1.0);
+  else if (k === 'r') { clearKeyTip(); flyHome(1.0); }
   else if (k === 'x') downloadGlb();
-  else if (k === 'escape') { S.tipPinned = null; showTip(null); }
+  else if (k === 'y' && xray) setXray(!xray.on);
+  else if (k === 'f') { fpsEl.hidden = !fpsEl.hidden; showFps = !fpsEl.hidden; }
+  else if (k === ']' || k === '[') selectPin(S.pinIdx < 0 ? (k === ']' ? 0 : -1) : S.pinIdx + (k === ']' ? 1 : -1));
+  else if (onStage && k === 'arrowleft') nudge({ dTheta: -0.14 });
+  else if (onStage && k === 'arrowright') nudge({ dTheta: 0.14 });
+  else if (onStage && k === 'arrowup') nudge({ dPhi: -0.09 });
+  else if (onStage && k === 'arrowdown') nudge({ dPhi: 0.09 });
+  else if (onStage && (k === '+' || k === '=')) nudge({ zoom: 0.86 });
+  else if (onStage && (k === '-' || k === '_')) nudge({ zoom: 1.16 });
+  else if (k === 'escape' && (S.tipPinned || S.tipKey || !tipEl.hidden)) { S.tipPinned = null; clearKeyTip(); }
   else return;
   e.preventDefault();
 });
+addEventListener('ody:layout', () => { resize(); if (S.explodeTo > 0 && builtIn(S.view) && S.view === 'board') setExplode(true); else flyHome(0.5); });
 
 // ---------- size + loop ----------
 function resize() {
@@ -635,18 +892,20 @@ function resize() {
   renderer.setPixelRatio(pixelRatio); renderer.setSize(w, h, false);
   composer.setPixelRatio(pixelRatio); composer.setSize(w, h);
   labels.setSize(w, h);
-  camera.aspect = w / h; camera.updateProjectionMatrix();
+  applyOffset(S.off);
 }
+let refit = 0;   // after the stage changes size, re-frame once it settles (not on every pixel of a drag-resize)
+new ResizeObserver(() => { clearTimeout(refit); refit = setTimeout(() => { if (!controls.autoRotate && !dragging) { if (S.explodeTo > 0 && S.view === 'board') setExplode(true); else flyHome(0.4); } }, 250); }).observe(stage);
 new ResizeObserver(resize).observe(stage);
 
-const fpsEl = $('fps'); const showFps = new URLSearchParams(location.search).has('fps'); fpsEl.hidden = !showFps;
+const fpsEl = $('fps'); let showFps = new URLSearchParams(location.search).has('fps'); fpsEl.hidden = !showFps;
 let last = performance.now(), acc = 0, frames = 0, slow = 0;
 const stats = { ms: 0, fps: 0 };
 function frame(now) {
   requestAnimationFrame(frame);
-  const dt = Math.min(0.05, (now - last) / 1000); last = now;
+  const raw = (now - last) / 1000, dt = Math.min(0.05, raw); last = now;
   clock.value += dt;
-  stepFly(dt); stepExplode(dt); stepHands();
+  stepFly(Math.min(0.25, raw)); stepExplode(Math.min(0.25, raw)); stepHands();   // camera moves and explode keep wall-clock time on a slow GPU
   if (S.bb && S.bbIn > 0 && S.bbIn < 1) { S.bbIn = Math.min(1, S.bbIn + dt / 0.9); }
   if (S.bb) { const e = easeInOut(Math.min(1, S.bbIn)); S.bb.group.scale.set(1, Math.max(0.001, e), 1); S.bb.group.visible = S.bbIn > 0 && S.explode < 0.02 && S.view === 'board'; }
   controls.update(dt);
@@ -656,21 +915,50 @@ function frame(now) {
     l.userData.holoMat.uniforms.uOpacity.value = on ? 3 : 1; l.userData.real.emissiveIntensity = on ? 3 : 0.25;
   }
   if (pointerDirty && pointer && !S.tipPinned) { pointerDirty = false; showTip(pickAt(pointer.x, pointer.y), pointer.x, pointer.y); }
+  if (S.tipKey) placeKeyTip();
   composer.render(dt);
   labels.render(scene, camera);
+  if (++declutterTick % 3 === 0) declutter();
   // frame time: drop bloom resolution, then pixel ratio, if the laptop can't hold 60 fps
   acc += dt; frames++;
   if (acc >= 1) {
     stats.fps = frames / acc; stats.ms = 1000 * acc / frames; acc = 0; frames = 0;
-    if (showFps) fpsEl.textContent = `${stats.fps.toFixed(0)} fps · ${stats.ms.toFixed(1)} ms · bloom ${bloomScale} · dpr ${pixelRatio}`;
+    if (showFps) fpsEl.textContent = `${stats.fps.toFixed(0)} fps, ${stats.ms.toFixed(1)} ms, bloom ${bloomScale}, dpr ${pixelRatio}`;
     if (stats.fps < 52 && document.visibilityState === 'visible') { if (++slow >= 3) { slow = 0; if (bloomScale > 0.3) bloomScale = 0.3; else if (pixelRatio > 1.25) pixelRatio = 1.25; else if (pixelRatio > 1) pixelRatio = 1; resize(); } } else slow = 0;
+  }
+}
+
+// ---------- labels never sit on top of each other: later (lower-priority) labels lift until they are clear ----------
+let declutterTick = 0;
+const PRIO = { warn: 0, mentor: 1, wire: 2, part: 3 };
+function declutter() {
+  const tags = [...$('labels').querySelectorAll('.tag:not(.layer)')].filter(t => t.style.display !== 'none');
+  if (tags.length < 2) { for (const t of tags) if (t.style.getPropertyValue('--dy')) t.style.removeProperty('--dy'); return; }
+  const sr = stage.getBoundingClientRect();
+  const items = tags.map(t => {
+    const span = t.querySelector('span'), a = t.getBoundingClientRect(), kind = Object.keys(PRIO).find(k => t.classList.contains(k)) || 'part';
+    const x = a.left + span.offsetLeft, y = a.top + span.offsetTop;
+    return { t, prio: PRIO[kind], x, y, w: span.offsetWidth, h: span.offsetHeight, dx: Math.round(Math.min(0, sr.right - 8 - (x + span.offsetWidth)) + Math.max(0, sr.left + 8 - x)) };
+  }).sort((p, q) => p.prio - q.prio || p.y - q.y);
+  const placed = [], minY = stage.getBoundingClientRect().top + 8;
+  for (const it of items) {
+    let dy = Math.min(0, it.y - minY);   // negative: pulled down into the stage when its anchor is near the top
+    const hit = d => placed.some(p => it.x < p.x + p.w + 4 && it.x + it.w + 4 > p.x && it.y - d < p.y - p.dy + p.h + 3 && it.y - d + it.h + 3 > p.y - p.dy);
+    const dy0 = dy;
+    while (dy < 160 && hit(dy)) dy += 8;
+    if (dy >= 160) dy = dy0;
+    placed.push({ ...it, dy });
+    const cur = Number(it.t.style.getPropertyValue('--dy') || 0), curX = Number(it.t.style.getPropertyValue('--dx') || 0);
+    if (Math.abs(cur - dy) > 0.5) { if (dy) it.t.style.setProperty('--dy', String(Math.round(dy))); else it.t.style.removeProperty('--dy'); }
+    if (curX !== it.dx) { if (it.dx) it.t.style.setProperty('--dx', String(it.dx)); else it.t.style.removeProperty('--dx'); }
   }
 }
 
 // ---------- start ----------
 (async () => {
   setHolo(true);
-  resize(); setCam(fit(WAIT)); controls.autoRotate = !REDUCED; controls.autoRotateSpeed = 0.8;
+  resize(); setCam(homeView()); controls.autoRotate = !REDUCED; controls.autoRotateSpeed = 0.8;
+  renderPins(); checkHands();
   try { S.table = await loadPins(); } catch (e) { toast('Pin table missing: the twin can’t place pins'); console.warn(e); return; }
   try {   // the other boards (twin/parts.json, generated from data/parts); without it the twin stays UNO-only
     const r = await fetch('/twin/parts.json');
@@ -678,11 +966,31 @@ function frame(now) {
   } catch (e) { console.warn('[twin] parts', e); }
   S.bb = buildBreadboard(); S.bb.group.position.copy(BB_POS); S.bb.group.visible = false; decorate(S.bb.group); twin.add(S.bb.group); applyLook(S.bb.group);
   showModel('uno-r3');
-  resize();
+  resize(); setCam(homeView());
   requestAnimationFrame(frame);
-  connect();
-  import('./hands.js').then(m => m.handsAvailable()).then(ok => { $('t-hands').hidden = !ok; }).catch(() => {});
+  subscribe(handle);   // the shell's one socket; replays the last hello and everything since
 })();
+
+/**
+ * Seams for modules mounted later (twin/interior.js, twin/circuit3d.js): import { host } from './app.js'.
+ *  - host.subscribe(fn)                    the shell's event feed (e.g. {type:'circuit'} / {type:'interior'} / scan.interior)
+ *  - host.registerMode(name, impl)          adds a stage mode tab (twin.html #mode-<name>): impl { enter, exit, box?, explode?(e) }
+ *  - host.setMode(name), host.view()        switch / read what the stage shows ('board' | 'scan' | a mounted mode)
+ *  - host.enableXray(onToggle)              shows the X-ray toggle next to Explode (key Y)
+ *  - host.project                           the rail's "Project" section (#project, with #project-parts and #project-code)
+ *  - host.scene / host.twin / host.camera / host.controls / host.THREE, host.decorate(root) + host.applyLook(root)
+ *    give a module's meshes the same hologram/realistic looks; host.toast(msg, {voice}); host.fit(box3) frames a box.
+ *  - host.currentScan() the scan on stage ({ spec, built: { group, meshes, ... } }) for interiors.
+ */
+export const host = {
+  THREE, scene, twin, camera, controls, subscribe, toast, decorate, applyLook, setMode,
+  view: () => S.view, holo: () => S.holo, explode: () => S.explode, currentScan: () => S.scan,
+  registerMode(name, impl) { MODES.set(String(name), impl || {}); renderModes(); },
+  enableXray(onToggle) { xray = { on: false, onToggle }; $('t-xray').hidden = false; },
+  fit(box, dur = 1.2) { if (box && !box.isEmpty()) startFly(camState(), fitBox(box, HOME, 1.06), dur); },
+  project: { section: $('project'), parts: $('project-parts'), code: $('project-code'), show(on = true) { $('project').hidden = !on; } },
+};
+window.odyHost = host;
 
 // for tests: a read-only view of what the page placed, and the export as bytes
 window.mentorTwin = {
@@ -693,7 +1001,10 @@ window.mentorTwin = {
   pinTip: k => infoFor(k),
   scanState: () => ({ view: S.view, scans: S.scans.map(e => ({ name: e.spec.name, known: e.known, parts: e.spec.parts.length })), current: S.scan?.spec.name || null,
     flying: !!S.fly, meshes: S.scan?.built.meshes.length || 0, photoLoaded: !!S.scan?.built.atlas.userData.photo, explode: S.explode, fps: stats.fps }),
-  state: () => ({ model: S.model, holo: S.holo, explode: S.explode, wires: [...S.wires.keys()], marks: S.current.map(c => ({ label: c.label, kind: c.kind, from: c.from, to: c.to })), fps: stats.fps, ms: stats.ms, step: S.step }),
+  home: () => { const v = homeView(); return { radius: v.radius, off: v.off, rects: freeRects(), box: boardBox().toArray?.() ?? [boardBox().min.toArray(), boardBox().max.toArray()] }; },
+  voice: a => voice(a), fitted: () => ({ off: { ...S.off }, ...(c => ({ radius: c.radius, phi: c.phi, theta: c.theta }))(camState()) }),
+  labelBoxes: () => [...$('labels').querySelectorAll('.tag:not(.layer)')].filter(t => t.style.display !== 'none').map(t => { const r = t.querySelector('span').getBoundingClientRect(); return [r.left, r.top, r.width, r.height, t.className]; }),
+  state: () => ({ model: S.model, holo: S.holo, explode: S.explode, autoRotate: controls.autoRotate, wires: [...S.wires.keys()], marks: S.current.map(c => ({ label: c.label, kind: c.kind, from: c.from, to: c.to })), fps: stats.fps, ms: stats.ms, step: S.step }),
   pinWorld: k => S.uno?.pinPos(k)?.add(S.pos).toArray(),
   pinScreen: k => { const p = S.uno?.pinPos(k)?.add(S.pos).project(camera); const r = stage.getBoundingClientRect(); return p && [r.left + (p.x + 1) / 2 * r.width, r.top + (1 - p.y) / 2 * r.height]; },
   exportBytes: async () => { const b = new Uint8Array(await exportGlb()); return { magic: String.fromCharCode(...b.slice(0, 4)), length: b.length }; },

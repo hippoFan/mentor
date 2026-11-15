@@ -3,184 +3,454 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Ody twin</title>
+<title>Ody</title>
+<link rel="icon" href="data:,">
 <script type="importmap">{"imports":{"three":"/vendor/three/build/three.module.js","three/addons/":"/vendor/three/examples/jsm/"}}</script>
 <style>
+  @font-face { font-family: "Inter Ody"; src: local("Inter Variable"), local("Inter"), url("/fonts/InterVariable.ttf") format("truetype"); font-weight: 100 900; font-display: swap; }
   :root {
-    --ground: #F5F5F7; --ink: #1D1D1F; --grey: #86868B; --quiet: #C7C7CC; --line: #E3E3E8; --paper: #FFFFFF;
-    --mentor: #FFC845; --live: #FF3B30; --sea: #3B2A57; --holo: #3BD8FF; --violet: #A86BFF; --stage: #1D1D1F;
-    --font: Inter, "Inter Variable", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+    /* Homer's wine-dark sea at night: the ground. The hologram's light is the only cyan; Ody's own things are gold. */
+    --sea: #120E1C;          /* page */
+    --deck: #1B1629;         /* raised surfaces: drawer, chips */
+    --line: #2E2742;         /* hairlines */
+    --ink: #EEEAF5;          /* text */
+    --muted: #ABA3C0;        /* secondary text (≥ 7:1 on --sea) */
+    --quiet: #7D7598;        /* tertiary, decoration */
+    --athena: #FFC845;       /* Ody: its marks, its eye, the step it is on */
+    --holo: #3BD8FF;         /* the twin */
+    --wine: #C9B8F0;         /* the route already sailed, Ithaca */
+    --live: #FF453A;         /* only a connected live call */
+    --amber: #FF9F0A;        /* only reconnecting */
+    --stage: #04070B;
+    --display: "Instrument Serif", "Iowan Old Style", "Palatino Linotype", Palatino, "URW Palladio L", Georgia, serif;
+    --ui: "Inter Ody", Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+    --pip-w: clamp(118px, min(12.5vw, 19vh), 188px);
+    --gutter: 16px;
+    color-scheme: dark;
   }
   * { box-sizing: border-box; }
   html, body { margin: 0; height: 100%; }
   body {
-    background: var(--ground); color: var(--ink); font: 400 15px/1.45 var(--font); font-feature-settings: "cv11", "ss01";
+    background: var(--sea); color: var(--ink); font: 400 15px/1.45 var(--ui); font-feature-settings: "cv11", "ss01";
     -webkit-font-smoothing: antialiased; display: grid; grid-template-rows: auto minmax(0, 1fr); height: 100dvh; overflow: hidden;
   }
-  :focus-visible { outline: 2px solid var(--ink); outline-offset: 3px; border-radius: 8px; }
   button { font: inherit; color: inherit; }
+  :focus-visible { outline: 2px solid var(--athena); outline-offset: 2px; border-radius: 8px; }
+  .sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+  kbd { font: 600 11px/1 var(--ui); min-width: 18px; padding: 3px 5px; border-radius: 5px; border: 1px solid currentColor; opacity: .6; text-align: center; display: inline-block; }
 
-  header { display: flex; align-items: center; gap: 12px; padding: 16px 28px 0; min-width: 0; }
-  .mark { width: 22px; height: 22px; border-radius: 50%; border: 4px solid var(--mentor); flex: none; display: grid; place-items: center; }
+  /* ---------- top bar ---------- */
+  header { display: flex; align-items: center; gap: 14px; padding: 10px var(--gutter) 10px 20px; min-width: 0; }
+  /* Athena's bright eye: Ody's gold ring with an iris */
+  .mark { width: 22px; height: 22px; border-radius: 50%; border: 4px solid var(--athena); flex: none; display: grid; place-items: center; }
   .mark::after { content: ""; width: 5px; height: 5px; border-radius: 50%; background: var(--ink); }
-  .wordmark { font-weight: 700; font-size: 20px; letter-spacing: -0.02em; }
-  .tagline { color: var(--grey); font-size: 15px; font-weight: 500; }
-  .status { margin-left: auto; display: flex; align-items: center; gap: 8px; font-weight: 500; white-space: nowrap; }
-  .status .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--quiet); }
-  body.live .status .dot { background: var(--live); }
-  .status .sub { color: var(--grey); }
-  a.back { white-space: nowrap; color: var(--ink); text-decoration: none; font-weight: 500; font-size: 14px; border: 1px solid var(--line); border-radius: 10px; padding: 7px 12px; }
-  a.back:hover { background: var(--paper); }
+  .wordmark { font: 400 28px/1 var(--display); letter-spacing: 0; }
+  .tagline { color: var(--muted); font-size: 14px; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+  .status { margin-left: auto; display: flex; align-items: center; gap: 8px; font-weight: 600; font-size: 14px; font-variant-numeric: tabular-nums;
+    white-space: nowrap; padding: 7px 13px 7px 11px; border-radius: 99px; border: 1px solid var(--line); background: var(--deck); }
+  .status .dot { width: 9px; height: 9px; border-radius: 50%; background: var(--quiet); flex: none; }
+  .status .brain { color: var(--muted); font-weight: 500; }
+  body[data-phase="live"] .status .dot { background: var(--live); box-shadow: 0 0 0 3px color-mix(in srgb, var(--live) 28%, transparent); }
+  body[data-phase="reconnecting"] .status { border-color: color-mix(in srgb, var(--amber) 55%, transparent); color: var(--amber); }
+  body[data-phase="reconnecting"] .status .dot { background: var(--amber); }
+  body[data-phase="ended"] .status .dot { background: var(--wine); }
+  .btn-top { display: inline-flex; align-items: center; gap: 8px; padding: 7px 10px 7px 12px; border-radius: 10px; border: 1px solid var(--line);
+    background: transparent; font-weight: 500; font-size: 14px; cursor: pointer; white-space: nowrap; }
+  .btn-top:hover { background: var(--deck); }
+  .btn-top[aria-expanded="true"] { background: var(--ink); color: var(--sea); border-color: var(--ink); }
 
-  main { display: grid; grid-template-columns: minmax(0, 1fr) 360px; gap: 24px; padding: 16px 28px 24px; min-height: 0; }
+  /* ---------- the app: theatre (hologram + phone) and the rail ---------- */
+  main { display: grid; grid-template-columns: minmax(0, 1fr) clamp(320px, 27vw, 384px); gap: var(--gutter); padding: 0 var(--gutter) var(--gutter); min-height: 0; }
+  .theatre { position: relative; min-height: 0; border-radius: 24px; overflow: hidden; background: var(--stage); isolation: isolate;
+    box-shadow: inset 0 0 0 1px rgba(255,255,255,.06); }
 
-  /* ---------- the stage ---------- */
-  .stage { position: relative; border-radius: 28px; overflow: hidden; background: var(--stage); min-height: 0; isolation: isolate; }
-  body.holo .stage { background: #04070B; }
+  /* the hologram stage */
+  .stage { position: absolute; inset: 0; overflow: hidden; background: var(--stage); }
+  .stage:focus-visible { outline-offset: -3px; border-radius: 24px; }
   .stage canvas { display: block; width: 100%; height: 100%; touch-action: none; }
-  .vignette { position: absolute; inset: 0; pointer-events: none; z-index: 1;
-    background: radial-gradient(120% 90% at 50% 45%, transparent 55%, rgba(0,0,0,.55) 100%); }
+  .vignette { position: absolute; inset: 0; pointer-events: none; z-index: 1; background: radial-gradient(120% 90% at 55% 45%, transparent 55%, rgba(0,0,0,.55) 100%); }
   #labels { position: absolute; inset: 0; pointer-events: none; z-index: 2; }
 
-  /* HUD tags: a dot on the target, a thin leader, a quiet label */
+  /* what the stage shows, top left */
+  .stage-head { position: absolute; left: 22px; top: 18px; right: 260px; z-index: 4; pointer-events: none; }
+  .stage-head h2 { margin: 0; font: 400 clamp(24px, 2.3vw, 34px)/1.05 var(--display); letter-spacing: 0; overflow-wrap: anywhere; text-wrap: balance; max-width: 22ch; }
+  .stage-head p { margin: 4px 0 0; color: var(--muted); font-size: 13.5px; font-weight: 500; overflow-wrap: anywhere; max-width: 52ch; }
+  body:not(.has-part) .stage-head h2 { color: var(--muted); }
+  .pointing { display: inline-flex; align-items: center; gap: 8px; margin-top: 10px; padding: 5px 11px 5px 8px; border-radius: 99px;
+    background: rgba(18,14,28,.72); border: 1px solid color-mix(in srgb, var(--athena) 50%, transparent); color: var(--ink);
+    font-size: 13px; font-weight: 600; max-width: 100%; }
+  .pointing::before { content: ""; width: 9px; height: 9px; border-radius: 50%; border: 2.5px solid var(--athena); flex: none; }
+  .pointing span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .pointing[hidden] { display: none; }
+
+  /* what the stage is about: Board, Scan, Circuit (a mode appears once there is something to show) */
+  .modes { position: absolute; top: 16px; right: 16px; z-index: 5; display: flex; gap: 2px; padding: 3px; border-radius: 12px;
+    background: rgba(24,20,36,.92); border: 1px solid rgba(255,255,255,.09); }
+  .modes button { border: 0; background: transparent; padding: 6px 11px; border-radius: 9px; font-size: 13px; font-weight: 600; color: #CFCADC; cursor: pointer; min-height: 32px; }
+  .modes button:hover { background: rgba(255,255,255,.07); }
+  .modes button[aria-selected="true"] { background: rgba(59,216,255,.18); color: #fff; }
+  .modes button[hidden], .modes[hidden] { display: none; }
+  body.swapped .modes { display: none; }
+
+  /* HUD tags: a dot on the target, a thin leader, a quiet label. --dy lifts a label out of a collision. */
   .tag { position: relative; width: 0; height: 0; }
   .tag i { position: absolute; left: -3px; top: -3px; width: 6px; height: 6px; border-radius: 50%; background: currentColor; box-shadow: 0 0 8px currentColor; }
   .tag b { position: absolute; left: 0; bottom: 0; width: 34px; height: 1px; background: currentColor; opacity: .7; transform-origin: 0 0; transform: rotate(-38deg); }
-  .tag span { position: absolute; left: 26px; bottom: 20px; white-space: nowrap; font: 600 12.5px/1 var(--font); letter-spacing: .01em;
-    color: #fff; background: rgba(12,16,22,.72); border: 1px solid color-mix(in srgb, currentColor 55%, transparent);
-    padding: 6px 9px 6px 8px; border-radius: 8px; backdrop-filter: blur(6px); }
+  .tag span { position: absolute; left: 26px; bottom: 20px; white-space: nowrap; font: 600 12.5px/1 var(--ui); letter-spacing: .01em; max-width: 26ch; overflow: hidden; text-overflow: ellipsis;
+    color: #fff; background: rgba(12,16,22,.78); border: 1px solid color-mix(in srgb, currentColor 55%, transparent);
+    padding: 6px 9px 6px 8px; border-radius: 8px; transform: translate(calc(var(--dx, 0) * 1px), calc(var(--dy, 0) * -1px)); transition: transform .18s ease-out; }
   .tag span em { font-style: normal; color: currentColor; margin-right: 6px; }
-  .tag.mentor { color: var(--mentor); } .tag.warn { color: var(--live); } .tag.wire { color: var(--holo); }
-  .tag.part { color: #8FEFFF; } .tag.part span { font-weight: 500; font-size: 11.5px; background: rgba(4,10,16,.55); }
+  .tag.mentor { color: var(--athena); } .tag.warn { color: var(--live); } .tag.wire { color: var(--holo); }
+  .tag.part { color: #8FEFFF; } .tag.part span { font-weight: 500; font-size: 11.5px; background: rgba(4,10,16,.6); }
   .tag.layer { color: #8FEFFF; } .tag.layer b { width: 60px; transform: rotate(0deg); } .tag.layer span { left: 64px; bottom: -11px; }
 
-  .waiting { position: absolute; left: 0; right: 0; bottom: 92px; text-align: center; z-index: 3; color: #F5F5F7; pointer-events: none; transition: opacity .6s; }
-  .waiting h2 { margin: 0; font-weight: 700; font-size: clamp(26px, 2.6vw, 40px); letter-spacing: -0.03em; }
-  .waiting p { margin: 8px 0 0; color: #A1A1A6; font-size: 16px; }
-  body.has-part .waiting { opacity: 0; }
+  /* the stage's message: waiting, show the board, reconnecting, call ended */
+  .waiting { position: absolute; left: calc(var(--pip-w) + 40px); right: 24px; bottom: 96px; z-index: 3; text-align: center; pointer-events: none; transition: opacity .5s; }
+  .waiting h2 { margin: 0 auto; font: 400 clamp(30px, 3.6vw, 56px)/1.04 var(--display); letter-spacing: 0; max-width: 18ch; text-wrap: balance; overflow-wrap: anywhere; }
+  .waiting p { margin: 10px auto 0; color: var(--muted); font-size: 16px; max-width: 46ch; text-wrap: pretty; }
+  body.has-part[data-phase="live"] .waiting, body.has-part[data-phase="ended"] .waiting h2 { opacity: 0; }
+  body.has-part[data-phase="ended"] .waiting { bottom: 84px; }
+  body.has-part[data-phase="ended"] .waiting p { color: var(--ink); background: rgba(18,14,28,.78); border: 1px solid var(--line); display: inline-block; padding: 8px 14px; border-radius: 12px; }
+  body[data-phase="reconnecting"] .waiting h2 { color: var(--amber); }
 
-  .toolbar { position: absolute; left: 50%; bottom: 20px; transform: translateX(-50%); z-index: 4; display: flex; gap: 6px; padding: 6px;
-    background: rgba(28,30,34,.72); border: 1px solid rgba(255,255,255,.08); border-radius: 16px; backdrop-filter: blur(14px); }
+  .toolbar { position: absolute; left: calc(50% + var(--pip-w) / 2); bottom: 18px; transform: translateX(-50%); z-index: 5; display: flex; gap: 4px; padding: 5px;
+    background: rgba(24,20,36,.92); border: 1px solid rgba(255,255,255,.09); border-radius: 16px; max-width: calc(100% - var(--pip-w) - 56px); }
   .tool { display: inline-flex; align-items: center; gap: 8px; padding: 9px 12px; border-radius: 11px; border: 0; background: transparent;
-    color: #E8E8ED; font-weight: 500; font-size: 14px; cursor: pointer; white-space: nowrap; }
+    color: #E8E6EF; font-weight: 500; font-size: 14px; cursor: pointer; white-space: nowrap; min-height: 38px; }
   .tool:hover { background: rgba(255,255,255,.08); }
   .tool[aria-pressed="true"] { background: rgba(59,216,255,.16); color: #fff; }
-  .tool kbd { font: 600 11px/1 var(--font); min-width: 18px; padding: 3px 5px; border-radius: 5px; border: 1px solid currentColor; opacity: .5; }
   .tool[hidden] { display: none; }
-  .tool:focus-visible { outline-color: var(--holo); }
+  .tool[aria-disabled="true"] { color: #8E88A3; cursor: help; }
+  .tool[aria-disabled="true"] small { font-size: 12px; }
 
-  .tooltip { position: absolute; z-index: 5; pointer-events: none; min-width: 150px; max-width: 260px; padding: 10px 12px; border-radius: 12px;
-    background: rgba(250,250,252,.96); color: var(--ink); box-shadow: 0 10px 30px rgba(0,0,0,.35); transform: translate(14px, -50%); }
+  .tooltip { position: absolute; z-index: 6; pointer-events: none; min-width: 150px; max-width: 260px; padding: 10px 12px; border-radius: 12px;
+    background: rgba(250,250,252,.97); color: #1D1D1F; box-shadow: 0 10px 30px rgba(0,0,0,.4); transform: translate(14px, -50%); }
   .tooltip strong { display: block; font-size: 15px; letter-spacing: -0.01em; }
-  .tooltip span { display: block; color: #57575c; font-size: 13px; margin-top: 2px; }
-  .tooltip .said { color: #8a6200; font-weight: 600; }
-  .tooltip[hidden] { display: none; }
+  .tooltip span { display: block; color: #4F4F55; font-size: 13px; margin-top: 2px; overflow-wrap: anywhere; }
+  .tooltip .said { color: #7A5600; font-weight: 600; }
+  .tooltip [hidden], .tooltip[hidden] { display: none; }
 
-  .handview { position: absolute; left: 20px; bottom: 20px; z-index: 4; width: 176px; border-radius: 14px; overflow: hidden;
-    background: rgba(8,12,16,.8); border: 1px solid rgba(59,216,255,.25); color: #C9F3FF; font-size: 11.5px; }
+  .handview { position: absolute; right: 18px; bottom: 76px; z-index: 5; width: 176px; border-radius: 14px; overflow: hidden;
+    background: rgba(8,12,16,.84); border: 1px solid rgba(59,216,255,.25); color: #C9F3FF; font-size: 11.5px; }
   .handview canvas { display: block; width: 176px; height: 132px; }
-  .handview p { margin: 0; padding: 7px 10px 8px; line-height: 1.35; color: #9FB3BC; }
+  .handview p { margin: 0; padding: 7px 10px 8px; line-height: 1.35; color: #A9BCC4; }
   .handview p b { color: #E8FBFF; font-weight: 600; }
   .handview[hidden] { display: none; }
-  .cursor { position: absolute; z-index: 6; width: 26px; height: 26px; margin: -13px 0 0 -13px; border-radius: 50%; pointer-events: none;
-    background: conic-gradient(var(--mentor) calc(var(--d, 0) * 1turn), rgba(255,255,255,.18) 0);
+  .cursor { position: absolute; z-index: 7; width: 26px; height: 26px; margin: -13px 0 0 -13px; border-radius: 50%; pointer-events: none;
+    background: conic-gradient(var(--athena) calc(var(--d, 0) * 1turn), rgba(255,255,255,.18) 0);
     -webkit-mask: radial-gradient(circle, transparent 8px, #000 9px); mask: radial-gradient(circle, transparent 8px, #000 9px); }
-  .cursor::after { content: ""; position: absolute; left: 10px; top: 10px; width: 6px; height: 6px; border-radius: 50%; background: #fff; }
   .cursor[hidden] { display: none; }
-  .toast { position: absolute; top: 18px; left: 50%; transform: translateX(-50%); z-index: 6; background: rgba(250,250,252,.96); color: var(--ink);
-    padding: 8px 14px; border-radius: 99px; font-weight: 500; font-size: 14px; box-shadow: 0 8px 24px rgba(0,0,0,.3); }
-  .toast[hidden] { display: none; }
-  .fps { position: absolute; top: 14px; right: 16px; z-index: 4; color: #6E6E73; font: 500 12px/1 var(--font); font-variant-numeric: tabular-nums; }
+  .fps { position: absolute; top: 60px; right: 18px; z-index: 4; color: #B3ADC6; font: 500 12px/1 var(--ui); font-variant-numeric: tabular-nums; }
+  .fps[hidden] { display: none; }
 
-  /* ---------- the panel ---------- */
-  aside { display: flex; flex-direction: column; gap: 22px; min-height: 0; overflow: auto; padding: 4px 2px 4px 0; }
-  .part h2 { margin: 0; font-size: 26px; line-height: 1.12; letter-spacing: -0.03em; font-weight: 700; text-wrap: balance; }
-  .part p { margin: 6px 0 0; color: var(--grey); font-weight: 500; }
-  body:not(.has-part) .part h2 { color: var(--quiet); }
-  .step { border-left: 3px solid var(--sea); padding: 2px 0 2px 14px; }
-  .step small { display: block; color: var(--grey); font-weight: 500; font-size: 13px; }
-  .step p { margin: 2px 0 0; font-weight: 600; font-size: 17px; line-height: 1.35; letter-spacing: -0.01em; }
-  .step.done { border-left-color: var(--mentor); }
-  h3 { margin: 0 0 8px; font-size: 13px; font-weight: 600; color: var(--grey); }
+  /* toasts: what just happened, including what Ody did by voice */
+  .toast { position: absolute; top: 18px; left: 50%; transform: translateX(-50%); z-index: 9; display: flex; align-items: center; gap: 10px;
+    background: rgba(250,250,252,.97); color: #1D1D1F; padding: 8px 8px 8px 14px; border-radius: 99px; font-weight: 600; font-size: 14px;
+    box-shadow: 0 8px 24px rgba(0,0,0,.35); max-width: calc(100% - 48px); }
+  .toast:not(:has(button)) { padding-right: 14px; }
+  .toast.voice::before { content: ""; width: 10px; height: 10px; border-radius: 50%; border: 3px solid #E0A400; flex: none; }
+  .toast span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .toast button { border: 0; border-radius: 99px; background: #1D1D1F; color: #fff; padding: 6px 12px; font-weight: 600; cursor: pointer; white-space: nowrap; }
+  .toast[hidden] { display: none; }
+  @media (prefers-reduced-motion: no-preference) { .toast:not([hidden]) { animation: drop .28s cubic-bezier(.2,.8,.2,1); } @keyframes drop { from { opacity: 0; transform: translate(-50%, -8px); } } }
+
+  /* the caller's phone: a picture-in-picture card, swappable with the hologram */
+  .phone { position: absolute; left: 16px; bottom: 16px; z-index: 8; width: var(--pip-w); aspect-ratio: 9 / 16; border-radius: 22px; padding: 5px;
+    background: #000; box-shadow: 0 0 0 1px rgba(255,255,255,.14), 0 18px 40px rgba(0,0,0,.55); }
+  .screen { position: relative; width: 100%; height: 100%; border-radius: 17px; overflow: hidden; background: #17141F; }
+  .screen img { width: 100%; height: 100%; object-fit: cover; display: block; transition: opacity .3s, filter .3s; }
+  .screen img[hidden] { display: none; }
+  .idle { position: absolute; inset: 0; display: grid; place-content: center; justify-items: center; gap: 10px; padding: 12px; text-align: center; color: var(--muted); font-size: 12px; }
+  .idle span { width: 30px; height: 30px; border-radius: 50%; border: 4px solid var(--athena); }
+  body.has-frame .idle { display: none; }
+  .stale { position: absolute; left: 50%; top: 10px; transform: translateX(-50%); background: rgba(18,14,28,.85); color: var(--ink);
+    font-size: 12px; font-weight: 600; padding: 5px 10px; border-radius: 99px; white-space: nowrap; max-width: calc(100% - 12px); overflow: hidden; text-overflow: ellipsis; }
+  body[data-phase="reconnecting"] .stale { color: var(--amber); }
+  body[data-phase="reconnecting"] .screen img { opacity: .4; filter: grayscale(1); }
+  .stale[hidden] { display: none; }
+  .chip { position: absolute; z-index: 9; display: inline-flex; align-items: center; gap: 6px; border: 0; border-radius: 99px; padding: 6px 10px;
+    background: rgba(18,14,28,.82); color: var(--ink); font-size: 12.5px; font-weight: 600; cursor: pointer;
+    box-shadow: 0 0 0 1px rgba(255,255,255,.14); min-height: 30px; }
+  .chip:hover { background: rgba(40,34,58,.92); }
+  .chip svg { width: 13px; height: 13px; flex: none; }
+  .phone .chip { right: 10px; bottom: 10px; }
+  .stage > .chip { display: none; right: 10px; bottom: 10px; }
+
+  /* swapped: the phone is the hero, the hologram goes into the card */
+  body.swapped .phone { left: 0; top: 0; right: 0; bottom: 0; width: auto; aspect-ratio: auto; padding: 0; border-radius: 0; background: #000; box-shadow: none; z-index: 1; }
+  body.swapped .screen { border-radius: 0; background: #08070C; }
+  body.swapped .screen img { object-fit: contain; }
+  body.swapped .idle { font-size: 16px; } body.swapped .idle span { width: 44px; height: 44px; border-width: 6px; }
+  body.swapped .stale { top: 18px; font-size: 13px; padding: 6px 12px; }
+  body.swapped .phone .chip { display: none; }
+  body.swapped .stage { inset: auto; right: 16px; bottom: 16px; width: clamp(220px, 20vw, 320px); aspect-ratio: 16 / 10; z-index: 8; border-radius: 18px;
+    box-shadow: 0 0 0 1px rgba(59,216,255,.3), 0 18px 40px rgba(0,0,0,.55); }
+  body.swapped .stage > .chip { display: inline-flex; }
+  body.swapped .stage .toolbar, body.swapped .stage .waiting, body.swapped .stage-head, body.swapped .handview, body.swapped .tooltip, body.swapped #labels { display: none; }
+
+  /* ---------- the rail ---------- */
+  aside.rail { min-height: 0; overflow-y: auto; overflow-x: hidden; display: flex; flex-direction: column; padding: 4px 6px 4px 2px; scrollbar-width: thin; scrollbar-color: var(--line) transparent; }
+  .rail section { padding: 16px 0; border-top: 1px solid var(--line); min-width: 0; }
+  .rail section:first-child { border-top: 0; padding-top: 6px; }
+  .rail h3 { margin: 0 0 10px; font-size: 13px; font-weight: 600; color: var(--muted); letter-spacing: 0; display: flex; align-items: baseline; gap: 8px; }
+  .rail h3 .count { color: var(--quiet); font-weight: 500; font-variant-numeric: tabular-nums; }
+
+  .now .mood { margin: 0 0 6px; color: var(--muted); font-size: 13px; font-weight: 600; display: flex; align-items: center; gap: 8px; }
+  .now .mood::before { content: ""; width: 8px; height: 8px; border-radius: 50%; border: 2px solid var(--athena); flex: none; }
+  body:not([data-phase="live"]) .now .mood::before { border-color: var(--quiet); }
+  .now h2 { margin: 0; font: 400 clamp(23px, 1.9vw, 29px)/1.12 var(--display); letter-spacing: 0; overflow-wrap: anywhere; text-wrap: pretty;
+    display: -webkit-box; -webkit-line-clamp: 4; -webkit-box-orient: vertical; overflow: hidden; }
+  .now.done h2 { color: var(--wine); }
+  @media (prefers-reduced-motion: no-preference) {
+    .now h2.swap { animation: swap .45s cubic-bezier(.2, .8, .2, 1) both; }
+    @keyframes swap { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+  }
+
+  /* the voyage: steps as islands on the wine-dark sea, ending at Ithaca */
+  .route { position: relative; }
+  .route svg { position: absolute; left: 0; top: 0; width: 36px; height: 100%; overflow: visible; }
+  .route ol { list-style: none; margin: 0; padding: 0 0 0 42px; display: flex; flex-direction: column; gap: 12px; }
+  .route li { font-size: 14.5px; line-height: 22px; color: var(--muted); overflow-wrap: anywhere; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+  .route li.done { color: #D5D0E2; }
+  .route li.now { color: var(--ink); font-weight: 600; }
+  .route li.earlier, .route li.origin { font-size: 13px; color: var(--quiet); }
+  .route li.ithaca { font: 400 19px/22px var(--display); color: var(--wine); }
+  .route li.ithaca small { font: 400 13px var(--ui); color: var(--muted); margin-left: 8px; }
+  .route .water { fill: none; stroke: #231C36; stroke-width: 13; stroke-linecap: round; }
+  .route .wake { fill: none; stroke: var(--wine); stroke-width: 1.6; stroke-linecap: round; }
+  .route .ahead { fill: none; stroke: var(--quiet); stroke-width: 1.6; stroke-dasharray: 1 5; stroke-linecap: round; }
+  .route .isle { fill: var(--sea); stroke: var(--quiet); stroke-width: 1.4; }
+  .route .isle.done { fill: var(--wine); stroke: var(--wine); }
+  .route .isle.now { fill: var(--ink); stroke: var(--ink); }
+  .route .eye { fill: none; stroke: var(--athena); stroke-width: 2.4; }
+  .route .isle.ithaca { stroke: var(--wine); stroke-width: 1.6; }
+  .route .isle.ithaca.home { fill: var(--wine); }
+  .voyage.empty .route { opacity: .55; }
+  @media (prefers-reduced-motion: no-preference) {
+    .route .landfall { stroke-dasharray: 1; stroke-dashoffset: 1; animation: sail 1.4s cubic-bezier(.5, 0, .2, 1) forwards; }
+    .route .isle.ithaca.arriving { fill: var(--sea); animation: land .5s 1.3s ease-out forwards; }
+    @keyframes sail { to { stroke-dashoffset: 0; } }
+    @keyframes land { to { fill: var(--wine); } }
+  }
+
+  /* the conversation */
+  .log { display: flex; flex-direction: column; gap: 10px; min-width: 0; }
+  .log.expanded { max-height: 42vh; overflow-y: auto; padding-right: 4px; scrollbar-width: thin; }
+  .log .empty { margin: 0; color: var(--muted); font-size: 14px; }
+  .line { display: grid; grid-template-columns: 52px minmax(0, 1fr); gap: 10px; }
+  .line .who { font-size: 12.5px; font-weight: 600; color: var(--muted); padding-top: 2px; display: flex; align-items: center; gap: 6px; height: 20px; }
+  .line.mentor .who { color: var(--ink); }
+  .line.mentor .who::before { content: ""; width: 8px; height: 8px; border-radius: 50%; border: 2px solid var(--athena); flex: none; }
+  .line .text { margin: 0; font-size: 14.5px; line-height: 1.42; overflow-wrap: anywhere; min-width: 0; }
+  .line.you .text { color: #CFCADC; }
+  .line .meta { display: block; color: var(--quiet); font-size: 12px; margin-top: 2px; font-variant-numeric: tabular-nums; }
+  .more { margin-top: 10px; border: 0; background: none; color: var(--athena); font-weight: 600; font-size: 13px; padding: 4px 0; cursor: pointer; }
+  .more:hover { text-decoration: underline; text-underline-offset: 3px; }
+  .more[hidden] { display: none; }
+
+  /* lists: marks, wiring, scans */
   ul.list { list-style: none; margin: 0; padding: 0; display: grid; gap: 2px; }
-  ul.list li button { width: 100%; display: grid; grid-template-columns: 18px minmax(0, 1fr) auto; align-items: center; gap: 10px; text-align: left;
-    padding: 8px 10px; border-radius: 10px; border: 0; background: transparent; cursor: pointer; }
-  ul.list li button:hover { background: var(--paper); }
-  ul.list .ico { width: 14px; height: 14px; border-radius: 50%; border: 3px solid var(--mentor); }
+  ul.list li button { width: 100%; display: grid; grid-template-columns: 16px minmax(0, 1fr) auto; align-items: center; gap: 10px; text-align: left;
+    padding: 8px 10px; border-radius: 10px; border: 0; background: transparent; cursor: pointer; min-height: 38px; }
+  ul.list li button:hover, ul.list li button[aria-current="true"] { background: rgba(255,255,255,.06); }
+  ul.list li button:focus-visible { outline-offset: -2px; }
+  ul.list .ico { width: 13px; height: 13px; border-radius: 50%; border: 3px solid var(--athena); }
   ul.list .ico.warn { border-color: var(--live); }
-  ul.list .ico.wire { border: 0; border-radius: 4px; height: 6px; background: linear-gradient(90deg, var(--holo), var(--violet)); }
+  ul.list .ico.wire { border: 0; border-radius: 4px; height: 5px; background: linear-gradient(90deg, var(--holo), #A86BFF); }
   ul.list .ico.miss { border-color: var(--quiet); }
+  ul.list .ico.scan { border: 2px solid var(--holo); border-radius: 3px; transform: rotate(45deg) scale(.8); }
+  ul.list .ico.scan.on { background: var(--holo); box-shadow: 0 0 8px var(--holo); }
   ul.list .what { font-weight: 500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  ul.list .where { color: var(--grey); font-size: 13px; font-variant-numeric: tabular-nums; }
-  ul.list li.old { opacity: .55; }
-  .empty { color: var(--grey); margin: 0; font-size: 14px; }
-  .actions { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: auto; }
-  .btn { padding: 11px 12px; border-radius: 12px; border: 1px solid var(--line); background: var(--paper); font-weight: 600; font-size: 14px; cursor: pointer; }
-  .btn:hover { border-color: var(--quiet); }
-  .btn.primary { background: var(--ink); color: var(--ground); border-color: var(--ink); grid-column: 1 / -1; }
-  .btn.primary:hover { background: #000; }
-  .hint { color: var(--grey); font-size: 13px; margin: 0; }
+  ul.list .where { color: var(--muted); font-size: 12.5px; font-variant-numeric: tabular-nums; white-space: nowrap; max-width: 14ch; overflow: hidden; text-overflow: ellipsis; }
+  ul.list li.old .what, ul.list li.old .ico { opacity: .55; }
+  .empty { color: var(--muted); margin: 0; font-size: 14px; }
+  .empty[hidden] { display: none; }
+
+  /* pins: one tab stop, arrow keys move, the tooltip follows on the hologram */
+  .pins { max-height: 196px; overflow-y: auto; border-radius: 12px; border: 1px solid var(--line); padding: 4px; scrollbar-width: thin; }
+  .pins:focus-visible { outline-offset: 2px; }
+  .pins [role="option"] { display: grid; grid-template-columns: 64px minmax(0, 1fr); gap: 10px; padding: 6px 8px; border-radius: 8px; font-size: 13.5px; cursor: pointer; }
+  .pins [role="option"] b { font-weight: 600; font-variant-numeric: tabular-nums; }
+  .pins [role="option"] span { color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .pins [role="option"]:hover { background: rgba(255,255,255,.05); }
+  .pins [aria-selected="true"] { background: rgba(59,216,255,.14); box-shadow: inset 2px 0 0 var(--holo); }
+  .pins-hint { margin: 8px 0 0; color: var(--muted); font-size: 12.5px; }
 
   /* scan anything: the photo Ody built from, how sure it is, and the honest caveat */
-  .scaninfo { display: grid; grid-template-columns: 96px minmax(0, 1fr); gap: 12px; align-items: start; margin-top: 14px; }
+  .scaninfo { display: grid; grid-template-columns: 76px minmax(0, 1fr); gap: 12px; align-items: start; margin-top: 12px; }
   .scaninfo[hidden] { display: none; }
-  .scaninfo img { width: 96px; height: 96px; object-fit: cover; border-radius: 14px; background: var(--line); display: block;
-    outline: 1px solid rgba(0,0,0,.06); outline-offset: -1px; }
+  .scaninfo img { width: 76px; height: 76px; object-fit: cover; border-radius: 12px; background: var(--deck); display: block; }
   .scaninfo img[hidden] { visibility: hidden; display: block; }
-  .estimate { display: inline-flex; align-items: center; gap: 6px; font-weight: 600; font-size: 13px; color: var(--sea);
-    background: color-mix(in srgb, var(--holo) 14%, var(--paper)); border: 1px solid color-mix(in srgb, var(--holo) 40%, transparent);
-    padding: 3px 9px 3px 7px; border-radius: 99px; }
+  .estimate { display: inline-flex; align-items: center; gap: 6px; font-weight: 600; font-size: 12.5px; color: #BDF1FF;
+    background: rgba(59,216,255,.1); border: 1px solid rgba(59,216,255,.35); padding: 3px 9px 3px 7px; border-radius: 99px; }
   .estimate::before { content: ""; width: 7px; height: 7px; border-radius: 50%; background: var(--holo); box-shadow: 0 0 6px var(--holo); }
   .scaninfo dl { margin: 8px 0 0; display: grid; grid-template-columns: auto 1fr; gap: 2px 10px; font-size: 13px; }
-  .scaninfo dt { color: var(--grey); } .scaninfo dd { margin: 0; font-weight: 500; font-variant-numeric: tabular-nums; }
-  .scaninfo .caveat { grid-column: 1 / -1; margin: 0; color: var(--grey); font-size: 13px; }
-  ul.list .ico.scan { border: 2px solid var(--holo); border-radius: 4px; transform: rotate(45deg) scale(.8); }
-  ul.list .ico.scan.on { background: var(--holo); box-shadow: 0 0 8px var(--holo); }
-  ul.list li button[aria-current="true"] { background: var(--paper); }
+  .scaninfo dt { color: var(--muted); } .scaninfo dd { margin: 0; font-weight: 500; font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
+  .scaninfo .caveat { grid-column: 1 / -1; margin: 0; color: var(--muted); font-size: 12.5px; }
 
+  .actions { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .btn { padding: 11px 12px; border-radius: 12px; border: 1px solid var(--line); background: var(--deck); font-weight: 600; font-size: 14px; cursor: pointer; min-height: 44px; }
+  .btn:hover { border-color: var(--quiet); }
+  .btn.primary { background: var(--ink); color: var(--sea); border-color: var(--ink); grid-column: 1 / -1; }
+  .btn.primary:hover { background: #fff; }
+  .keys { margin: 12px 0 0; color: var(--muted); font-size: 12.5px; line-height: 1.9; }
+  .keys kbd { margin-right: 3px; }
+  .privacy { margin: 8px 0 0; color: var(--muted); font-size: 12.5px; }
+  .privacy[hidden] { display: none; }
+
+  /* ---------- the tester drawer ---------- */
+  .panel { position: fixed; z-index: 30; top: 64px; right: var(--gutter); bottom: var(--gutter); width: min(420px, calc(100vw - 32px)); overflow-y: auto;
+    background: var(--deck); border: 1px solid var(--line); border-radius: 20px; padding: 6px 20px 20px; box-shadow: 0 30px 80px rgba(0,0,0,.6); scrollbar-width: thin; }
+  .panel[hidden] { display: none; }
+  @media (prefers-reduced-motion: no-preference) { .panel:not([hidden]) { animation: slide .26s cubic-bezier(.2,.8,.2,1); } @keyframes slide { from { opacity: 0; transform: translateX(24px); } } }
+  .panel-head { display: flex; align-items: center; justify-content: space-between; position: sticky; top: -6px; background: var(--deck); padding: 12px 0 8px; z-index: 1; }
+  .panel-head h2 { margin: 0; font: 400 24px/1 var(--display); }
+  .panel h3 { font-size: 13px; font-weight: 600; color: var(--muted); margin: 18px 0 8px; }
+  .health { display: grid; grid-template-columns: auto 1fr; gap: 4px 14px; font-size: 14px; margin: 0; }
+  .health dt { color: var(--muted); }
+  .health dd { margin: 0; font-variant-numeric: tabular-nums; display: flex; align-items: center; gap: 6px; min-width: 0; overflow-wrap: anywhere; }
+  .pip { width: 7px; height: 7px; border-radius: 50%; border: 1.5px solid var(--ink); flex: none; }
+  .pip.on { background: var(--ink); }
+  .stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin: 4px 0 0; }
+  .stats div { display: flex; flex-direction: column-reverse; }
+  .stats dt { font-size: 12px; color: var(--muted); }
+  .stats dd { margin: 0; font-size: 24px; font-weight: 650; letter-spacing: -0.02em; font-variant-numeric: tabular-nums; line-height: 1.1; }
+  .stats dd small { font-size: 13px; font-weight: 500; color: var(--muted); margin-left: 1px; }
+  .spark { display: block; width: 100%; height: 64px; margin-top: 12px; }
+  .note { font-size: 12.5px; color: var(--muted); margin: 8px 0 0; font-variant-numeric: tabular-nums; }
+  .eye { position: relative; background: #0C0A12; border-radius: 10px; overflow: hidden; margin: 0 auto; }
+  .eye img { display: block; width: 100%; height: auto; }
+  .eye img[hidden], .eye img[hidden] + svg { display: none; }
+  .eye svg { position: absolute; inset: 0; width: 100%; height: 100%; }
+  .eye .none { color: var(--muted); font-size: 14px; padding: 40px 16px; text-align: center; }
+  .eye .none[hidden] { display: none; }
+  .points, .turns { list-style: none; padding: 0; margin: 8px 0 0; font-size: 13.5px; }
+  .points li { display: flex; justify-content: space-between; gap: 12px; padding: 5px 0; border-top: 1px solid var(--line); min-width: 0; }
+  .points li span:first-child { overflow-wrap: anywhere; min-width: 0; }
+  .points li span:last-child { color: var(--muted); font-variant-numeric: tabular-nums; white-space: nowrap; }
+  .turns li { display: grid; grid-template-columns: 26px 50px minmax(0, 1fr); gap: 8px; padding: 7px 0; border-top: 1px solid var(--line); }
+  .turns .n { color: var(--muted); font-variant-numeric: tabular-nums; }
+  .turns .ms { font-weight: 600; font-variant-numeric: tabular-nums; text-align: right; }
+  .turns .ms.slow { text-decoration: underline; text-decoration-thickness: 2px; text-underline-offset: 3px; color: var(--amber); }
+  .turns .what { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: #D5D0E2; }
+  .turns .what em { font-style: normal; color: var(--muted); }
+  .turns .empty, .points .empty { color: var(--muted); border: 0; }
+
+  /* ---------- narrower screens ---------- */
+  @media (max-width: 1100px) { .tagline { display: none; } }
   @media (max-width: 900px) {
+    :root { --pip-w: 96px; --gutter: 12px; }
     body { overflow: auto; height: auto; display: block; }
-    header { padding: 14px 16px 0; } .tagline { display: none; }
-    main { grid-template-columns: 1fr; padding: 12px 16px 24px; }
-    .stage { height: 62vh; border-radius: 22px; }
-    .toolbar { left: 8px; right: 8px; transform: none; overflow-x: auto; scrollbar-width: none; }
-    .waiting { bottom: 84px; } .waiting p { display: none; }
+    header { padding: 10px 12px; gap: 10px; flex-wrap: wrap; }
+    .status .brain { display: none; }
+    main { grid-template-columns: 1fr; padding: 0 12px 24px; }
+    .theatre { height: 64vh; min-height: 380px; border-radius: 20px; }
+    .phone { left: auto; right: 10px; bottom: auto; top: 10px; border-radius: 16px; padding: 4px; }
+    .screen { border-radius: 12px; }
+    .phone .chip { right: 6px; bottom: 6px; padding: 4px 8px; font-size: 11.5px; min-height: 26px; }
+    .stage-head { right: calc(var(--pip-w) + 24px); left: 14px; top: 14px; }
+    .toolbar { left: 8px; right: 8px; transform: none; overflow-x: auto; scrollbar-width: none; max-width: none; }
+    .waiting { left: 16px; right: 16px; bottom: 76px; } .waiting p { font-size: 14px; }
     .tool kbd { display: none; }
+    .handview { right: 8px; bottom: 70px; }
+    body.swapped .stage { width: 46%; right: 8px; bottom: 8px; }
+    aside.rail { overflow: visible; padding: 8px 0 0; }
+    .keys { display: none; }
+    .panel { top: 12px; bottom: 12px; right: 12px; }
   }
-  @media (prefers-reduced-motion: reduce) { .waiting { transition: none; } }
+  @media (prefers-reduced-motion: reduce) { .waiting, .tag span, .screen img { transition: none; } }
 </style>
 </head>
-<body class="holo">
+<body class="holo" data-phase="connecting">
 <header>
   <span class="mark" aria-hidden="true"></span>
   <span class="wordmark">Ody</span>
-  <span class="tagline">Digital twin</span>
-  <div class="status" role="status"><span class="dot"></span><span id="status">Waiting for a call</span><span class="sub" id="brain"></span></div>
-  <a class="back" href="/">Call view</a>
+  <span class="tagline">A Mentor for builders: call it, show it your board, follow the light.</span>
+  <div class="status" role="status"><span class="dot" aria-hidden="true"></span><span id="status">Connecting…</span><span class="brain" id="brain"></span></div>
+  <button class="btn-top" id="t-tester" type="button" aria-expanded="false" aria-controls="panel">Tester <kbd>T</kbd></button>
 </header>
 <main>
-  <section class="stage" id="stage" aria-label="3D view of your board. Drag to turn, scroll to zoom.">
-    <canvas id="view"></canvas>
-    <div class="vignette"></div>
-    <div id="labels"></div>
-    <div class="waiting" id="waiting"><h2>Show Ody your board.</h2><p>Or hold anything up and say “scan this”.</p></div>
-    <div class="tooltip" id="tip" hidden><strong></strong><span></span></div>
-    <div class="cursor" id="cursor" hidden></div>
-    <div class="toast" id="toast" hidden></div>
-    <div class="fps" id="fps" hidden></div>
-    <div class="handview" id="handview" hidden>
-      <canvas id="handcanvas" width="176" height="132"></canvas>
-      <p><b id="handmode">Show a hand</b><br>Pinch to turn, two pinches to zoom, fist to move, open palm to reset, point to pick a pin.</p>
+  <section class="theatre" aria-label="Your project in 3D, and the caller’s camera">
+    <div class="stage" id="stage" tabindex="0" role="application" aria-roledescription="3D view" aria-describedby="stagekeys"
+      aria-label="3D twin of your project">
+      <canvas id="view" aria-hidden="true"></canvas>
+      <div class="vignette"></div>
+      <div id="labels"></div>
+      <div class="stage-head">
+        <h2 id="part">No board yet</h2>
+        <p id="partsub">Ody names the board as soon as it sees it.</p>
+        <div class="pointing" id="pointing" hidden><span id="pointingText"></span></div>
+      </div>
+      <div class="modes" id="modes" role="tablist" aria-label="What the 3D view shows" hidden>
+        <button type="button" role="tab" id="mode-board" data-mode="board" aria-selected="true">Board</button>
+        <button type="button" role="tab" id="mode-scan" data-mode="scan" aria-selected="false" hidden>Scan</button>
+        <button type="button" role="tab" id="mode-circuit" data-mode="circuit" aria-selected="false" hidden>Circuit</button>
+      </div>
+      <div class="waiting" id="waiting"><h2 id="waitTitle">Every Telemachus deserves a Mentor.</h2><p id="waitSub">FaceTime Ody, then hold your board up to the camera.</p></div>
+      <div class="tooltip" id="tip" role="tooltip" hidden><strong></strong><span></span></div>
+      <div class="cursor" id="cursor" hidden></div>
+      <div class="fps" id="fps" hidden></div>
+      <div class="handview" id="handview" hidden>
+        <canvas id="handcanvas" width="176" height="132"></canvas>
+        <p><b id="handmode">Show a hand</b><br>Pinch to turn, two pinches to zoom, fist to move, open palm to reset, point to pick a pin.</p>
+      </div>
+      <div class="toolbar" role="toolbar" aria-label="View">
+        <button class="tool" id="t-holo" type="button" aria-pressed="true">Hologram <kbd>H</kbd></button>
+        <button class="tool" id="t-explode" type="button" aria-pressed="false">Explode <kbd>E</kbd></button>
+        <button class="tool" id="t-xray" type="button" aria-pressed="false" hidden>X-ray <kbd>Y</kbd></button>
+        <button class="tool" id="t-reset" type="button">Reset view <kbd>R</kbd></button>
+        <button class="tool" id="t-hands" type="button" aria-pressed="false" aria-describedby="handsWhy">Hands</button>
+      </div>
+      <button class="chip" type="button" data-swap aria-pressed="false" aria-label="Show the 3D twin large">
+        <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M2 6V2h4M14 10v4h-4M2 2l5 5M14 14l-5-5" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>Enlarge 3D</button>
     </div>
-    <div class="toolbar" role="toolbar" aria-label="View">
-      <button class="tool" id="t-holo" type="button" aria-pressed="true">Hologram <kbd>H</kbd></button>
-      <button class="tool" id="t-explode" type="button" aria-pressed="false">Explode <kbd>E</kbd></button>
-      <button class="tool" id="t-reset" type="button">Reset view <kbd>R</kbd></button>
-      <button class="tool" id="t-hands" type="button" aria-pressed="false" hidden>Hands</button>
+    <div class="phone" id="phone" role="group" aria-label="The caller’s camera">
+      <div class="screen">
+        <img id="phoneimg" alt="The caller’s camera, with the marks Ody draws" hidden>
+        <div class="idle" aria-hidden="true"><span></span><div id="idletext">The caller’s camera shows here</div></div>
+        <div class="stale" id="stale" hidden>Picture paused</div>
+      </div>
+      <button class="chip" type="button" data-swap aria-pressed="false" aria-label="Show the caller’s camera large (V)">
+        <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M2 6V2h4M14 10v4h-4M2 2l5 5M14 14l-5-5" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>Enlarge</button>
     </div>
+    <div class="toast" id="toast" role="status" aria-live="polite" hidden></div>
   </section>
-  <aside>
-    <div class="part"><h2 id="part">No board yet</h2><p id="partsub">Ody names the board as soon as it sees it.</p>
+
+  <aside class="rail" aria-label="The call">
+    <section class="now" id="stepbox" aria-live="polite">
+      <p class="mood" id="mood">No call yet</p>
+      <h2 id="step">Call Ody to set sail.</h2>
+    </section>
+    <section class="voyage" id="voyage" aria-labelledby="voyageTitle">
+      <h3 id="voyageTitle">The voyage to Ithaca</h3>
+      <div class="route"><svg id="sea" aria-hidden="true"></svg><ol id="steps"></ol></div>
+    </section>
+    <section aria-labelledby="talkTitle">
+      <h3 id="talkTitle">What Ody heard and said</h3>
+      <div class="log" id="log" role="log" aria-live="polite" tabindex="-1"></div>
+      <button class="more" id="logmore" type="button" aria-controls="log" aria-expanded="false" hidden>Show all</button>
+    </section>
+    <section id="project" aria-labelledby="projectTitle" hidden>
+      <h3 id="projectTitle">Project</h3>
+      <div id="project-parts"></div>
+      <div id="project-code"></div>
+    </section>
+    <section aria-labelledby="marksTitle">
+      <h3 id="marksTitle">Marked this call</h3>
+      <ul class="list" id="marks"></ul><p class="empty" id="marks-empty">Rings, wires and warnings Ody draws appear here. Pick one to fly the 3D view to it.</p>
+    </section>
+    <section aria-labelledby="wiresTitle">
+      <h3 id="wiresTitle">Wiring</h3>
+      <ul class="list" id="wires"></ul><p class="empty" id="wires-empty">No wires yet.</p>
+    </section>
+    <section aria-labelledby="pinsTitle">
+      <h3 id="pinsTitle">Pins <span class="count" id="pinsCount"></span></h3>
+      <div class="pins" id="pins" role="listbox" tabindex="0" aria-labelledby="pinsTitle" aria-describedby="pinsHint"></div>
+      <p class="pins-hint" id="pinsHint">Arrow keys move through the pins and show each one on the board. Enter flies the view there.</p>
+    </section>
+    <section aria-labelledby="scansTitle">
+      <h3 id="scansTitle">Scans</h3>
+      <ul class="list" id="scans"></ul><p class="empty" id="scans-empty">Say “scan this” on the call to send any object here.</p>
       <div class="scaninfo" id="scaninfo" hidden>
         <img id="scanphoto" alt="The camera photo Ody built this model from" hidden>
         <div>
@@ -189,20 +459,52 @@
         </div>
         <p class="caveat">Approximate model from one camera view. Sizes are guesses, not measurements.</p>
       </div>
-    </div>
-    <div><h3>Scans</h3><ul class="list" id="scans"></ul><p class="empty" id="scans-empty">Say “scan this” on the call to send any object here.</p></div>
-    <div class="step" id="stepbox"><small>Current step</small><p id="step">Waiting for the call to start</p></div>
-    <div><h3>Marked this call</h3><ul class="list" id="marks"></ul><p class="empty" id="marks-empty">Rings, wires and warnings Ody draws appear here.</p></div>
-    <div><h3>Wiring</h3><ul class="list" id="wires"></ul><p class="empty" id="wires-empty">No wires yet.</p></div>
-    <div class="actions">
-      <button class="btn primary" id="export" type="button">Export model (.glb)</button>
-      <button class="btn" id="copy" type="button">Copy wiring</button>
-      <button class="btn" id="reset2" type="button">Reset view</button>
-    </div>
-    <p class="hint">Drag to turn, scroll to zoom, hover a pin to see what it does. Keys: H hologram, E explode, R reset, X export.</p>
-    <p class="hint" id="privacy" hidden>Hand tracking runs on this laptop. Video never leaves it.</p>
+    </section>
+    <section aria-label="Export">
+      <div class="actions">
+        <button class="btn primary" id="export" type="button">Export 3D model (.glb)</button>
+        <button class="btn" id="copy" type="button">Copy wiring</button>
+        <button class="btn" id="reset2" type="button">Reset view</button>
+      </div>
+      <p class="keys" id="stagekeys"><kbd>H</kbd> hologram, <kbd>E</kbd> explode, <kbd>R</kbd> reset, <kbd>V</kbd> swap views, <kbd>X</kbd> export,
+        <kbd>←</kbd><kbd>→</kbd><kbd>↑</kbd><kbd>↓</kbd> turn, <kbd>+</kbd><kbd>−</kbd> zoom, <kbd>[</kbd><kbd>]</kbd> step through pins, <kbd>F</kbd> frame rate, <kbd>T</kbd> tester.</p>
+      <p class="privacy" id="handsWhy">Hand control uses this laptop’s camera. Video never leaves it.</p>
+      <p class="privacy" id="privacy" hidden>Hand tracking runs on this laptop.</p>
+    </section>
   </aside>
 </main>
+
+<aside class="panel" id="panel" aria-labelledby="panelTitle" hidden>
+  <div class="panel-head"><h2 id="panelTitle">Tester</h2><button class="btn-top" id="panelclose" type="button">Close <kbd>Esc</kbd></button></div>
+  <h3>Connection</h3>
+  <dl class="health">
+    <dt>Feed</dt><dd><span class="pip" id="sockPip"></span><span id="sock">Connecting</span></dd>
+    <dt>Call</dt><dd id="callState">No call</dd>
+    <dt>Brain</dt><dd id="model">Not set</dd>
+    <dt>Pictures</dt><dd id="rates">None yet</dd>
+  </dl>
+  <h3>Answers</h3>
+  <dl class="stats">
+    <div><dt>Turns</dt><dd id="nTurns">0</dd></div>
+    <div><dt>Marks</dt><dd id="nMarks">0</dd></div>
+    <div><dt>Median</dt><dd id="median">–</dd></div>
+    <div><dt>Last</dt><dd id="last">–</dd></div>
+  </dl>
+  <svg class="spark" id="spark" role="img" aria-label="Response time per turn"></svg>
+  <p class="note">One bar per answer, newest in gold. The dashed line is 4 s.</p>
+  <h3>What Ody sees</h3>
+  <div class="eye" id="eye">
+    <img id="input" alt="The cropped camera picture Ody is given, with its latest marks" hidden>
+    <svg id="eyemarks" aria-hidden="true"></svg>
+    <div class="none" id="eyeNone">No picture from Ody yet</div>
+  </div>
+  <p class="note" id="eyeNote">Marks from the latest answer appear here at their exact points.</p>
+  <ul class="points" id="points"></ul>
+  <h3>Turns, newest first</h3>
+  <ul class="turns" id="turns"></ul>
+</aside>
+<p class="sr" id="announce" aria-live="polite"></p>
+<script type="module" src="/twin/shell.js"></script>
 <script type="module" src="/twin/app.js"></script>
 </body>
 </html>

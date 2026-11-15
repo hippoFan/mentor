@@ -13,6 +13,7 @@ const SS = 22;   // silkscreen px per mm
 const FAMILY = {
   'raspberry-pi-4': 'pi', 'esp32-devkit-v1': 'esp', 'esp32-devkitc': 'esp', 'nodemcu-esp8266': 'esp',
   'raspberry-pi-pico': 'pico', 'raspberry-pi-pico-w': 'pico', 'arduino-nano': 'nano', 'arduino-mega-2560': 'mega',
+  custom: 'custom',   // a board the brain described by its headers (twin/custom.js): slab + header strips + labelled holes
 };
 /** Ids the twin can build in 3D. */
 export const PART_MODELS = Object.keys(FAMILY);
@@ -87,7 +88,7 @@ function silkscreen(table, look, holo) {
   };
   // pin labels: next to every header of 6+ pins, facing into the board
   if (look.labels !== false) for (const h of table.headers) {
-    if (h.pins.length < 6 || h.name === 'J8') continue;
+    if ((h.pins.length < 6 && !look.labelAll) || h.name === 'J8') continue;
     const ps = h.pins.map(k => table.pins[k]).filter(Boolean);
     for (const k of h.pins) {
       const p = table.pins[k]; if (!p) continue;
@@ -276,6 +277,19 @@ function moduleCan(k, { x, y0, w, d, antenna, can, text }) {
 
 // ---------- the families ----------
 const LOOKS = {
+  /** A described board: plain green slab, its header strips, every hole labelled. Nothing invented on top. */
+  custom: (id, table) => {
+    const n = Object.keys(table.pins).length, hs = table.headers.length;
+    return {
+      pcb: '#1e5a3c', trace: 'rgba(8,45,25,0.5)', pad: '#d6bc64', edge: 0x163f2b, radius: 1.2, seed: 41, labelAll: true,
+      labelSize: Math.min(1.0, Math.max(0.6, Math.min(table.W, table.H) / 30)),
+      print: [[table.name.slice(0, 28), table.W / 2, table.H / 2, Math.max(1.2, Math.min(3, table.W / 14)), 700]],
+      sub: `Custom board: ${n} pin${n === 1 ? '' : 's'} on ${hs} header${hs === 1 ? '' : 's'}, positions from Ody`,
+      tags: [],
+      layers: { pcb: 'Circuit board', headers: `${hs} header${hs === 1 ? '' : 's'}, ${n} pins` },
+      build() {},
+    };
+  },
   /** Raspberry Pi 3 / 4 / 5 (drawn as the Pi 4 Model B). */
   pi: () => ({
     pcb: '#2a7c45', trace: 'rgba(10,60,30,0.55)', pad: '#cdb86c', edge: 0x175a2e, radius: 3, seed: 11, labels: false,

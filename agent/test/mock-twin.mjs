@@ -1,11 +1,17 @@
-// Fake call for the 3D twin, no API keys, LiveKit or phone needed:
-//   node test/mock-twin.mjs [--waiting] [--loop] [--part raspberry-pi-4] [--port 8798]
-// Serves twin.html (and the call view) through the real live.mjs server on http://localhost:8798/twin (never 8790,
-// which the live agent uses) and replays: UNO R4 WiFi recognised → ring on the USB-C port → wire 13 → breadboard J10
-// → warning on a 5V–GND short → done. Holds the last state unless --loop.
+// Fake call for the Ody app (the 3D twin + the phone view + the rail), no API keys, LiveKit or phone needed:
+//   node test/mock-twin.mjs [--waiting] [--loop] [--end] [--part raspberry-pi-4] [--custom] [--video [photo.jpg]]
+//                           [--scan-demo] [--scan <dir>] [--port 8798]
+// Serves the app through the real live.mjs server on http://localhost:8798/ (also /twin; never 8790, which the live
+// agent uses) and replays: UNO R4 WiFi recognised -> ring on the USB-C port -> wire 13 -> breadboard J10 -> voice
+// commands (explode, assemble, rotate, stop) -> warning on a 5V-GND short -> done. Holds the last state unless --loop.
+//   --video      streams the caller's camera (a photo with a hand-held wobble, marks drawn by overlay.mjs)
+//   --scan-demo  adds two "scan this" objects (a computer mouse, a mug) after the warning
+//   --custom     a board Ody has no model for, described by its headers (model 'custom'), then a wire from one pin
+//   --end        ends the call after the last beat (the "call ended, recap ready" state)
 const args = process.argv.slice(2);
-const portAt = args.indexOf('--port');
-const PORT = portAt >= 0 ? Number(args[portAt + 1]) : 8798;
+const has = f => args.includes(f);
+const opt = (f, d) => { const i = args.indexOf(f); return i >= 0 && args[i + 1] && !args[i + 1].startsWith('--') ? args[i + 1] : d; };
+const PORT = Number(opt('--port', 8798));
 if (PORT === 8790) { console.error('8790 is the live agent; pick another port'); process.exit(2); }
 process.env.MENTOR_MONITOR_PORT = String(PORT);
 // createLiveServer, never startLive: a mock must not publish its fake call to the always-on hub (the live laptop page)
@@ -14,19 +20,74 @@ const live = await createLiveServer();
 const sleep = ms => new Promise(r => setTimeout(r, ms));
 const gap = Number(process.env.MOCK_GAP_MS || 6000);
 
+// ---------- optional caller video ----------
+let marksNow = [], caption = '', inCall = false;
+if (has('--video')) {
+  const { readFile } = await import('node:fs/promises');
+  const { existsSync } = await import('node:fs');
+  const { fileURLToPath } = await import('node:url');
+  const { createCanvas, loadImage } = await import('@napi-rs/canvas');
+  const { render, outJpeg, frameJpeg } = await import('../overlay.mjs');
+  const here = p => fileURLToPath(new URL(p, import.meta.url));
+  const photo = [opt('--video'), here('../../../mentor-film/assets/uno-desk.jpg'), here('qa/photo.jpg')].find(p => p && existsSync(p));
+  if (photo) {
+    const img = await loadImage(await readFile(photo));
+    const CW = Math.round(Math.min(img.width, img.height * 0.5625)), CH = Math.round(CW / 0.5625);
+    const X0 = Math.round((img.width - CW) / 2);
+    const cam = createCanvas(CW, CH), cg = cam.getContext('2d');
+    let tick = 0;
+    setInterval(async () => {
+      if (!inCall) return;
+      const t = Date.now(), dx = Math.round(Math.sin(t / 900) * 8), dy = Math.round(Math.cos(t / 1300) * 6);
+      cg.fillStyle = '#000'; cg.fillRect(0, 0, CW, CH);
+      cg.drawImage(img, X0 + dx, Math.max(0, (img.height - CH) / 2) + dy, CW, Math.min(CH, img.height), 0, 0, CW, CH);
+      const d = cg.getImageData(0, 0, CW, CH), f = { data: new Uint8Array(d.data.buffer), width: CW, height: CH };
+      render(f, marksNow, { caption, tick: tick++, speaking: false });
+      live.send({ type: 'frame', jpeg: (await outJpeg()).toString('base64') });
+      if (tick % 2 === 0) { const j = await frameJpeg(f, 480); live.send({ type: 'input', jpeg: j.jpeg.toString('base64'), w: f.width, h: f.height }); }
+    }, 500);
+    console.log(`[mock] streaming the caller's camera from ${photo}`);
+  } else console.warn('[mock] --video: no photo found, no video');
+}
+
 // corners A, B, C, D of the board in the camera picture (0..1), roughly what the brain returns for a board held flat
 const board = { model: 'uno-r4-wifi', corners: [[0.2, 0.18], [0.82, 0.2], [0.8, 0.66], [0.22, 0.64]] };
 const turn = (marks, step, say, extra = {}) => {
-  live.send({ type: 'turn', brain: 'gemini', model: 'gemini-2.5-flash', ms: 1800, marks, board, step, done: false, ...extra });
+  marksNow = marks; caption = step;
+  live.send({ type: 'turn', brain: 'gemini', model: 'gemini-2.5-flash', ms: 1800, marks, board: extra.board || board, step, done: false, ...extra });
   live.send({ type: 'step', text: step, ...(extra.done ? { done: true } : {}) });
   live.send({ type: 'say', text: say, ms: 1800 });
 };
 const mk = (label, kind, pin = '', pin2 = '', x = 0.5, y = 0.5, x2 = -1, y2 = -1) => ({ label, kind, x, y, x2, y2, pin, pin2 });
+const twin = async (action, ms = 2600) => { live.send({ type: 'heard', text: `Ody, ${action} it.` }); live.send({ type: 'twin', action }); console.log(`[mock] voice: ${action}`); await sleep(ms); };
+const start = () => { inCall = true; live.send({ type: 'call', state: 'live', since: Date.now() }); live.send({ type: 'brain', brain: 'gemini' }); };
+const end = () => { inCall = false; live.send({ type: 'call', state: 'ended' }); console.log('[mock] call ended'); };
+
+async function scanDemo() {
+  const { sanitizeScan } = await import('../scan.mjs');
+  const objs = [
+    { name: 'Wireless mouse', category: 'computer accessory', dims_mm: { w: 62, d: 112, h: 38 }, confidence: 0.74, parts: [
+      { name: 'Shell', shape: 'capsule', size_mm: { x: 60, y: 108, z: 34 }, position_mm: { x: 0, y: 0, z: 17 }, color: '#2b2d33', material: 'plastic' },
+      { name: 'Left button', shape: 'rounded_box', size_mm: { x: 27, y: 40, z: 4 }, position_mm: { x: -14, y: 30, z: 34 }, color: '#3a3d45', material: 'plastic' },
+      { name: 'Right button', shape: 'rounded_box', size_mm: { x: 27, y: 40, z: 4 }, position_mm: { x: 14, y: 30, z: 34 }, color: '#3a3d45', material: 'plastic' },
+      { name: 'Scroll wheel', shape: 'cylinder', size_mm: { x: 8, y: 14, z: 14 }, position_mm: { x: 0, y: 28, z: 37 }, rotation_deg: { x: 0, y: 90, z: 0 }, color: '#8a8f98', material: 'rubber' }] },
+    { name: 'Coffee mug', category: 'kitchenware', dims_mm: { w: 120, d: 85, h: 95 }, confidence: 0.81, parts: [
+      { name: 'Body', shape: 'cylinder', size_mm: { x: 82, y: 82, z: 95 }, position_mm: { x: 0, y: 0, z: 47 }, color: '#e9e4da', material: 'plastic' },
+      { name: 'Handle', shape: 'torus', size_mm: { x: 42, y: 12, z: 50 }, position_mm: { x: 50, y: 0, z: 50 }, rotation_deg: { x: 90, y: 0, z: 0 }, color: '#e9e4da', material: 'plastic' }] },
+  ];
+  for (const [i, raw] of objs.entries()) {
+    live.send({ type: 'heard', text: 'Scan this.' });
+    live.send({ type: 'scan', id: i + 1, at: Date.now(), spec: sanitizeScan(raw), photo: '', crop: null });
+    live.send({ type: 'say', text: `Got it, a ${raw.name.toLowerCase()}. It's on your laptop.` });
+    console.log(`[mock] scan: ${raw.name}`);
+    await sleep(gap);
+  }
+}
 
 async function call() {
-  live.send({ type: 'call', state: 'live', since: Date.now() });
-  live.send({ type: 'brain', brain: 'gemini' });
+  start();
   live.send({ type: 'step', text: 'Show me your project' });
+  live.send({ type: 'say', text: "Hi, I'm Ody. Show me what you're building." });
   await sleep(gap);
   live.send({ type: 'heard', text: "It's an Arduino, the new one with Wi-Fi." });
   live.send({ type: 'part', model: 'uno-r4-wifi', label: 'Arduino UNO R4 WiFi' });
@@ -35,11 +96,15 @@ async function call() {
   live.send({ type: 'heard', text: 'Where does the LED wire go?' });
   turn([mk('Pin 13 → breadboard J10', 'wire', '13', '', 0.4, 0.2, 0.9, 0.4)], 'Jumper from pin 13 to breadboard J10', 'Run a jumper from pin 13 into hole J10 on the breadboard.');
   await sleep(gap);
+  await twin('explode', 3000); await twin('assemble', 2600); await twin('rotate', 4000); await twin('stop', 1500);
   live.send({ type: 'heard', text: 'I also put a wire from 5V to GND.' });
-  turn([mk('Short: 5V to GND', 'warn', '5V', 'GND', 0.5, 0.62, 0.53, 0.62)], 'Stop: remove the 5V to GND wire', 'Stop, that wire shorts 5V to ground. Pull it out before you power on.');
+  turn([mk('Short: 5V to GND', 'warn', '5V', 'GND', 0.5, 0.62, 0.53, 0.62), mk('Pin 13', 'circle', '13', '', 0.4, 0.2), mk('GND', 'circle', 'GND', '', 0.45, 0.2)],
+    'Stop: remove the 5V to GND wire', 'Stop, that wire shorts 5V to ground. Pull it out before you power on.');
   await sleep(gap);
+  if (has('--scan-demo')) await scanDemo();
   live.send({ type: 'heard', text: "It's blinking!" });
   turn([mk('L LED', 'circle', '', '', 0.4, 0.25)], 'Upload Blink from File, Examples, Basics', 'That is it. You made it home.', { done: true });
+  live.send({ type: 'step', text: 'Done. You made it home.', done: true });
 }
 
 // --part <id>: a library board (twin/parts.json) recognised, then one turn with a wire from one of its pins to the
@@ -53,27 +118,35 @@ const PART_TURNS = {
   'arduino-mega-2560': [mk('Pin 22 → breadboard J10', 'wire', '22', 'breadboard J10', 0.8, 0.3), mk('ATmega2560 chip', 'circle', '', '', 0.5, 0.5)],
   'raspberry-pi-pico': [mk('GP15 → breadboard J10', 'wire', 'GP15', 'breadboard J10', 0.2, 0.8), mk('BOOTSEL button', 'circle', '', '', 0.5, 0.2)],
   'raspberry-pi-pico-w': [mk('GP15 → breadboard J10', 'wire', 'GP15', 'breadboard J10', 0.2, 0.8), mk('Wi-Fi chip', 'circle', '', '', 0.5, 0.8)],
+  custom: [mk('PWMA → breadboard J10', 'wire', 'PWMA', 'breadboard J10', 0.3, 0.2), mk('STBY', 'circle', 'STBY', '', 0.6, 0.2)],
 };
+// A motor-driver breakout Ody has no model for: two 8-pin rows (2.54 mm pitch) and a 2-pin power header, in board mm.
+const row = (y, names, x0 = 6.11) => names.map((label, i) => ({ x: x0 + i * 2.54, y, label }));
+const CUSTOM = { model: 'custom', label: 'TB6612 motor driver', size_mm: { w: 32, h: 24 }, headers: [
+  { name: 'Top', holes: row(3, ['PWMA', 'AIN2', 'AIN1', 'STBY', 'BIN1', 'BIN2', 'PWMB', 'GND']) },
+  { name: 'Bottom', holes: row(21, ['VM', 'VCC', 'GND', 'AO1', 'AO2', 'BO2', 'BO1', 'GND']) },
+  { name: 'Power', holes: [{ x: 28.5, y: 10.73, label: 'V+' }, { x: 28.5, y: 13.27, label: 'V-' }] } ] };
 async function partCall(id) {
-  live.send({ type: 'call', state: 'live', since: Date.now() });
-  live.send({ type: 'brain', brain: 'gemini' });
+  start();
   live.send({ type: 'heard', text: 'What board is this?' });
-  live.send({ type: 'part', model: id, label: 'Board' });
+  live.send(id === 'custom' ? { type: 'part', ...CUSTOM } : { type: 'part', model: id, label: 'Board' });
   live.send({ type: 'step', text: 'Show me your project' });
   await sleep(gap);
   live.send({ type: 'heard', text: 'Where does the LED wire go?' });
+  marksNow = PART_TURNS[id] || [];
   live.send({ type: 'turn', brain: 'gemini', model: 'gemini-2.5-flash', ms: 1800, marks: PART_TURNS[id] || [], board: { ...board, model: id }, step: 'Wire the LED', done: false });
   live.send({ type: 'step', text: 'Wire the LED' });
+  live.send({ type: 'say', text: 'Run a jumper from that pin into J10 on the breadboard.', ms: 1800 });
 }
 
-console.log(`[mock] twin on http://localhost:${PORT}/twin`);
+console.log(`[mock] Ody app on http://localhost:${PORT}/ (and /twin)`);
+console.log(`[mock] twin on http://localhost:${PORT}/twin`);   // twin-parts-test.mjs waits for this line
 const scanAt = args.indexOf('--scan');
 if (scanAt >= 0) {   // --scan <dir>: replay every <name>.scan.json there (written by test/scan-test.mjs) as "scan this" turns
   const { readdir, readFile } = await import('node:fs/promises');
   const dir = args[scanAt + 1];
   const files = (await readdir(dir)).filter(f => f.endsWith('.scan.json')).sort();
-  live.send({ type: 'call', state: 'live', since: Date.now() });
-  live.send({ type: 'brain', brain: 'claude-code' });
+  start(); live.send({ type: 'brain', brain: 'claude-code' });
   for (const [i, f] of files.entries()) {
     const { spec, photo, crop } = JSON.parse(await readFile(`${dir}/${f}`, 'utf8'));
     live.send({ type: 'heard', text: 'Scan this.' });
@@ -83,9 +156,11 @@ if (scanAt >= 0) {   // --scan <dir>: replay every <name>.scan.json there (writt
     await sleep(Number(process.env.MOCK_SCAN_GAP_MS || 300));
   }
   console.log('[mock] holding the last state');
-} else if (args.includes('--part')) {
-  const id = args[args.indexOf('--part') + 1];
-  await sleep(Number(process.env.MOCK_START_MS || 1500)); await partCall(id); console.log('[mock] holding the last state');
-} else if (args.includes('--waiting')) { /* stay in the waiting state */ }
-else if (args.includes('--loop')) for (;;) { await sleep(2000); await call(); await sleep(gap * 2); live.send({ type: 'call', state: 'ended' }); await sleep(4000); }
-else { await sleep(1500); await call(); console.log('[mock] holding the last state'); }
+} else if (has('--part') || has('--custom')) {
+  const id = has('--custom') ? 'custom' : opt('--part');
+  await sleep(Number(process.env.MOCK_START_MS || 1500)); await partCall(id);
+  if (has('--end')) { await sleep(gap); end(); }
+  console.log('[mock] holding the last state');
+} else if (has('--waiting')) { /* stay in the waiting state */ }
+else if (has('--loop')) for (;;) { await sleep(2000); await call(); await sleep(gap * 2); end(); await sleep(4000); }
+else { await sleep(1500); await call(); if (has('--end')) { await sleep(gap); end(); } console.log('[mock] holding the last state'); }

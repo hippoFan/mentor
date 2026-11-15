@@ -1,5 +1,6 @@
-// The laptop screen for judging: serves monitor.html on http://localhost:8790 and streams the call to it over a
-// WebSocket. Local only (127.0.0.1). Each call runs in its own job process, so the server opens with the call and
+// The laptop screen for judging: serves the one Ody app (twin.html: the 3D twin as the hero, the caller's phone view,
+// the voyage, the conversation and a tester drawer) on http://localhost:8790 (and /twin, a deep link to the same page),
+// and streams the call to it over one WebSocket. Local only (127.0.0.1). Each call runs in its own job process, so the server opens with the call and
 // closes when it ends; the page reconnects by itself and shows "waiting" in between.
 import { createServer } from 'node:http';
 import { readFile } from 'node:fs/promises';
@@ -7,13 +8,13 @@ import { createHash } from 'node:crypto';
 import { WebSocket, WebSocketServer } from 'ws';
 
 const PORT = Number(process.env.MENTOR_MONITOR_PORT || 8790);
-const PAGE = new URL('./monitor.html', import.meta.url);
-const TWIN = new URL('./twin.html', import.meta.url);
+const APP = new URL('./twin.html', import.meta.url);   // monitor.html is only a redirect for servers started before this
+const APP_PATHS = new Set(['/', '/index.html', '/twin', '/twin.html']);
 
 // The 3D twin (/twin) and its files. Each route is a fixed pattern of plain path segments (no dots except the one
 // extension), so nothing outside these folders can be named: no traversal, no directory listing.
 const TYPES = { js: 'text/javascript; charset=utf-8', mjs: 'text/javascript; charset=utf-8', json: 'application/json; charset=utf-8',
-  wasm: 'application/wasm', task: 'application/octet-stream' };
+  wasm: 'application/wasm', task: 'application/octet-stream', ttf: 'font/ttf' };
 const STATIC = [
   [/^\/twin\/([a-z0-9-]+\.(?:js|json))$/, m => new URL(`./twin/${m[1]}`, import.meta.url)],
   [/^\/data\/(uno-pins\.json)$/, m => new URL(`./data/${m[1]}`, import.meta.url)],
@@ -23,12 +24,13 @@ const STATIC = [
   [/^\/vendor\/mediapipe\/(vision_bundle\.mjs|wasm\/vision_wasm_(?:nosimd_)?internal\.(?:js|wasm))$/,
     m => new URL(`./node_modules/@mediapipe/tasks-vision/${m[1]}`, import.meta.url)],
   [/^\/twin\/models\/(hand_landmarker\.task)$/, m => new URL(`./twin/models/${m[1]}`, import.meta.url)],
+  [/^\/fonts\/(InterVariable\.ttf)$/, m => new URL(`./fonts/${m[1]}`, import.meta.url)],   // OFL, served locally: no font CDN
 ];
-async function twinPage() {   // the page's one inline script is its import map; CSP allows exactly that script by hash
-  const html = await readFile(TWIN, 'utf8');
+async function appPage() {   // the page's one inline script is its import map; CSP allows exactly that script by hash
+  const html = await readFile(APP, 'utf8');
   const map = html.match(/<script type="importmap">([\s\S]*?)<\/script>/);
   const hash = map ? ` 'sha256-${createHash('sha256').update(map[1]).digest('base64')}'` : '';
-  return { html, csp: `default-src 'self'; img-src 'self' data: blob:; style-src 'self' 'unsafe-inline'; script-src 'self' 'wasm-unsafe-eval'${hash}; connect-src 'self' ws://localhost:* ws://127.0.0.1:*; frame-ancestors 'none'; base-uri 'none'; form-action 'none'` };
+  return { html, csp: `default-src 'self'; img-src 'self' data: blob:; style-src 'self' 'unsafe-inline'; script-src 'self' 'wasm-unsafe-eval'${hash}; connect-src 'self' ws://localhost:* ws://127.0.0.1:*; font-src 'self'; object-src 'none'; frame-ancestors 'none'; base-uri 'none'; form-action 'none'` };
 }
 
 const HUB_PORT = Number(process.env.MENTOR_HUB_PORT || 8789);
@@ -66,13 +68,9 @@ export async function createLiveServer() {
   const okOrigin = o => o === `http://localhost:${PORT}` || o === `http://127.0.0.1:${PORT}`;
   const server = createServer(async (req, res) => {
     if (!okHost(req.headers.host)) { res.writeHead(403).end(); return; }
-    if (req.method === 'GET' && (req.url === '/' || req.url === '/index.html')) {
-      res.writeHead(200, { 'content-type': 'text/html; charset=utf-8', 'cache-control': 'no-store', 'x-frame-options': 'DENY',
-        'content-security-policy': "default-src 'self'; img-src 'self' data:; style-src 'self' 'unsafe-inline'; script-src 'self' 'unsafe-inline'; connect-src 'self' ws://localhost:* ws://127.0.0.1:*; frame-ancestors 'none'",
-        'referrer-policy': 'no-referrer' }).end(await readFile(PAGE));
-    } else if (req.method === 'GET' && (req.url.split('?')[0] === '/twin' || req.url.split('?')[0] === '/twin.html')) {
+    if (req.method === 'GET' && APP_PATHS.has(req.url.split('?')[0])) {
       try {
-        const { html, csp } = await twinPage();
+        const { html, csp } = await appPage();
         res.writeHead(200, { 'content-type': 'text/html; charset=utf-8', 'cache-control': 'no-store', 'x-frame-options': 'DENY',
           'content-security-policy': csp, 'referrer-policy': 'no-referrer', 'x-content-type-options': 'nosniff',
           'permissions-policy': 'camera=(self), microphone=(), geolocation=()' }).end(html);
@@ -108,7 +106,7 @@ export async function createLiveServer() {
     send(event) {
       if (event.type === 'call') {
         state.call = event;
-        if (event.state === 'live') { state.transcript = []; state.turns = []; state.step = ''; }   // a new call starts clean
+        if (event.state === 'live') { state.transcript = []; state.turns = []; state.step = ''; state.scans = []; }   // a new call starts clean
       }
       if (event.type === 'step') state.step = event.text;
       if (event.type === 'brain') state.brain = event.brain;

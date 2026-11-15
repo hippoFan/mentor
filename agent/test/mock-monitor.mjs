@@ -1,6 +1,6 @@
-// Fake call for the laptop monitor, no API keys, LiveKit or phone needed:
+// Fake call for the laptop app (phone view + 3D twin), no API keys, LiveKit or phone needed:
 //   node test/mock-monitor.mjs [photo.jpg] [--waiting] [--hold] [--port 8799]
-// Serves monitor.html through the real live.mjs server on http://localhost:8799 (not 8790, which the live agent uses)
+// Serves the Ody app through the real live.mjs server on http://localhost:8799 (not 8790, which the live agent uses)
 // and replays a realistic call: the photo as the caller's camera, Mentor's marks drawn by overlay.mjs, and
 // heard / say / turn / step events. Loops (call, end, wait) unless --hold, which stays live after the last turn.
 // --waiting never starts a call, for checking the waiting screen.
@@ -55,7 +55,7 @@ const say = (text, ms) => { live.send({ type: 'say', text, ...(ms ? { ms } : {})
 const step = (text, done) => { caption = text; live.send({ type: 'step', text, ...(done ? { done: true } : {}) }); };
 const turn = (ms, m, stepText, sayText, done = false) => {
   marks = m;
-  live.send({ type: 'turn', brain: 'gemini', model: 'gemini-2.5-flash', ms, marks: m, step: stepText, done });
+  live.send({ type: 'turn', brain: 'gemini', model: 'gemini-2.5-flash', ms, marks: m, step: stepText, done, board: { model: 'uno-r3' } });
   step(done ? 'Done. You made it home.' : stepText, done);
   say(sayText, ms);
 };
@@ -73,13 +73,14 @@ async function call() {
   await sleep(4000);
   live.send({ type: 'heard', text: "Hey. It's an Arduino Uno, and I want to make an LED blink." });
   await sleep(2140);
-  turn(2140, [{ label: 'Pin 13', ...PIN13, kind: 'circle' }, { label: 'GND', ...GND, kind: 'circle' }, { label: 'ATmega328P', ...CHIP, kind: 'circle' }],
+  live.send({ type: 'part', model: 'uno-r3', label: 'Arduino UNO R3' });
+  turn(2140, [{ label: 'Pin 13', ...PIN13, kind: 'circle', pin: '13' }, { label: 'GND', ...GND, kind: 'circle', pin: 'GND' }, { label: 'ATmega328P', ...CHIP, kind: 'circle' }],
     'Find pin 13 and the GND beside it',
     'Nice, an Uno. Your LED goes in pin 13, and its short leg into the GND right next to it.');
   await sleep(6500);
   live.send({ type: 'heard', text: 'Which leg is the long one again?' });
   await sleep(2870);
-  turn(2870, [{ label: 'Long leg', ...PIN13, kind: 'arrow' }, { label: 'Short leg', ...GND, kind: 'arrow' }],
+  turn(2870, [{ label: 'Long leg', ...PIN13, kind: 'arrow', pin: '13' }, { label: 'Short leg', ...GND, kind: 'arrow', pin: 'GND' }],
     'Long leg into 13, short leg into GND',
     'The long leg is positive. Push it into 13, and the short one into GND.');
   await sleep(6000);
