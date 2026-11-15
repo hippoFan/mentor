@@ -7,7 +7,8 @@ import { randomUUID } from 'node:crypto';
 import { basename } from 'node:path';
 import { writeFile } from 'node:fs/promises';
 
-const API = 'https://app.trychert.com/api/v1';
+// FaceTime API base per docs.trychert.com/facetime/quickstart (skills.md shows app.trychert.com; override if needed).
+const API = process.env.CHERT_API_BASE || 'https://facetime.trychert.com/api/v1';
 // Wokwi's "new Arduino Uno project" opens with a ready-to-run Blink sketch; paste the code there to simulate.
 const WOKWI = 'https://wokwi.com/projects/new/arduino-uno';
 
