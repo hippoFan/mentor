@@ -19,6 +19,8 @@ import { createGestures, applyToCamera } from './gestures.js';
 import { buildScan, explodeScan, disposeScan } from './scan.js';
 import { subscribe, swapped } from './shell.js';
 import { customPart, customKey } from './custom.js';
+import { createCircuitView, legendHex } from './circuit3d.js';
+import { buildInterior, explodeInterior, setInteriorXray, setInteriorLook, pickInterior, partInfo, highlightInterior, interiorItems, interiorBox, disposeInterior } from './interior.js';
 
 const $ = id => document.getElementById(id);
 const stage = $('stage'), canvas = $('view');
@@ -132,6 +134,8 @@ function setHolo(on) {
   renderer.toneMappingExposure = on ? 1.0 : 0.9;
   bloom.strength = on ? 0.75 : 0.45; bloom.threshold = on ? 0.2 : 1.05; bloom.radius = on ? 0.5 : 0.35;
   applyLook();
+  if (S.scan?.I) setInteriorLook(S.scan.I, on);   // after applyLook, which resets materials
+  if (C.view) { C.view.setLook(on); renderProject(); }
   updatePartTags();
 }
 
@@ -315,7 +319,7 @@ function updatePartTags() {
   clearGroup(partTags);
   if (!builtIn(S.view)) return;
   if (S.view === 'scan') {
-    if (!S.scan || S.explode > 0.01) return;
+    if (!S.scan || S.explode > 0.01 || (S.scan.I && xray?.own && xray.on)) return;   // x-ray / exploded: the interior's own names
     for (const a of S.scan.built.anchors) { const t = tag(a.text, 'part'); t.position.copy(a.pos).multiplyScalar(S.scan.built.scale); partTags.add(t); }
     return;
   }
@@ -344,7 +348,7 @@ function buildLayerTags() {
 function setExplode(on) {
   S.explodeTo = on ? 1 : 0; $('t-explode').setAttribute('aria-pressed', String(on));
   if (S.view === 'scan') { flyScan(1.1, on ? 1.45 : 1); return; }
-  if (!builtIn(S.view)) return;   // a mounted mode animates its own explode in stepExplode
+  if (!builtIn(S.view)) { if (on && S.view === 'circuit') { S.explodeTo = 0; $('t-explode').setAttribute('aria-pressed', 'false'); toast('Explode works on the Board and Scan views'); } return; }
   if (on && S.uno?.box) {   // frame the whole stack: layers rise up to ~60 mm, their name tags sit to the right
     const b = S.uno.box.clone(); b.max.y += 64; b.max.x += 48; b.min.x -= 4;
     startFly(camState(), fitBox(b, { phi: 1.18, theta: 0.32 }, 1.04), 1.3);
@@ -357,7 +361,7 @@ function stepExplode(dt) {
   const e = easeInOut(S.explode);
   if (!builtIn(S.view)) { if (before !== S.explode) { try { MODES.get(S.view)?.explode?.(e); } catch (err) { console.warn('[twin] mode explode', err); } } return; }
   if (S.view === 'scan') {
-    if (S.scan && before !== S.explode) explodeScan(S.scan.built, e);
+    if (S.scan && before !== S.explode) { if (S.scan.I) explodeInterior(S.scan.I, e); else explodeScan(S.scan.built, e); }
     if ((before < 0.02) !== (S.explode < 0.02) || (before > 0.01) !== (S.explode > 0.01)) updatePartTags();
     return;
   }
@@ -449,13 +453,16 @@ function flyHome(dur = 1.3) {
 /** Frames the scanned object (zoom > 1 steps back for the exploded view). */
 function flyScan(dur = 1.3, zoom = 1) {
   const b = S.scan.built, sz = b.size.clone().multiplyScalar(b.scale);
-  const box = new THREE.Box3(new THREE.Vector3(-sz.x / 2, 0, -sz.z / 2), new THREE.Vector3(sz.x / 2, sz.y * (zoom > 1 ? 2.2 : 1), sz.z / 2));
+  const box = S.scan.I ? interiorBox(S.scan.I, zoom > 1 ? 1 : 0)   // an interior opens along its own axis: frame the stack
+    : new THREE.Box3(new THREE.Vector3(-sz.x / 2, 0, -sz.z / 2), new THREE.Vector3(sz.x / 2, sz.y * (zoom > 1 ? 2.2 : 1), sz.z / 2));
+  if (S.scan.I) zoom = Math.min(zoom, 1.1);
   const v = fitBox(box, { phi: 0.98, theta: 0.32 }, 1.1 * zoom);
   v.radius = Math.max(90, v.radius);
   controls.maxDistance = Math.max(520, v.radius * 1.6);
   startFly(camState(), v, dur);
 }
 function startFly(from, to, dur) {
+  controls.maxDistance = Math.max(520, to.radius * 1.4);   // a narrow stage (phone) can need more room than the default
   let dTheta = to.theta - from.theta; dTheta = Math.atan2(Math.sin(dTheta), Math.cos(dTheta));
   S.fly = { from, to: { ...to, theta: from.theta + dTheta, off: to.off || from.off }, t: 0, dur: REDUCED || dur <= 0 ? 0.01 : dur };
 }
@@ -485,7 +492,8 @@ function pickAt(x, y) {   // x, y in stage pixels
   const r = stage.getBoundingClientRect();
   ndc.set((x / r.width) * 2 - 1, -(y / r.height) * 2 + 1);
   ray.setFromCamera(ndc, camera);
-  if (S.view !== 'board') return null;
+  if (S.view === 'scan' && S.scan?.I) { const p = pickInterior(S.scan.I, ray); highlightInterior(S.scan.I, p?.mesh || null); return p; }
+  if (!boardShown()) return null;
   const objs = [S.uno?.pick, S.bb?.group.visible && S.bbIn >= 1 ? S.bb.pick : null].filter(Boolean);
   const hit = ray.intersectObjects(objs, false)[0];
   if (!hit) return null;
@@ -513,22 +521,31 @@ function showTip(p, x, y) {
 }
 // ---------- pins from the keyboard: the rail's listbox, and [ / ] anywhere ----------
 function pinTip(k) {
+  if (k.startsWith('i:')) {   // a part inside a scanned object (researched interior)
+    const m = S.scan?.I?.meshes[Number(k.slice(2))]; if (!m) return null;
+    const p = partInfo(m); return { ...p, said: `Layer: ${p.said}` };
+  }
   const info = infoFor(k), said = S.current.find(c => c.from?.key === k || c.to?.key === k);
   return { pos: S.uno.pinPos(k).add(S.pos), title: info.name, body: info.fn, said: said ? `Ody: ${said.label}` : '' };
 }
 function placeKeyTip() {   // the keyboard tooltip follows its pin while the view moves
-  if (!S.tipKey || !S.uno || S.view !== 'board') return;
-  const p = pinTip(S.tipKey), { w, h } = stageSize(), v = p.pos.clone().project(camera);
+  if (!S.tipKey || (boardShown() ? !S.uno : !S.tipKey.startsWith('i:'))) return;
+  const p = pinTip(S.tipKey); if (!p) return;
+  const { w, h } = stageSize(), v = p.pos.clone().project(camera);
   if (v.z > 1) { tipEl.hidden = true; return; }
   showTip(p, (v.x + 1) / 2 * w, (1 - v.y) / 2 * h);
 }
 function renderPins() {
   const box = $('pins'); box.replaceChildren();
-  const keys = S.view === 'board' && S.uno ? S.uno.pickKeys : [];
+  const inside = S.view === 'scan' && S.scan?.I ? interiorItems(S.scan.I) : null;
+  const keys = inside ? inside.map((_, i) => `i:${i}`) : boardShown() && S.uno ? S.uno.pickKeys : [];
+  $('pinsTitleText').textContent = inside ? 'Parts inside' : 'Pins';
+  box.classList.toggle('parts', !!inside);
+  $('pinsHint').textContent = inside ? 'Arrow keys move through the parts and show each one in 3D, front to back. Enter flies the view there.' : 'Arrow keys move through the pins and show each one on the board. Enter flies the view there.';
   $('pinsCount').textContent = keys.length ? String(keys.length) : '';
   S.pinIdx = -1; box.removeAttribute('aria-activedescendant');
   keys.forEach((k, i) => {
-    const info = infoFor(k), o = document.createElement('div');
+    const info = inside ? { name: inside[i].name, fn: inside[i].layer } : infoFor(k), o = document.createElement('div');
     o.id = `pin-${i}`; o.setAttribute('role', 'option'); o.setAttribute('aria-selected', 'false'); o.dataset.key = k;
     const b = document.createElement('b'); b.textContent = info.name; const sp = document.createElement('span'); sp.textContent = info.fn || 'Pin';
     o.append(b, sp); o.addEventListener('click', () => { selectPin(i); box.focus(); });
@@ -545,10 +562,11 @@ function selectPin(i, { fly = false } = {}) {
   S.pinIdx = i; const o = opts[i]; o.setAttribute('aria-selected', 'true'); box.setAttribute('aria-activedescendant', o.id);
   o.scrollIntoView({ block: 'nearest' });
   S.tipKey = o.dataset.key; S.tipPinned = null;
-  const t = pinTip(S.tipKey); $('announce').textContent = `${t.title}. ${t.body}${t.said ? `. ${t.said}` : ''}`;
+  const t = pinTip(S.tipKey); if (!t) return;
+  if (S.scan?.I) highlightInterior(S.scan.I, t.mesh || null); $('announce').textContent = `${t.title}. ${t.body}${t.said ? `. ${t.said}` : ''}`;
   if (fly) flyTo([t.pos], { radius: 150 }); else placeKeyTip();
 }
-function clearKeyTip() { S.tipKey = null; showTip(null); }
+function clearKeyTip() { S.tipKey = null; showTip(null); if (S.scan?.I) highlightInterior(S.scan.I, null); }
 $('pins').addEventListener('keydown', e => {
   const n = $('pins').querySelectorAll('[role="option"]').length; if (!n) return;
   const map = { ArrowDown: 1, ArrowRight: 1, ArrowUp: -1, ArrowLeft: -1 };
@@ -699,9 +717,9 @@ function addScan(ev, { show = true } = {}) {
   // a known board: the scanner's model, or (library boards) the scanned name matched against the part aliases
   const byName = S.lookup[normAlias(spec.name)];
   const known = isBoard(spec.known_model) ? spec.known_model : isPart(byName) ? byName : null;
-  const entry = { id: S.scans.length + 1, spec, photo, crop: Array.isArray(ev.crop) && ev.crop.length === 4 ? ev.crop.map(Number) : null, known, built: null, at: ev.at || Date.now() };
+  const entry = { id: Number.isFinite(Number(ev.id)) ? Number(ev.id) : -(S.scans.length + 1), interior: okInterior(ev.interior), I: null, spec, photo, crop: Array.isArray(ev.crop) && ev.crop.length === 4 ? ev.crop.map(Number) : null, known, built: null, at: ev.at || Date.now() };
   S.scans.push(entry);
-  if (S.scans.length > 12) { const old = S.scans.shift(); if (old.built) { if (S.scan === old) showBoard({ fly: false }); disposeScan(old.built); } }
+  if (S.scans.length > 12) { const old = S.scans.shift(); if (old.built) { if (S.scan === old) showBoard({ fly: false }); if (old.I) disposeInterior(old.I); disposeScan(old.built); } }
   if (known) { setPart(known); if (show) showBoard(); }
   else if (show) showScan(entry);
   renderScans();
@@ -715,8 +733,11 @@ function showScan(entry) {
   }
   S.scan = entry; S.view = 'scan';
   if (!scanGroup.children.includes(entry.built.group)) scanGroup.add(entry.built.group);
-  explodeScan(entry.built, easeInOut(S.explode));
+  attachInterior(entry);
+  if (entry.I) explodeInterior(entry.I, easeInOut(S.explode)); else explodeScan(entry.built, easeInOut(S.explode));
   applyLook(entry.built.group);
+  if (entry.I) { setInteriorLook(entry.I, S.holo); setInteriorXray(entry.I, !!xray?.on && xray.own); }
+  interiorPanel();
   if (S.uno) S.uno.group.visible = false;
   marksGroup.visible = wiresGroup.visible = false;
   if (S.bb) S.bb.group.visible = false;
@@ -736,6 +757,7 @@ function showScan(entry) {
 }
 function showBoard({ fly = true } = {}) {
   leaveExternal();
+  if (S.scan?.I) { setInteriorXray(S.scan.I, false); highlightInterior(S.scan.I, null); }
   if (S.scan) scanGroup.remove(S.scan.built.group);
   S.scan = null; S.view = 'board';
   scanGroup.visible = false;
@@ -743,9 +765,153 @@ function showBoard({ fly = true } = {}) {
   marksGroup.visible = wiresGroup.visible = S.explode < 0.02;
   controls.maxDistance = 520;
   document.body.classList.toggle('has-part', !!S.model);
-  boardPanel(); updatePartTags(); renderScans(); renderPins(); pointing();
+  boardPanel(); updatePartTags(); renderScans(); renderPins(); pointing(); interiorPanel();
   if (fly && !S.replaying) flyHome(1.3);
 }
+// ---------- the voice circuit builder (twin/circuit3d.js): parts on the breadboard, jumpers to exact pins ----------
+// {type:'circuit', rev, state, layout, legend, next, sketch, say, change}: the 'circuit' stage mode (board + breadboard +
+// the project), auto-shown when a voice change lands; the rail's "Project" section lists parts, the next step, the wire
+// legend and the sketch. Built lazily on the first event, so a call without a circuit costs nothing.
+const boardShown = () => S.view === 'board' || S.view === 'circuit';
+const C = { view: null, ev: null, nextFx: new THREE.Group() };
+C.nextFx.name = 'Next step'; C.nextFx.userData.noExport = true;
+function circuitView() {
+  if (C.view) return C.view;
+  C.view = createCircuitView({ boardPin: k => S.uno?.pinPos(k)?.add(S.pos) || null, bbOrigin: BB_POS, label: (text, cls) => tag(text, cls), holo: S.holo, reduced: REDUCED });
+  C.view.group.visible = S.view === 'circuit';
+  C.view.group.add(C.nextFx);
+  twin.add(C.view.group);
+  MODES.set('circuit', {
+    enter() { if (S.uno) S.uno.group.visible = true; S.bbIn = Math.max(S.bbIn, 0.0001); C.view.group.visible = true; renderProject(); },
+    exit() { C.view.group.visible = false; },
+    box() { const b = boardBox(); const c = C.view.box(); if (!c.isEmpty()) b.union(c); return b; },
+  });
+  renderModes();
+  return C.view;
+}
+function resetCircuit() {
+  if (!C.view) return;
+  C.ev = null; C.view.setState({ layout: { components: [], jumpers: [] } }); clearGroup(C.nextFx);
+  if (S.view === 'circuit') showBoard({ fly: false });
+  MODES.delete('circuit'); renderModes(); renderProject();
+}
+function onCircuit(ev, { replay = false } = {}) {
+  const L = ev?.layout;
+  if (!L || !Array.isArray(L.components) || !Array.isArray(L.jumpers)) return;
+  const board = ev.state?.board;
+  if (typeof board === 'string' && board !== S.model && isBoard(board)) setPart(board);
+  if (!S.model) setPart('uno-r3');
+  const view = circuitView();
+  if (!MODES.has('circuit')) { C.view = null; view.dispose(); return onCircuit(ev, { replay }); }   // after a reset: a fresh view
+  C.ev = ev;
+  try { view.setState(ev); } catch (e) { console.warn('[twin] circuit', e); }
+  const changed = !replay && Array.isArray(ev.change?.applied) && ev.change.applied.length;
+  if (S.view !== 'circuit' && (changed || replay || !C.shown)) { C.shown = true; setMode('circuit'); }
+  else if (S.view === 'circuit' && changed && !S.replaying) setTimeout(() => flyHome(1.2), 250);   // new parts: re-frame once they are placed
+  markNext(); renderProject();
+}
+/** The next step, highlighted in 3D: a gold ring at each end of its jumper (or over its part) and a "Next" tag. */
+function markNext() {
+  clearGroup(C.nextFx);
+  const n = C.ev?.next; if (!n || !C.view) return;
+  let at = null, ends = [];
+  const jid = String(n.id || '').replace(/^wire:/, '');
+  const wire = C.view.group.getObjectByName(`Jumper ${jid}`);
+  if (wire?.userData.curve) {
+    const c = wire.userData.curve; at = c.getPoint(0.5);
+    ends = [c.v0, c.v3].map(v => v.clone().add(new THREE.Vector3(0, -11, 0)));
+  } else {
+    const id = n.component || n.from?.component;
+    C.view.group.traverse(o => { if (!at && id && o.userData.circuitId === id) { at = new THREE.Box3().setFromObject(o).getCenter(new THREE.Vector3()); at.y += 14; } });
+  }
+  for (const e of ends) { const r = makeRing(COLORS.mentor, { radius: 2.2 }); r.position.copy(e).add(new THREE.Vector3(0, 0.2, 0)); C.nextFx.add(r); }
+  if (at) { const t = tag(`Step ${n.index} of ${n.total}`, 'mentor', 'Next'); t.position.copy(at); C.nextFx.add(t); }
+}
+const pEl = (tag, cls, text) => { const e = document.createElement(tag); if (cls) e.className = cls; if (text != null) e.textContent = String(text); return e; };
+function renderProject() {
+  const ev = C.ev, sec = $('project');
+  sec.hidden = !ev;
+  if (!ev) return;
+  const parts = $('project-parts'), code = $('project-code');
+  parts.replaceChildren(); code.replaceChildren();
+  if (ev.next) {
+    const card = pEl('div', 'next-card');
+    card.append(pEl('small', '', `Step ${ev.next.index} of ${ev.next.total}`), pEl('p', '', ev.next.say || ev.next.mark?.label || 'Next step'));
+    parts.append(card);
+  } else if (ev.layout.components.length) parts.append(pEl('div', 'next-card done', 'Every step is done. Upload the sketch.'));
+  const comps = ev.state?.components || [];
+  const ul = pEl('ul', 'list comps');
+  for (const c of ev.layout.components.slice(0, 20)) {
+    const li = pEl('li'), b = pEl('button'); b.type = 'button';
+    b.append(pEl('span', 'ico part'), pEl('span', 'what', c.label || c.part), pEl('span', 'where', c.part));
+    b.title = c.place || ''; b.addEventListener('click', () => { if (S.view !== 'circuit') setMode('circuit'); C.view.group.traverse(o => { if (o.userData.circuitId === c.id) host.fit(new THREE.Box3().setFromObject(o).expandByScalar(25)); }); });
+    li.append(b); ul.append(li);
+  }
+  if (!comps.length && !ev.layout.components.length) parts.append(pEl('p', 'empty', 'Say “add an LED on pin 6” or “add a distance sensor” on the call.'));
+  else parts.append(ul);
+  if (Array.isArray(ev.legend) && ev.legend.length) {
+    const lg = pEl('ul', 'legend');
+    for (const l of ev.legend.slice(0, 16)) { const li = pEl('li'), i = pEl('i'); i.style.background = legendHex(l.color, S.holo); li.append(i, pEl('span', '', l.text)); lg.append(li); }
+    parts.append(pEl('h4', '', 'Wires'), lg);
+  }
+  if (typeof ev.sketch === 'string' && ev.sketch.trim()) {
+    const d = pEl('details', 'sketch'), sum = pEl('summary', '', 'Arduino sketch'), pre = pEl('pre', '', ev.sketch.slice(0, 20000));
+    pre.tabIndex = 0;
+    const row = pEl('div', 'sketch-actions'), copy = pEl('button', 'btn', 'Copy sketch'), dl = pEl('button', 'btn', 'Download .ino');
+    copy.type = dl.type = 'button';
+    copy.addEventListener('click', async () => { try { await navigator.clipboard.writeText(ev.sketch); } catch { const t = document.createElement('textarea'); t.value = ev.sketch; document.body.append(t); t.select(); document.execCommand('copy'); t.remove(); } toast('Sketch copied'); });
+    dl.addEventListener('click', () => { const url = URL.createObjectURL(new Blob([ev.sketch], { type: 'text/plain' })); const a = document.createElement('a'); a.href = url; a.download = `ody-circuit-${stamp()}.ino`; a.hidden = true; document.body.append(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(url), 4000); toast('Sketch saved'); });
+    row.append(copy, dl); d.append(sum, pre, row); code.append(d);
+  }
+}
+
+// ---------- researched interiors (twin/interior.js): what is inside a scanned object, from public teardowns ----------
+/** The interior as sent (research.mjs sanitises it); just enough shape-checking that buildInterior can't trip. */
+function okInterior(v) {
+  return v && typeof v === 'object' && Array.isArray(v.layers) && v.layers.length && v.layers.every(l => l && Array.isArray(l.parts)) ? v : null;
+}
+function attachInterior(entry) {
+  if (entry.I || !entry.interior || !entry.built) return;
+  try { entry.I = buildInterior(entry.built, entry.spec, entry.interior); }
+  catch (e) { console.warn('[twin] interior', e); entry.interior = null; entry.I = null; }
+}
+/** {type:'interior', id, interior}: arrives after its scan (research takes a while); mounts it if that scan is on stage. */
+function onInterior(ev) {
+  const entry = S.scans.find(x => x.id === Number(ev.id)), it = okInterior(ev.interior);
+  if (!entry || !it || entry.known) return;
+  if (entry.I) { if (S.scan === entry) setInteriorXray(entry.I, false); disposeInterior(entry.I); entry.I = null; }
+  entry.interior = it;
+  renderScans();
+  if (S.scan === entry) { showScan(entry); toast(`Ody: researched what’s inside the ${entry.spec.name.toLowerCase()}`, { voice: true, ms: 3600 }); }
+}
+function interiorPanel() {
+  const e = S.view === 'scan' ? S.scan : null, it = e?.I ? e.interior : null;
+  $('researched').hidden = !it;
+  $('interiorinfo').hidden = !it;
+  if (xray?.own) { $('t-xray').hidden = !it; if (!it && xray.on) { xray.on = false; $('t-xray').setAttribute('aria-pressed', 'false'); } }
+  if (!it) return;
+  const n = it.layers.length, parts = it.layers.reduce((a, l) => a + l.parts.length, 0);
+  $('insideSum').textContent = `Inside: ${n} layer${n === 1 ? '' : 's'} · researched from public teardowns`;
+  $('insideGuess').textContent = [it.model_guess, Number.isFinite(it.confidence) ? `${Math.round(it.confidence * 100)}% sure` : '', `${parts} parts`].filter(Boolean).join(', ');
+  const ol = $('layers'); ol.replaceChildren();
+  for (const l of it.layers) {
+    const li = document.createElement('li'), b = document.createElement('b'), sp = document.createElement('span');
+    b.textContent = String(l.name || 'Layer'); sp.textContent = l.parts.map(p => String(p?.name || '')).filter(Boolean).join(', ');
+    li.append(b, sp); ol.append(li);
+  }
+  const ul = $('sources'); ul.replaceChildren();
+  for (const src of Array.isArray(it.sources) ? it.sources.slice(0, 6) : []) {
+    let u; try { u = new URL(String(src?.url || '')); } catch { continue; }
+    if (u.protocol !== 'https:') continue;   // links only to https pages; everything else stays text-free
+    const li = document.createElement('li'), a = document.createElement('a');
+    a.href = u.href; a.target = '_blank'; a.rel = 'noopener noreferrer'; a.textContent = String(src.title || u.hostname).slice(0, 80);
+    li.append(a); ul.append(li);
+  }
+  $('sourcesWrap').hidden = !ul.children.length;
+  $('insideNote').textContent = String(it.notes || '').slice(0, 300);
+  $('insideNote').hidden = !it.notes;
+}
+
 function renderScans() {
   const ul = $('scans'); ul.replaceChildren();
   const items = [];
@@ -802,10 +968,11 @@ $('modes').addEventListener('keydown', e => {
 function resetCall() {
   S.turns = []; S.callMarks = []; S.current = []; S.done = false;
   if (S.view === 'scan') showBoard({ fly: false });
-  for (const e of S.scans) if (e.built) disposeScan(e.built);
+  for (const e of S.scans) if (e.built) { if (e.I) disposeInterior(e.I); disposeScan(e.built); }
   S.scans = []; renderScans();
   for (const w of S.wires.values()) void w; S.wires.clear();
   clearGroup(marksGroup); clearGroup(wiresGroup); renderLists(); setStep(''); pointing();
+  resetCircuit();
 }
 /** The agent's voice commands for the view ("Ody, explode it"). Unknown actions are ignored. */
 function voice(action) {
@@ -832,6 +999,7 @@ function handle(ev) {
       if (ev.part && (ev.part.model !== 'custom' || registerCustom(ev.part))) setPart(ev.part.model, ev.part.label);
       for (const t of (Array.isArray(ev.turns) ? ev.turns : []).slice(-20)) applyTurn(t, { animate: false });
       { const sc = (Array.isArray(ev.scans) ? ev.scans : []).slice(-12); sc.forEach((x, i) => addScan(x, { show: i === sc.length - 1 })); }
+      if (ev.circuit) onCircuit(ev.circuit, { replay: true });
       S.replaying = false;
       if (ev.step) setStep(ev.step);
       if (S.model) S.bbIn = 1;
@@ -845,6 +1013,8 @@ function handle(ev) {
       setPart(ev.model, ev.label); break;
     case 'turn': applyTurn(ev); break;
     case 'scan': addScan(ev); break;
+    case 'interior': onInterior(ev); break;
+    case 'circuit': onCircuit(ev); break;
     case 'step': setStep(ev.text); if (ev.done) S.done = true; break;
     case 'twin': if (typeof ev.action === 'string') voice(ev.action); break;
     default: break;
@@ -855,7 +1025,7 @@ function handle(ev) {
 $('t-holo').addEventListener('click', () => setHolo(!S.holo));
 $('t-explode').addEventListener('click', () => setExplode(S.explodeTo < 1));
 // X-ray: hidden until a module (twin/interior.js) offers it through host.enableXray(onToggle)
-let xray = null;
+let xray = { on: false, own: true, onToggle: on => { if (S.scan?.I) { setInteriorXray(S.scan.I, on); updatePartTags(); } } };   // the interior's x-ray; a module may take it over
 function setXray(on) { if (!xray) return; xray.on = on; $('t-xray').setAttribute('aria-pressed', String(on)); try { xray.onToggle(on); } catch (e) { console.warn('[twin] x-ray', e); } }
 $('t-xray').addEventListener('click', () => setXray(!xray?.on));
 $('t-reset').addEventListener('click', () => { S.tipPinned = null; showTip(null); flyHome(1.0); });
@@ -871,7 +1041,7 @@ addEventListener('keydown', e => {
   else if (k === 'e') setExplode(S.explodeTo < 1);
   else if (k === 'r') { clearKeyTip(); flyHome(1.0); }
   else if (k === 'x') downloadGlb();
-  else if (k === 'y' && xray) setXray(!xray.on);
+  else if (k === 'y' && xray && !$('t-xray').hidden) setXray(!xray.on);
   else if (k === 'f') { fpsEl.hidden = !fpsEl.hidden; showFps = !fpsEl.hidden; }
   else if (k === ']' || k === '[') selectPin(S.pinIdx < 0 ? (k === ']' ? 0 : -1) : S.pinIdx + (k === ']' ? 1 : -1));
   else if (onStage && k === 'arrowleft') nudge({ dTheta: -0.14 });
@@ -907,7 +1077,7 @@ function frame(now) {
   clock.value += dt;
   stepFly(Math.min(0.25, raw)); stepExplode(Math.min(0.25, raw)); stepHands();   // camera moves and explode keep wall-clock time on a slow GPU
   if (S.bb && S.bbIn > 0 && S.bbIn < 1) { S.bbIn = Math.min(1, S.bbIn + dt / 0.9); }
-  if (S.bb) { const e = easeInOut(Math.min(1, S.bbIn)); S.bb.group.scale.set(1, Math.max(0.001, e), 1); S.bb.group.visible = S.bbIn > 0 && S.explode < 0.02 && S.view === 'board'; }
+  if (S.bb) { const e = easeInOut(Math.min(1, S.bbIn)); S.bb.group.scale.set(1, Math.max(0.001, e), 1); S.bb.group.visible = S.bbIn > 0 && S.explode < 0.02 && boardShown(); }
   controls.update(dt);
   scene.traverseVisible(o => { if (o.userData.update) o.userData.update(); });
   if (S.uno) for (const l of S.uno.layers.leds.children) if (l.userData.blink) {
@@ -986,7 +1156,7 @@ export const host = {
   THREE, scene, twin, camera, controls, subscribe, toast, decorate, applyLook, setMode,
   view: () => S.view, holo: () => S.holo, explode: () => S.explode, currentScan: () => S.scan,
   registerMode(name, impl) { MODES.set(String(name), impl || {}); renderModes(); },
-  enableXray(onToggle) { xray = { on: false, onToggle }; $('t-xray').hidden = false; },
+  enableXray(onToggle) { xray = { on: false, own: false, onToggle }; $('t-xray').hidden = false; },
   fit(box, dur = 1.2) { if (box && !box.isEmpty()) startFly(camState(), fitBox(box, HOME, 1.06), dur); },
   project: { section: $('project'), parts: $('project-parts'), code: $('project-code'), show(on = true) { $('project').hidden = !on; } },
 };

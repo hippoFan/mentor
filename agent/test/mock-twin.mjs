@@ -8,6 +8,10 @@
 //   --scan-demo  adds two "scan this" objects (a computer mouse, a mug) after the warning
 //   --custom     a board Ody has no model for, described by its headers (model 'custom'), then a wire from one pin
 //   --end        ends the call after the last beat (the "call ended, recap ready" state)
+//   --circuit    a voice circuit build through circuit.mjs (no brain): UNO -> "add a distance sensor" -> "add an LED on
+//                pin 6" -> "add a servo" -> "remove the LED", one {type:'circuit'} event per change, as agent.mjs sends them
+//   --interior [dir]  "scan this" for each <name>.case.json in dir (default: the research test's output), then the
+//                researched interior for it a moment later ({type:'interior', id, interior}), as agent.mjs sends them
 const args = process.argv.slice(2);
 const has = f => args.includes(f);
 const opt = (f, d) => { const i = args.indexOf(f); return i >= 0 && args[i + 1] && !args[i + 1].startsWith('--') ? args[i + 1] : d; };
@@ -142,7 +146,42 @@ async function partCall(id) {
 console.log(`[mock] Ody app on http://localhost:${PORT}/ (and /twin)`);
 console.log(`[mock] twin on http://localhost:${PORT}/twin`);   // twin-parts-test.mjs waits for this line
 const scanAt = args.indexOf('--scan');
-if (scanAt >= 0) {   // --scan <dir>: replay every <name>.scan.json there (written by test/scan-test.mjs) as "scan this" turns
+if (has('--circuit')) {
+  const { createProject, apply, fastPlan, circuitEvent, steps, markDone } = await import('../circuit.mjs');
+  await sleep(Number(process.env.MOCK_START_MS || 1500));
+  start();
+  live.send({ type: 'part', model: 'uno-r3', label: 'Arduino UNO R3' });
+  let st = createProject({ board: 'uno-r3' });
+  for (const heard of ['add a distance sensor', 'add an LED on pin 6', 'add a servo', 'remove the LED']) {
+    await sleep(gap);
+    for (const x of steps(st)) st = markDone(st, x.id);   // the caller built everything so far
+    const plan = fastPlan(st, heard), r = apply(st, plan.actions);
+    st = r.state;
+    live.send({ type: 'heard', text: `Ody, ${heard}.` });
+    live.send({ ...circuitEvent(st, r) });
+    live.send({ type: 'say', text: r.say, ms: 900 });
+    console.log(`[mock] circuit: ${heard}`);
+  }
+  console.log('[mock] holding the last state');
+} else if (has('--interior')) {
+  const { readdir, readFile } = await import('node:fs/promises');
+  const { tmpdir } = await import('node:os');
+  const dir = opt('--interior', `${tmpdir()}/ody-research-out`);
+  const files = (await readdir(dir)).filter(f => f.endsWith('.case.json') && (!opt('--only') || f.startsWith(opt('--only')))).sort();
+  await sleep(Number(process.env.MOCK_START_MS || 1500));
+  start(); live.send({ type: 'brain', brain: 'gemini' });
+  for (const [i, f] of files.entries()) {
+    const { scan, photo, crop, interior } = JSON.parse(await readFile(`${dir}/${f}`, 'utf8'));
+    const id = i + 1;
+    live.send({ type: 'heard', text: 'Scan this.' });
+    live.send({ type: 'scan', id, at: Date.now(), spec: scan, photo: photo || '', crop });
+    live.send({ type: 'say', text: `Got it, it's on your laptop. I'll look up what's inside.` });
+    await sleep(Number(process.env.MOCK_RESEARCH_MS || 2500));
+    if (interior) { live.send({ type: 'interior', id, interior }); console.log(`[mock] interior ${f}: ${interior.layers.length} layers`); }
+    await sleep(gap);
+  }
+  console.log('[mock] holding the last state');
+} else if (scanAt >= 0) {   // --scan <dir>: replay every <name>.scan.json there (written by test/scan-test.mjs) as "scan this" turns
   const { readdir, readFile } = await import('node:fs/promises');
   const dir = args[scanAt + 1];
   const files = (await readdir(dir)).filter(f => f.endsWith('.scan.json')).sort();
