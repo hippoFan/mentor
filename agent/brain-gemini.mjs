@@ -2,6 +2,7 @@
 // Gemini points natively on a 0-1000 grid, so marks are asked for in that grid and divided by 1000.
 // Free key: Google AI Studio (MLH link for HackUTA: https://mlh.link/hackuta-aistudio).
 import { GoogleGenAI, ThinkingLevel } from '@google/genai';
+import { SCAN_SCHEMA, sanitizeScan, scanSystem } from './scan.mjs';
 import { RECAP_ASK, RECAP_SCHEMA, SCHEMA, SYSTEM_CORE, normalizeReply, pointingRules, sanitizeReply } from './brain.mjs';
 
 // Models tried in order. The free tier allows only ~20 requests a day per model, and a model can be overloaded, so on a
@@ -13,6 +14,7 @@ const skipped = new Set();   // models that hit their limit in this process
 // How long Gemini thinks per spoken turn (MENTOR_GEMINI_THINKING): LOW (default) or MINIMAL (faster).
 const THINKING = ThinkingLevel[(process.env.MENTOR_GEMINI_THINKING || 'LOW').toUpperCase()] || ThinkingLevel.LOW;
 
+const SCAN_SYSTEM = scanSystem('on a 0-1000 grid: x from 0 (left edge) to 1000 (right edge), y from 0 (top) to 1000 (bottom)');
 const SYSTEM = `${SYSTEM_CORE}\n\n${pointingRules(
   'a point in the attached image on a 0-1000 grid: x from 0 (left edge) to 1000 (right edge), y from 0 (top) to 1000 (bottom)')}`;
 
@@ -37,11 +39,11 @@ export class GeminiBrain {
 
   #config(model, schema, level, timeout = 30_000) {
     return {
-      systemInstruction: SYSTEM + (this.task ? `\n\nThe caller's task: ${this.task}` : ''),
+      systemInstruction: schema === SCAN_SCHEMA ? SCAN_SYSTEM : SYSTEM + (this.task ? `\n\nThe caller's task: ${this.task}` : ''),
       responseMimeType: 'application/json',
       responseJsonSchema: schema,
       // Gemini 2.x takes a token budget instead of a level; 0 = no thinking (fastest).
-      maxOutputTokens: schema === SCHEMA ? 1600 : 6000,
+      maxOutputTokens: schema === SCHEMA ? 1600 : schema === SCAN_SCHEMA ? 12000 : 6000,
       thinkingConfig: model.startsWith('gemini-2') ? { thinkingBudget: level === ThinkingLevel.MEDIUM ? 1024 : 0 } : { thinkingLevel: level },
       httpOptions: { timeout },
     };
@@ -91,6 +93,17 @@ export class GeminiBrain {
     const u = response.usageMetadata || {};
     console.log(`[brain:gemini] ${model} ${ms}ms in=${u.promptTokenCount} cached=${u.cachedContentTokenCount ?? 0} out=${u.candidatesTokenCount}`);
     return out;
+  }
+
+  /** Same contract as ClaudeBrain.scan: a separate request, not added to the conversation. */
+  async scan(image) {
+    const t0 = Date.now();
+    const contents = [{ role: 'user', parts: [{ inlineData: { mimeType: 'image/jpeg', data: image.jpeg.toString('base64') } }, { text: '[camera frame] Scan the main object.' }] }];
+    const { response, model } = await this.#generate(contents, SCAN_SCHEMA, ThinkingLevel.LOW, 90_000);
+    const raw = JSON.parse(response.text || '');
+    const ms = Date.now() - t0;
+    console.log(`[brain:gemini] scan ${model} ${ms}ms`);
+    return { ...sanitizeScan(raw, 1000, 1000), ms, model };
   }
 
   /** Same contract as ClaudeBrain.finish. */

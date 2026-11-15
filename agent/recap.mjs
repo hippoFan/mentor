@@ -223,7 +223,7 @@ ${story?.summary ? `<p class="lead">${esc(clean(story.summary, 700))}</p>` : '<p
 ${legs.length || end ? `<ol class="trail" aria-label="Your voyage">${legHtml}${end}</ol>` : ''}
 ${codeHtml}
 <footer>
-  <p>In Homer's Odyssey, Athena takes the form of an old friend, Ody, and guides Telemachus home one step at a time. Fair winds.</p>
+  <p>In Homer's Odyssey, Athena takes the form of an old friend, Mentor, and guides Telemachus home one step at a time. Ody is named for that voyage. Fair winds.</p>
   <p>This page is private to you and expires 24 hours after your call.</p>
 </footer>
 </main></body></html>`;

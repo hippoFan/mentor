@@ -42,6 +42,22 @@ async function call() {
 }
 
 console.log(`[mock] twin on http://localhost:${PORT}/twin`);
-if (args.includes('--waiting')) { /* stay in the waiting state */ }
+const scanAt = args.indexOf('--scan');
+if (scanAt >= 0) {   // --scan <dir>: replay every <name>.scan.json there (written by test/scan-test.mjs) as "scan this" turns
+  const { readdir, readFile } = await import('node:fs/promises');
+  const dir = args[scanAt + 1];
+  const files = (await readdir(dir)).filter(f => f.endsWith('.scan.json')).sort();
+  live.send({ type: 'call', state: 'live', since: Date.now() });
+  live.send({ type: 'brain', brain: 'claude-code' });
+  for (const [i, f] of files.entries()) {
+    const { spec, photo, crop } = JSON.parse(await readFile(`${dir}/${f}`, 'utf8'));
+    live.send({ type: 'heard', text: 'Scan this.' });
+    live.send({ type: 'scan', id: i + 1, at: Date.now(), spec, photo, crop });
+    live.send({ type: 'say', text: `Got it. It's on your laptop.` });
+    console.log(`[mock] scan ${f}: ${spec.name}`);
+    await sleep(Number(process.env.MOCK_SCAN_GAP_MS || 300));
+  }
+  console.log('[mock] holding the last state');
+} else if (args.includes('--waiting')) { /* stay in the waiting state */ }
 else if (args.includes('--loop')) for (;;) { await sleep(2000); await call(); await sleep(gap * 2); live.send({ type: 'call', state: 'ended' }); await sleep(4000); }
 else { await sleep(1500); await call(); console.log('[mock] holding the last state'); }

@@ -11,3 +11,4 @@ logs/
 *.mentor.png
 .DS_Store
 e2e-out/
+agent/scan-out/

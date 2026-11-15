@@ -13,6 +13,7 @@ import { loadPins, pinInfo, bbInfo, inferModel, resolveMarks, targetName, MODEL_
 import { buildUno, buildBreadboard } from './board.js';
 import { clock, COLORS, holoMaterial, edgeMaterial, makeRing, makeArrow, makeWire, makeProjectorFloor, easeInOut } from './holo.js';
 import { createGestures, applyToCamera } from './gestures.js';
+import { buildScan, explodeScan, disposeScan } from './scan.js';
 
 const $ = id => document.getElementById(id);
 const stage = $('stage'), canvas = $('view');
@@ -67,8 +68,8 @@ composer.addPass(bloom);
 composer.addPass(new OutputPass());
 
 // ---------- the twin ----------
-const twin = new THREE.Group(); twin.name = 'Mentor twin'; scene.add(twin);
-const marksGroup = new THREE.Group(); marksGroup.name = 'Mentor marks';
+const twin = new THREE.Group(); twin.name = 'Ody twin'; scene.add(twin);
+const marksGroup = new THREE.Group(); marksGroup.name = 'Ody marks';
 const wiresGroup = new THREE.Group(); wiresGroup.name = 'Wires';
 const partTags = new THREE.Group(); partTags.userData.noExport = true;
 twin.add(marksGroup, wiresGroup);
@@ -78,7 +79,9 @@ const hover = makeRing(0xffffff, { radius: 1.7 }); hover.visible = false; hover.
 const S = {
   table: null, model: null, uno: null, unos: {}, bb: null, holo: true, explode: 0, explodeTo: 0,
   turns: [], callMarks: [], wires: new Map(), current: [], step: '', done: false, bbIn: 0, fly: null, tipPinned: null,
+  scans: [], scan: null, view: 'board',   // "scan anything": every object scanned this call; view = what the stage shows
 };
+const scanGroup = new THREE.Group(); scanGroup.name = 'Scanned object'; twin.add(scanGroup);
 
 function decorate(root) {   // remember both looks per mesh, and give each an edge outline for the hologram
   root.traverse(o => {
@@ -121,22 +124,28 @@ function showModel(model) {
   if (S.uno) twin.remove(S.uno.group);
   if (!S.unos[want]) { const u = buildUno(S.table, want); u.group.position.copy(UNO_POS); decorate(u.group); S.unos[want] = u; }
   S.uno = S.unos[want];
+  S.uno.group.visible = S.view === 'board';
   twin.add(S.uno.group);
   applyLook(S.uno.group);
   buildLayerTags(); updatePartTags();
 }
 
+function boardPanel() {
+  $('part').textContent = S.model ? MODEL_NAMES[S.model] : 'No board yet';
+  $('partsub').textContent = S.model === 'uno-r4-wifi' ? 'USB-C, 12 × 8 LED matrix, Wi-Fi' : S.model ? 'USB-B, ATmega328P' : 'Ody names the board as soon as it sees it.';
+  $('scaninfo').hidden = true;
+}
 function setPart(model, label) {
   if (model !== 'uno-r3' && model !== 'uno-r4-wifi') {
-    if (model === 'other' && !S.model) { $('part').textContent = String(label || 'A board Mentor can’t model yet').slice(0, 60); $('partsub').textContent = 'The twin covers the Arduino UNO R3 and UNO R4 WiFi.'; }
+    if (model === 'other' && !S.model) { $('part').textContent = String(label || 'A board Ody can’t model yet').slice(0, 60); $('partsub').textContent = 'The twin covers the Arduino UNO R3 and UNO R4 WiFi.'; }
     return;
   }
   const first = !S.model, changed = S.model !== model;
   S.model = model;
   showModel(model);
   document.body.classList.add('has-part');
-  $('part').textContent = MODEL_NAMES[model];
-  $('partsub').textContent = model === 'uno-r4-wifi' ? 'USB-C, 12 × 8 LED matrix, Wi-Fi' : 'USB-B, ATmega328P';
+  if (S.view === 'board') boardPanel();
+  renderScans();
   controls.autoRotate = false;
   if (first || changed) { S.bbIn = Math.max(S.bbIn, 0.0001); if (!S.replaying) flyHome(1.6); }
 }
@@ -174,6 +183,7 @@ function applyTurn(turn, { animate = true } = {}) {
   if (!S.table || !S.uno) return;
   const resolved = resolveMarks(S.table, S.model || 'uno-r3', marks, turn.board);
   S.current = resolved;
+  if (S.view === 'scan' && S.model && resolved.some(r => r.from) && !S.replaying) showBoard({ fly: false });
   clearGroup(marksGroup);
   const focus = [];
   for (const r of resolved) {
@@ -243,12 +253,17 @@ function renderLists() {
 }
 function wiringText() {
   const lines = [...S.wires.values()].map(w => `${targetName(S.table, S.model, w.from)} → ${targetName(S.table, S.model, w.to)} (${w.kind === 'warn' ? 'do not connect: short' : 'jumper'})`);
-  return lines.length ? `${MODEL_NAMES[S.model] || 'Board'} wiring from Mentor\n${lines.join('\n')}` : '';
+  return lines.length ? `${MODEL_NAMES[S.model] || 'Board'} wiring from Ody\n${lines.join('\n')}` : '';
 }
 
 // ---------- part labels (hologram) and explode ----------
 function updatePartTags() {
   clearGroup(partTags);
+  if (S.view === 'scan') {
+    if (!S.scan || S.explode > 0.01) return;
+    for (const a of S.scan.built.anchors) { const t = tag(a.text, 'part'); t.position.copy(a.pos).multiplyScalar(S.scan.built.scale); partTags.add(t); }
+    return;
+  }
   if (!S.uno || !S.holo || S.explode > 0.01 || S.current.length || !S.model) return;
   const keys = S.model === 'uno-r4-wifi' ? ['usb', 'esp', 'matrix', 'chip', 'jack'] : ['usb', 'chip', 'jack', 'reset'];
   const F = { usb: 'USB-C', esp: 'ESP32-S3 Wi-Fi', matrix: 'LED matrix', chip: S.model === 'uno-r4-wifi' ? 'RA4M1' : 'ATmega328P', jack: 'Power jack', reset: 'Reset' };
@@ -269,6 +284,7 @@ function buildLayerTags() {
 }
 function setExplode(on) {
   S.explodeTo = on ? 1 : 0; $('t-explode').setAttribute('aria-pressed', String(on));
+  if (S.view === 'scan') { flyScan(1.1, on ? 1.45 : 1); return; }
   if (on) { flyTo([UNO_POS.clone().add(new THREE.Vector3(14, 30, 0))], { radius: 250, phi: 1.22, theta: 0.32 }); }
   else flyHome(1.1);
 }
@@ -277,6 +293,11 @@ function stepExplode(dt) {
   const before = S.explode;
   S.explode += Math.sign(S.explodeTo - S.explode) * Math.min(Math.abs(S.explodeTo - S.explode), dt / (REDUCED ? 0.01 : 0.9));
   const e = easeInOut(S.explode);
+  if (S.view === 'scan') {
+    if (S.scan && before !== S.explode) explodeScan(S.scan.built, e);
+    if ((before < 0.02) !== (S.explode < 0.02) || (before > 0.01) !== (S.explode > 0.01)) updatePartTags();
+    return;
+  }
   for (const [k, [y, x]] of Object.entries(LAYERS)) { S.uno.layers[k].position.set(x * e, y * e, 0); }
   const show = S.explode < 0.02;
   marksGroup.visible = wiresGroup.visible = show;
@@ -299,7 +320,15 @@ function flyTo(points, opts = {}) {
   startFly(now, to, opts.dur ?? 1.3);
 }
 const fit = v => ({ ...v, radius: v.radius * Math.max(1, 1.3 / camera.aspect) });   // portrait screens: step back
-function flyHome(dur = 1.3) { startFly(camState(), fit(S.model ? HOME : WAIT), dur); }
+function flyHome(dur = 1.3) { if (S.view === 'scan' && S.scan) { flyScan(dur); return; } startFly(camState(), fit(S.model ? HOME : WAIT), dur); }
+/** Frames the scanned object: radius from its displayed size and the 30° lens. */
+function flyScan(dur = 1.3, zoom = 1) {
+  const b = S.scan.built, sz = b.size.clone().multiplyScalar(b.scale);
+  const span = Math.max(sz.x, sz.z, sz.y * 1.4, 30);
+  const radius = Math.max(110, span / (2 * Math.tan(15 * Math.PI / 180)) * 1.25 * zoom);
+  controls.maxDistance = Math.max(520, radius * 1.6);
+  startFly(camState(), fit({ target: new THREE.Vector3(0, sz.y * (zoom > 1 ? 0.9 : 0.4), 0), radius, phi: 0.98, theta: 0.32 }), dur);
+}
 function startFly(from, to, dur) {
   let dTheta = to.theta - from.theta; dTheta = Math.atan2(Math.sin(dTheta), Math.cos(dTheta));
   S.fly = { from, to: { ...to, theta: from.theta + dTheta }, t: 0, dur: REDUCED ? 0.01 : dur };
@@ -319,6 +348,7 @@ function pickAt(x, y) {   // x, y in stage pixels
   const r = stage.getBoundingClientRect();
   ndc.set((x / r.width) * 2 - 1, -(y / r.height) * 2 + 1);
   ray.setFromCamera(ndc, camera);
+  if (S.view === 'scan') return null;
   const objs = [S.uno?.pick, S.bb?.group.visible && S.bbIn >= 1 ? S.bb.pick : null].filter(Boolean);
   const hit = ray.intersectObjects(objs, false)[0];
   if (!hit) return null;
@@ -327,11 +357,11 @@ function pickAt(x, y) {   // x, y in stage pixels
   if (hit.object.userData.pick === 'pin') {
     const k = S.uno.pickKeys[hit.instanceId], info = pinInfo(k, S.model || 'uno-r3');
     const said = S.current.find(c => c.from?.key === k || c.to?.key === k);
-    return { pos, title: info.name, body: info.fn, said: said ? `Mentor: ${said.label}` : '' };
+    return { pos, title: info.name, body: info.fn, said: said ? `Ody: ${said.label}` : '' };
   }
   const h = S.bb.holes[hit.instanceId], info = bbInfo(h);
   const said = S.current.find(c => c.to?.hole?.key === h.key || c.from?.hole?.key === h.key);
-  return { pos, title: info.name, body: info.fn, said: said ? `Mentor: ${said.label}` : '' };
+  return { pos, title: info.name, body: info.fn, said: said ? `Ody: ${said.label}` : '' };
 }
 function showTip(p, x, y) {
   if (!p) { tipEl.hidden = true; hover.visible = false; return; }
@@ -375,7 +405,8 @@ async function downloadGlb() {
   try {
     const buf = await exportGlb();
     const d = new Date(), p = n => String(n).padStart(2, '0');
-    const name = `mentor-twin-${d.getFullYear()}${p(d.getMonth() + 1)}${p(d.getDate())}-${p(d.getHours())}${p(d.getMinutes())}${p(d.getSeconds())}.glb`;
+    const what = S.view === 'scan' && S.scan ? S.scan.spec.name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 30) || 'scan' : 'twin';
+    const name = `ody-${what}-${d.getFullYear()}${p(d.getMonth() + 1)}${p(d.getDate())}-${p(d.getHours())}${p(d.getMinutes())}${p(d.getSeconds())}.glb`;
     const url = URL.createObjectURL(new Blob([buf], { type: 'model/gltf-binary' }));
     const a = document.createElement('a'); a.href = url; a.download = name; document.body.append(a); a.click(); a.remove();
     setTimeout(() => URL.revokeObjectURL(url), 4000);
@@ -423,9 +454,81 @@ function stepHands() {
   if (g.select) { const x = g.select.x * r.width, y = g.select.y * r.height; const p = pickAt(x, y); S.tipPinned = p ? { p, x, y } : null; showTip(p, x, y); }
 }
 
+// ---------- scan anything ----------
+const fmt = n => n >= 100 ? Math.round(n / 5) * 5 : Math.round(n);
+function addScan(ev, { show = true } = {}) {
+  const spec = ev?.spec;
+  if (!spec || !Array.isArray(spec.parts) || typeof spec.name !== 'string') return;
+  // the photo is our own agent's JPEG; accept only a plain base64 JPEG
+  const photo = typeof ev.photo === 'string' && /^[A-Za-z0-9+/=]+$/.test(ev.photo) && ev.photo.length < 3_000_000 ? `data:image/jpeg;base64,${ev.photo}` : '';
+  const known = spec.known_model === 'uno-r3' || spec.known_model === 'uno-r4-wifi' ? spec.known_model : null;
+  const entry = { id: S.scans.length + 1, spec, photo, crop: Array.isArray(ev.crop) && ev.crop.length === 4 ? ev.crop.map(Number) : null, known, built: null, at: ev.at || Date.now() };
+  S.scans.push(entry);
+  if (S.scans.length > 12) { const old = S.scans.shift(); if (old.built) { if (S.scan === old) showBoard({ fly: false }); disposeScan(old.built); } }
+  if (known) { setPart(known); if (show) showBoard(); }
+  else if (show) showScan(entry);
+  renderScans();
+}
+function showScan(entry) {
+  if (S.scan && S.scan !== entry) scanGroup.remove(S.scan.built.group);
+  if (!entry.built) {
+    entry.built = buildScan(entry.spec, entry.photo, entry.crop); decorate(entry.built.group);
+    for (const m of entry.built.meshes) m.userData.holoMat.uniforms.uMapAmt.value = 0.38;   // a photo is busier than a silkscreen: keep the glow readable
+  }
+  S.scan = entry; S.view = 'scan';
+  if (!scanGroup.children.includes(entry.built.group)) scanGroup.add(entry.built.group);
+  explodeScan(entry.built, easeInOut(S.explode));
+  applyLook(entry.built.group);
+  if (S.uno) S.uno.group.visible = false;
+  marksGroup.visible = wiresGroup.visible = false;
+  if (S.bb) S.bb.group.visible = false;
+  scanGroup.visible = true;
+  document.body.classList.add('has-part');
+  S.tipPinned = null; showTip(null);
+  controls.autoRotate = false;
+  const s = entry.spec, d = s.dims_mm;
+  $('part').textContent = s.name;
+  $('partsub').textContent = `About ${fmt(d.w)} × ${fmt(d.d)} × ${fmt(d.h)} mm`;
+  $('scaninfo').hidden = false;
+  $('scanphoto').hidden = !entry.photo; if (entry.photo) $('scanphoto').src = entry.photo;
+  $('scanconf').textContent = `${Math.round(s.confidence * 100)}% sure`;
+  $('scanparts').textContent = `${s.parts.length} part${s.parts.length === 1 ? '' : 's'}${entry.built.scale < 1 ? `, shown at ${Math.round(entry.built.scale * 100)}%` : ''}`;
+  updatePartTags(); renderScans();
+  if (!S.replaying) flyScan(1.5);
+}
+function showBoard({ fly = true } = {}) {
+  if (S.scan) scanGroup.remove(S.scan.built.group);
+  S.scan = null; S.view = 'board';
+  scanGroup.visible = false;
+  if (S.uno) S.uno.group.visible = true;
+  marksGroup.visible = wiresGroup.visible = S.explode < 0.02;
+  controls.maxDistance = 520;
+  document.body.classList.toggle('has-part', !!S.model);
+  boardPanel(); updatePartTags(); renderScans();
+  if (fly && !S.replaying) flyHome(1.3);
+}
+function renderScans() {
+  const ul = $('scans'); ul.replaceChildren();
+  const items = [];
+  if (S.model) items.push({ label: MODEL_NAMES[S.model], where: 'board', on: S.view === 'board', go: () => showBoard() });
+  for (const e of [...S.scans].reverse()) {
+    if (e.known) continue;
+    items.push({ label: e.spec.name, where: `${Math.round(e.spec.confidence * 100)}%`, on: S.scan === e, go: () => showScan(e) });
+  }
+  for (const it of items) {
+    const el = li(it.on ? 'scan on' : 'scan', it.label, it.where, it.go);
+    el.querySelector('button').setAttribute('aria-current', String(it.on));
+    ul.append(el);
+  }
+  $('scans-empty').hidden = items.length > 0;
+}
+
 // ---------- WebSocket (same feed as the call view) ----------
 function resetCall() {
   S.turns = []; S.callMarks = []; S.current = []; S.done = false;
+  if (S.view === 'scan') showBoard({ fly: false });
+  for (const e of S.scans) if (e.built) disposeScan(e.built);
+  S.scans = []; renderScans();
   for (const w of S.wires.values()) void w; S.wires.clear();
   clearGroup(marksGroup); clearGroup(wiresGroup); renderLists(); setStep('Waiting for the call to start');
 }
@@ -439,9 +542,11 @@ function handle(ev) {
       S.replaying = true;
       if (ev.part) setPart(ev.part.model, ev.part.label);
       for (const t of (Array.isArray(ev.turns) ? ev.turns : []).slice(-20)) applyTurn(t, { animate: false });
+      { const sc = (Array.isArray(ev.scans) ? ev.scans : []).slice(-12); sc.forEach((x, i) => addScan(x, { show: i === sc.length - 1 })); }
       S.replaying = false;
       if (ev.step) setStep(ev.step, S.done);
-      if (S.model) { S.bbIn = 1; flyHome(1.2); }
+      if (S.model) S.bbIn = 1;
+      if (S.model || S.scan) flyHome(1.2);
       break;
     case 'call':
       if (ev.state === 'live' && !document.body.classList.contains('live')) resetCall();
@@ -449,6 +554,7 @@ function handle(ev) {
     case 'brain': $('brain').textContent = String(ev.brain || '').slice(0, 24); break;
     case 'part': setPart(ev.model, ev.label); break;
     case 'turn': applyTurn(ev); break;
+    case 'scan': addScan(ev); break;
     case 'step': setStep(ev.text, ev.done); if (ev.done) S.done = true; break;
     default: break;
   }
@@ -505,7 +611,7 @@ function frame(now) {
   clock.value += dt;
   stepFly(dt); stepExplode(dt); stepHands();
   if (S.bb && S.bbIn > 0 && S.bbIn < 1) { S.bbIn = Math.min(1, S.bbIn + dt / 0.9); }
-  if (S.bb) { const e = easeInOut(Math.min(1, S.bbIn)); S.bb.group.scale.set(1, Math.max(0.001, e), 1); S.bb.group.visible = S.bbIn > 0 && S.explode < 0.02; }
+  if (S.bb) { const e = easeInOut(Math.min(1, S.bbIn)); S.bb.group.scale.set(1, Math.max(0.001, e), 1); S.bb.group.visible = S.bbIn > 0 && S.explode < 0.02 && S.view === 'board'; }
   controls.update(dt);
   scene.traverseVisible(o => { if (o.userData.update) o.userData.update(); });
   if (S.uno) for (const l of S.uno.layers.leds.children) if (l.userData.blink) {
@@ -539,6 +645,10 @@ function frame(now) {
 
 // for tests: a read-only view of what the page placed, and the export as bytes
 window.mentorTwin = {
+  showScan: i => { const e = S.scans[i]; if (e && !e.known) showScan(e); else showBoard(); },
+  setLook: holo => setHolo(!!holo),
+  scanState: () => ({ view: S.view, scans: S.scans.map(e => ({ name: e.spec.name, known: e.known, parts: e.spec.parts.length })), current: S.scan?.spec.name || null,
+    flying: !!S.fly, meshes: S.scan?.built.meshes.length || 0, photoLoaded: !!S.scan?.built.atlas.userData.photo, explode: S.explode, fps: stats.fps }),
   state: () => ({ model: S.model, holo: S.holo, explode: S.explode, wires: [...S.wires.keys()], marks: S.current.map(c => ({ label: c.label, kind: c.kind, from: c.from, to: c.to })), fps: stats.fps, ms: stats.ms, step: S.step }),
   pinWorld: k => S.uno?.pinPos(k)?.add(UNO_POS).toArray(),
   pinScreen: k => { const p = S.uno?.pinPos(k)?.add(UNO_POS).project(camera); const r = stage.getBoundingClientRect(); return p && [r.left + (p.x + 1) / 2 * r.width, r.top + (1 - p.y) / 2 * r.height]; },

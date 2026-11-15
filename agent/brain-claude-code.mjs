@@ -9,15 +9,16 @@ import { mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { createInterface } from 'node:readline';
+import { SCAN_SCHEMA, sanitizeScan, scanSystem } from './scan.mjs';
 import { RECAP_ASK, RECAP_SCHEMA, SCHEMA, SYSTEM, normalizeReply, sanitizeReply } from './brain.mjs';
 
 const MODEL = process.env.MENTOR_CLAUDE_CODE_MODEL || 'sonnet';
 const BIN = process.env.MENTOR_CLAUDE_BIN || 'claude';
 
-function start(schema, system, dir) {
+function start(schema, system, dir, effort = 'low') {
   const args = ['-p', '--model', MODEL, '--input-format', 'stream-json', '--output-format', 'stream-json', '--verbose',
     '--json-schema', JSON.stringify(schema), '--tools', '', '--setting-sources', '', '--strict-mcp-config', '--mcp-config', '{"mcpServers":{}}',
-    '--disable-slash-commands', '--no-session-persistence', '--effort', 'low', '--system-prompt', system];
+    '--disable-slash-commands', '--no-session-persistence', '--effort', effort, '--system-prompt', system];
   // Allowlist: the CLI gets only what it needs to run and find its own login; none of Mentor's keys or phone numbers.
   const env = {};
   for (const [k, v] of Object.entries(process.env)) if (/^(PATH|HOME|USER|LANG|LC_\w+|TERM|TMPDIR|XDG_\w+|CLAUDE\w*)$/.test(k)) env[k] = v;
@@ -86,13 +87,28 @@ export class ClaudeCodeBrain {
     return out;
   }
 
+  /** Same contract as ClaudeBrain.scan: a one-shot locked-down process with the scan schema. */
+  async scan(image) {
+    this.dir ??= await mkdtemp(join(tmpdir(), 'mentor-cc-'));
+    const p = start(SCAN_SCHEMA, scanSystem('a pixel coordinate in the attached image (x right, y down), whose size is given in the message'), this.dir, process.env.MENTOR_SCAN_EFFORT || 'medium');
+    const t0 = Date.now();
+    try {
+      const d = await p.ask([{ type: 'image', source: { type: 'base64', media_type: 'image/jpeg', data: image.jpeg.toString('base64') } },
+        { type: 'text', text: `[camera frame ${image.width}x${image.height}px] Scan the main object.` }], 150_000);
+      const raw = d.structured_output || JSON.parse(d.result);
+      const ms = Date.now() - t0;
+      console.log(`[brain:claude-code] scan ${MODEL} ${ms}ms`);
+      return { ...sanitizeScan(raw, image.width, image.height), ms, model: `claude-code ${MODEL}` };
+    } finally { p.child.kill(); }
+  }
+
   /** Recap from the transcript, in a one-shot process with the recap schema. */
   async finish() {
     if (!this.messages.length) return null;
     this.dir ??= await mkdtemp(join(tmpdir(), 'mentor-cc-'));
     const p = start(RECAP_SCHEMA, SYSTEM, this.dir);
     try {
-      const transcript = this.messages.map(m => `Caller: ${m.heard}\nMentor: ${m.say}`).join('\n');
+      const transcript = this.messages.map(m => `Caller: ${m.heard}\nOdy: ${m.say}`).join('\n');
       const d = await p.ask([{ type: 'text', text: `${this.task ? `Task: ${this.task}\n` : ''}Call transcript:\n${transcript}\n\n${RECAP_ASK}` }], 120_000);
       return d.structured_output || null;
     } finally { p.child.kill(); }

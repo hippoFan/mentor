@@ -33,7 +33,7 @@ async function twinPage() {   // the page's one inline script is its import map;
 
 /** @returns {Promise<{send: (event: object) => void, close: () => Promise<void>}>} never throws; a no-op if the port is busy */
 export async function startLive() {
-  const state = { call: null, step: '', transcript: [], brain: '', turns: [], part: null };   // replayed to a page that connects mid-call
+  const state = { call: null, step: '', transcript: [], brain: '', turns: [], part: null, scans: [] };   // replayed to a page that connects mid-call
   // Only this machine's own page may connect (stops cross-site WebSocket hijacking and DNS rebinding).
   const okHost = h => h === `localhost:${PORT}` || h === `127.0.0.1:${PORT}`;
   const okOrigin = o => o === `http://localhost:${PORT}` || o === `http://127.0.0.1:${PORT}`;
@@ -79,6 +79,7 @@ export async function startLive() {
       if (event.type === 'step') state.step = event.text;
       if (event.type === 'brain') state.brain = event.brain;
       if (event.type === 'part') state.part = event;
+      if (event.type === 'scan') { state.scans.push(event); state.scans = state.scans.slice(-6); }   // ~150 KB each with the photo
       if (event.type === 'turn') { state.turns.push(event); state.turns = state.turns.slice(-40); }
       if (event.type === 'heard' || event.type === 'say') { state.transcript.push(event); state.transcript = state.transcript.slice(-40); }
       const msg = JSON.stringify(event);

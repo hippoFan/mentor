@@ -17,17 +17,18 @@ import { greetOnBridgeReady } from './greet.mjs';
 import { FPS, HEIGHT, WIDTH, contentBox, crop, frameJpeg, outJpeg, render, rotate, snapshotPng } from './overlay.mjs';
 import { startLive } from './live.mjs';
 import { createMarkTracker } from './tracker.mjs';
+import { cropJpeg, isScanIntent, scanLine } from './scan.mjs';
+import { OVERLAY, overlayFrame, shouldDraw } from './overlay-policy.mjs';
 
 // Accept the common alternative names for the same keys.
 // (process.env stores strings: assigning undefined would make the text "undefined", so only copy a real value.)
 if (!process.env.ELEVEN_API_KEY && process.env.ELEVENLABS_API_KEY) process.env.ELEVEN_API_KEY = process.env.ELEVENLABS_API_KEY;
 
 const GREETING = process.env.MENTOR_GREETING
-  || "Hi, I'm Mentor, an AI guide named after the one in Homer's Odyssey. Show me what you're building, and tell me where you want to get to.";
+  || "Hi, I'm Ody, an AI guide named for Homer's Odyssey. Show me what you're building, and tell me where you want to get to.";
 const TASK = process.env.MENTOR_TASK || '';
 const VOICE = Boolean(process.env.ELEVEN_API_KEY);   // without an ElevenLabs key: video-only test mode, no voice
 const TEST_TURN = process.env.MENTOR_TEST_TURN || '';  // test hook: ask the brain this once the first camera frame arrives
-const MARK_TTL_MS = 25_000;
 const FILLER_MS = 1500;
 const LANG = process.env.MENTOR_LANG || 'en';   // 'auto' = answer in whatever language the caller speaks
 const MAX_TURNS = Number(process.env.MENTOR_MAX_TURNS || 60);      // if the brain is slower than this, say a short filler so the call isn't silent
@@ -113,10 +114,12 @@ const agent = defineAgent({
     const source = new VideoSource(WIDTH, HEIGHT);
     const track = LocalVideoTrack.createVideoTrack('mentor-video', source);
     const frame = () => {
-      if (marks.length && Date.now() - marksAt > MARK_TTL_MS) marks = [];
+      // overlays on demand (overlay-policy.mjs): plain camera unless the caller asked to be shown something
+      const o = overlayFrame({ marks, marksAt, caption, speaking });
+      if (o.expired) marks = [];
       const latest = getLatest();
       const t0 = performance.now();
-      const px = render(latest, marks.length ? tracker.update(latest) : marks, { caption, tick: tick++, speaking });
+      const px = render(latest, marks.length ? tracker.update(latest) : marks, { caption: o.caption, tick: tick++, speaking: o.speaking });
       source.captureFrame(new VideoFrame(px, WIDTH, HEIGHT, VideoBufferType.RGBA));
       stats.outFrames++; stats.renderMs += performance.now() - t0; if (latest) stats.size = `${latest.width}x${latest.height}`;
     };
@@ -188,7 +191,41 @@ const agent = defineAgent({
     const ACKS = /^(ok(ay)?|yeah|yep|yes|sure|mm+|hm+|uh+|um+|cool|nice|got it|alright|thanks|thank you)[.!?]*$/i;
     // "Show me again": re-show the last marks and repeat the last line instantly, with no model call.
     const REPLAY = /^(.{0,20}\b)?(again|repeat( that)?|say (that|it) again|show me (that )?again|one more time|what\?|sorry\?|pardon)\W*$/i;
-    let last = null, turns = 0, lastPart = null;
+    let last = null, turns = 0, lastPart = null, scanning = false, scanNo = 0;
+    // "Scan this": a dedicated brain call builds an approximate 3D model of whatever is on camera for the laptop's /twin.
+    const scanTurn = async heard => {
+      if (scanning) { say('Still scanning, hold it there.'); return; }
+      scanning = true;
+      const seq = ++turnSeq;   // a scan is a turn: a later question supersedes its spoken answer, not the model
+      try {
+        say('Scanning, hold it steady.');
+        await new Promise(r => setTimeout(r, 700));   // they hear the line and hold still; then take a fresh frame
+        const now = getLatest();
+        if (!now) { say("I can't see anything yet. Point your camera at it and say scan again."); return; }
+        const image = await frameJpeg(now, 1280);
+        const spec = await brain.scan(image);
+        if (ended) return;
+        const cut = await cropJpeg(image.jpeg, spec.bbox, 1024);
+        const n = ++scanNo;
+        live.send({ type: 'scan', id: n, at: Date.now(), spec, photo: cut.jpeg.toString('base64'), crop: cut.rect, ms: spec.ms, model: spec.model || '' });
+        if (spec.known_model !== 'none' && spec.known_model !== lastPart) {
+          lastPart = spec.known_model;
+          live.send({ type: 'part', model: lastPart, label: { 'uno-r3': 'Arduino UNO R3', 'uno-r4-wifi': 'Arduino UNO R4 WiFi' }[lastPart] });
+        }
+        console.log(`[scan] ${spec.name} (${spec.parts.length} parts, ${Math.round(spec.confidence * 100)}%) in ${spec.ms} ms`);
+        await writeFile(`${runDir}scan-${String(n).padStart(2, '0')}.json`, JSON.stringify(spec, null, 2)).catch(() => {});
+        await writeFile(`${runDir}scan-${String(n).padStart(2, '0')}.jpg`, cut.jpeg).catch(() => {});
+        if (seq === turnSeq) say(scanLine(spec));
+        if (brain.provider === 'claude-code') brain.messages.push({ heard, say: scanLine(spec) });   // its recap reads the transcript
+        const file = `${runDir}step-${String(++stepNo).padStart(2, '0')}.png`;
+        await writeFile(file, await snapshotPng());
+        recap.push({ step: `Scanned: ${spec.name}`, note: `Sent a 3D model of the ${spec.name.toLowerCase()} to the laptop.`, say: scanLine(spec), image: file });
+        await writeFile(`${runDir}recap.json`, JSON.stringify({ callId, task: TASK, provider: brain.provider, recap }, null, 2));
+      } catch (error) {
+        console.error('[mentor] scan failed', error?.status || '', error?.message || error);
+        if (!ended) say("The scan didn't work. Hold it closer, in good light, and say scan again.");
+      } finally { scanning = false; }
+    };
     const onTurn = async heard => {
       if (ACKS.test(heard.trim())) { console.log(`[heard] ${heard} (acknowledgement, no brain call)`); live.send({ type: 'heard', text: heard }); return; }
       if (last && REPLAY.test(heard.trim())) {
@@ -201,6 +238,10 @@ const agent = defineAgent({
         if (turns === MAX_TURNS + 1) say("We've covered a lot. Let's pick this up on a new call.");
         return;
       }
+      if (isScanIntent(heard) && typeof brain.scan === 'function') {
+        console.log(`[heard] ${heard} (scan)`); live.send({ type: 'heard', text: heard });
+        await scanTurn(heard); return;
+      }
       const seq = ++turnSeq;
       console.log(`[heard] ${heard}`);
       live.send({ type: 'heard', text: heard });
@@ -210,7 +251,10 @@ const agent = defineAgent({
         const image = now ? await frameJpeg(now) : null;
         const reply = await brain.turn(heard, image).finally(() => clearTimeout(filler));
         if (seq !== turnSeq || ended) return;   // they spoke again while we were thinking; answer the newer turn
-        marks = reply.marks; marksAt = Date.now();
+        // drawn on the caller's video only when asked for (or a warning); the laptop still gets every mark below
+        const draw = shouldDraw(heard, reply.marks);
+        marks = draw ? reply.marks : []; marksAt = Date.now();
+        if (!draw && reply.marks.length) console.log(`[overlay] ${reply.marks.length} marks not drawn (not asked for; MENTOR_OVERLAY=${OVERLAY})`);
         last = { marks: reply.marks, say: reply.say, board: reply.board };
         // The laptop's 3D twin (/twin) builds the recognised board; tell it once per new part.
         if (reply.board?.model && reply.board.model !== 'none' && reply.board.model !== lastPart) {

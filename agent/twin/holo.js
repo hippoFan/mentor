@@ -64,7 +64,7 @@ export function haloTexture() {
 
 // ---------- Mentor's ring on a hole / part ----------
 export function makeRing(color, { radius = 2.0, warn = false } = {}) {
-  const g = new THREE.Group(); g.name = warn ? 'Mentor warning' : 'Mentor ring';
+  const g = new THREE.Group(); g.name = warn ? 'Ody warning' : 'Ody ring';
   const mat = new THREE.MeshBasicMaterial({ color, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide, toneMapped: false });
   const ring = new THREE.Mesh(new THREE.RingGeometry(radius * 0.78, radius, 48), mat); ring.rotation.x = -Math.PI / 2;
   const outer = new THREE.Mesh(new THREE.RingGeometry(radius * 1.45, radius * 1.6, 48), mat.clone()); outer.rotation.x = -Math.PI / 2;
@@ -87,7 +87,7 @@ export function makeRing(color, { radius = 2.0, warn = false } = {}) {
 
 /** Bobbing pointer for "arrow" marks. */
 export function makeArrow(color) {
-  const g = new THREE.Group(); g.name = 'Mentor arrow';
+  const g = new THREE.Group(); g.name = 'Ody arrow';
   const cone = new THREE.Mesh(new THREE.ConeGeometry(1.8, 5, 24), new THREE.MeshBasicMaterial({ color, toneMapped: false }));
   cone.rotation.x = Math.PI; g.add(cone);
   const born = clock.value;
