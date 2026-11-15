@@ -18,7 +18,9 @@ keep() {   # keep <name> <log> <cmd...>
     sleep 3
   done
 }
-: > "$LOGS/agent.log"; : > "$LOGS/chert-dev.log"
+: > "$LOGS/agent.log"; : > "$LOGS/chert-dev.log"; : > "$LOGS/hub.log"
+keep hub "$LOGS/hub.log" node hub.mjs &      # the laptop page, always on (http://localhost:8790 and /twin)
+sleep 2
 keep agent "$LOGS/agent.log" node --env-file=../.env agent.mjs start &
 sleep 6
 keep chert "$LOGS/chert-dev.log" chert dev --agent "$AGENT_NAME" --takeover &

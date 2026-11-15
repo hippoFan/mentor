@@ -4,7 +4,7 @@
 import { createServer } from 'node:http';
 import { readFile } from 'node:fs/promises';
 import { createHash } from 'node:crypto';
-import { WebSocketServer } from 'ws';
+import { WebSocket, WebSocketServer } from 'ws';
 
 const PORT = Number(process.env.MENTOR_MONITOR_PORT || 8790);
 const PAGE = new URL('./monitor.html', import.meta.url);
@@ -31,8 +31,35 @@ async function twinPage() {   // the page's one inline script is its import map;
   return { html, csp: `default-src 'self'; img-src 'self' data: blob:; style-src 'self' 'unsafe-inline'; script-src 'self' 'wasm-unsafe-eval'${hash}; connect-src 'self' ws://localhost:* ws://127.0.0.1:*; frame-ancestors 'none'; base-uri 'none'; form-action 'none'` };
 }
 
-/** @returns {Promise<{send: (event: object) => void, close: () => Promise<void>}>} never throws; a no-op if the port is busy */
+const HUB_PORT = Number(process.env.MENTOR_HUB_PORT || 8789);
+const TOKEN_FILE = new URL('../logs/hub.token', import.meta.url);
+
+/**
+ * Called by each call's job. If the always-on hub (hub.mjs) is running, the call publishes its events to the hub, so
+ * the laptop page stays up between calls. Otherwise it falls back to serving the page itself for the call's duration.
+ * @returns {Promise<{send: (event: object) => void, close: () => Promise<void>}>} never throws
+ */
 export async function startLive() {
+  try {
+    const token = (await readFile(TOKEN_FILE, 'utf8')).trim();
+    const ws = await new Promise((resolve, reject) => {
+      const c = new WebSocket(`ws://127.0.0.1:${HUB_PORT}/publish`, { headers: { 'x-ody-token': token } });
+      const t = setTimeout(() => { c.terminate(); reject(new Error('hub timeout')); }, 1500);
+      c.once('open', () => { clearTimeout(t); resolve(c); });
+      c.once('error', e => { clearTimeout(t); reject(e); });
+    });
+    ws.on('error', () => {});
+    console.log('[live] publishing to the always-on hub (laptop page at http://localhost:' + PORT + ')');
+    return {
+      send(event) { if (ws.readyState === 1) ws.send(JSON.stringify(event)); },
+      async close() { try { ws.close(); } catch { /* gone */ } },
+    };
+  } catch { /* no hub running: serve the page for this call only */ }
+  return createLiveServer();
+}
+
+/** The laptop page + its WebSocket on 127.0.0.1:PORT. Used by hub.mjs (always on) or by a call when no hub runs. */
+export async function createLiveServer() {
   const state = { call: null, step: '', transcript: [], brain: '', turns: [], part: null, scans: [] };   // replayed to a page that connects mid-call
   // Only this machine's own page may connect (stops cross-site WebSocket hijacking and DNS rebinding).
   const okHost = h => h === `localhost:${PORT}` || h === `127.0.0.1:${PORT}`;
@@ -79,7 +106,10 @@ export async function startLive() {
 
   return {
     send(event) {
-      if (event.type === 'call') state.call = event;
+      if (event.type === 'call') {
+        state.call = event;
+        if (event.state === 'live') { state.transcript = []; state.turns = []; state.step = ''; }   // a new call starts clean
+      }
       if (event.type === 'step') state.step = event.text;
       if (event.type === 'brain') state.brain = event.brain;
       if (event.type === 'part') state.part = event;
