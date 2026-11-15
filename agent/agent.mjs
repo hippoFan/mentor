@@ -16,6 +16,7 @@ import { runAgent } from './chert-rooms.mjs';
 import { greetOnBridgeReady } from './greet.mjs';
 import { FPS, HEIGHT, WIDTH, contentBox, crop, frameJpeg, outJpeg, render, rotate, snapshotPng } from './overlay.mjs';
 import { startLive } from './live.mjs';
+import { createMarkTracker } from './tracker.mjs';
 
 // Accept the common alternative names for the same keys.
 // (process.env stores strings: assigning undefined would make the text "undefined", so only copy a real value.)
@@ -104,11 +105,13 @@ const agent = defineAgent({
 
     // ---- video out: caller frame + Mentor's marks, 15 fps ----
     let marks = [], marksAt = 0, caption = '', speaking = false, tick = 0;
+    const tracker = createMarkTracker();   // keeps each mark on its part as the caller's phone moves (tracker.mjs)
     const source = new VideoSource(WIDTH, HEIGHT);
     const track = LocalVideoTrack.createVideoTrack('mentor-video', source);
     const frame = () => {
       if (marks.length && Date.now() - marksAt > MARK_TTL_MS) marks = [];
-      const px = render(getLatest(), marks, { caption, tick: tick++, speaking });
+      const latest = getLatest();
+      const px = render(latest, marks.length ? tracker.update(latest) : marks, { caption, tick: tick++, speaking });
       source.captureFrame(new VideoFrame(px, WIDTH, HEIGHT, VideoBufferType.RGBA));
     };
     frame();
@@ -178,6 +181,7 @@ const agent = defineAgent({
         const reply = await brain.turn(heard, image).finally(() => clearTimeout(filler));
         if (seq !== turnSeq || ended) return;   // they spoke again while we were thinking; answer the newer turn
         marks = reply.marks; marksAt = Date.now();
+        tracker.seed(now, marks);   // the brain judged `now` (the frame from the turn start): track from there
         live.send({ type: 'turn', brain: brain.provider, model: reply.model || '', ms: reply.ms, marks: reply.marks, step: reply.step, done: !!reply.done });
         if (reply.step) caption = reply.step;
         if (reply.done) caption = 'Done. You made it home.';   // nostos: the Odyssey's homecoming
