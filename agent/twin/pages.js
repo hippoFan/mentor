@@ -184,6 +184,80 @@ function lift(...els) {
   }
 }
 
+// the pill rests: ~2.5 s with no pointer near it (top ~120 px or over it) and no keyboard focus in it, everything but the
+// Ody logo fades out (opacity only: still focusable, still read). Pointer near, focus or a page move bring it back with its
+// lift. Touch-only devices (no hover) keep it on.
+const PILL_IDLE_MS = 2500, PILL_NEAR_PX = 120;
+let pillTimer = 0;
+const touchOnly = () => matchMedia('(hover: none) and (pointer: coarse)').matches;
+function pillWake(pill, { lifted = true } = {}) {
+  if (!pill) return;
+  clearTimeout(pillTimer);
+  if (pill.classList.contains('idle')) {
+    pill.classList.add('woke'); pill.classList.remove('idle');
+    setTimeout(() => pill.classList.remove('woke'), 260);
+    if (lifted) lift(pill);
+  }
+  pillTimer = setTimeout(() => pillRest(pill), PILL_IDLE_MS);
+}
+function pillRest(pill) {
+  if (pill.matches(':hover') || pill.querySelector(':focus-visible') || touchOnly()) { pillTimer = setTimeout(() => pillRest(pill), PILL_IDLE_MS); return; }
+  pill.classList.add('idle');
+}
+function pillIdle(pill) {
+  if (!pill) return;
+  addEventListener('pointermove', e => {
+    if (e.pointerType === 'touch') return;
+    const r = pill.getBoundingClientRect();
+    const near = e.clientY <= Math.max(PILL_NEAR_PX, r.bottom + 24) || (e.clientX >= r.left && e.clientX <= r.right && e.clientY <= r.bottom);
+    if (near) pillWake(pill);
+  }, { passive: true });
+  pill.addEventListener('focusin', () => pillWake(pill));
+  pill.addEventListener('focusout', () => pillWake(pill, { lifted: false }));
+  onPage(() => pillWake(pill));
+  pillTimer = setTimeout(() => pillRest(pill), PILL_IDLE_MS);
+}
+
+// the avatar shove: on Argo the status / Privacy / Tester row would sit under the big avatar, so the row moves left by
+// --argo-shove (measured). Arriving on Argo, the avatar leans in and the row is shoved left with a squash and settle;
+// leaving, the row slides back as the avatar eases off. motion.js tokens; reduced motion = just the end state.
+function measureShove() {
+  const head = document.querySelector('#page-argo > header'), av = $('profile-btn'), pa = $('page-argo'), pages = $('pages');
+  if (!head || !av || !pa || !pages) return 0;
+  head.style.setProperty('--argo-shove', '0px');
+  // untransformed geometry: a page move translates #page-argo, a shove tween translates the avatar
+  const P = pa.getBoundingClientRect(), S = pages.getBoundingClientRect(), h = head.getBoundingClientRect();
+  const right = h.right - (P.left - S.left), top = h.top - (P.top - S.top);
+  const bar = av.parentElement.getBoundingClientRect(), left = bar.left + av.offsetLeft, bottom = bar.top + av.offsetTop + av.offsetHeight;
+  const px = bottom > top && av.offsetWidth ? Math.max(0, Math.round(right - left + 12)) : 0;
+  head.style.setProperty('--argo-shove', `${px}px`);
+  return px;
+}
+function shoveRow(arriving) {
+  const px = measureShove();
+  const row = [...document.querySelectorAll('#page-argo > header > .replay:not([hidden]), #page-argo > header > .status, #page-argo > header > .consent:not([hidden]), #page-argo > header > .btn-top')];
+  const av = $('profile-btn');
+  if (!motion || reduced() || !px || !row.length || !av) return;
+  const { gsap, EASE } = motion;
+  gsap.killTweensOf([...row, av]);
+  const tl = gsap.timeline();
+  if (arriving) {
+    // the row lands where the avatar is (unshoved), the avatar leans in, makes contact, the row is shoved and settles
+    tl.set(row, { x: px, transformOrigin: '100% 50%' }, 0)
+      .to(av, { x: -14, scaleX: 0.96, duration: 0.16, ease: EASE.in }, 0.32)
+      .to(row, { x: -6, scaleX: 0.92, duration: 0.3, ease: EASE.push, stagger: { each: 0.025, from: 'end' } }, 0.44)
+      .to(av, { x: 0, scaleX: 1, duration: 0.42, ease: EASE.spring }, 0.46)
+      .to(row, { x: 0, scaleX: 1, duration: 0.36, ease: EASE.spring, stagger: { each: 0.02, from: 'end' } }, 0.74);
+  } else {
+    // leaving Argo: the row (going away with the page) slides back right under where the avatar sits; the avatar eases off
+    tl.to(av, { x: 10, duration: 0.18, ease: EASE.out }, 0)
+      .to(row, { x: px, duration: 0.4, ease: EASE.in, stagger: { each: 0.02, from: 'start' } }, 0)
+      .to(av, { x: 0, duration: 0.4, ease: EASE.spring }, 0.18)
+      .set(row, { clearProps: 'transform' }, 0.95);
+  }
+  return tl;
+}
+
 function init() {
   root.classList.add('v2');
   for (const h of document.querySelectorAll('#pages > .page h1')) h.tabIndex = -1;
@@ -235,6 +309,11 @@ function init() {
   callPill();
   lift(document.querySelector('.appbar .pager'), $('profile-btn'));
   onPage(() => lift(document.querySelector('.appbar .pager')));
+  pillIdle(document.querySelector('.appbar .pager'));
+  let was = current;
+  onPage(id => { if (id === 'argo' || was === 'argo') { try { shoveRow(id === 'argo'); } catch (e) { console.warn('[ody] shove', e); } } was = id; });
+  addEventListener('resize', () => measureShove(), { passive: true });
+  measureShove();
 }
 
 if (v2) init();

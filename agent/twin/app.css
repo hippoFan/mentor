@@ -706,3 +706,15 @@ html.v2 #page-argo > header{min-height:var(--ody-control-lg)}
 html.reduce-motion #page-argo .argo-title{transition:none}
 @media (prefers-reduced-motion:reduce){ html.v2 #page-argo .argo-title{transition:none} }
 html.v2 .forge-page::before{top:calc(var(--pill-top) + calc(4px * var(--ody-motif-scale-forge)));width:clamp(calc(120px * var(--ody-motif-scale-forge)),11vw,calc(170px * var(--ody-motif-scale-forge)));height:clamp(calc(120px * var(--ody-motif-scale-forge)),11vw,calc(170px * var(--ody-motif-scale-forge)))}
+
+/* =========================== v8: the nav pill rests when you're not using it; the avatar shoves Argo's top row =========================== */
+/* idle: everything but the Ody logo fades out (opacity only, still focusable); the logo stays, a little greyer */
+.appbar .pager.woke,body[data-page] .appbar .pager.woke{transition:background-color .2s cubic-bezier(.22,1,.36,1),box-shadow .2s cubic-bezier(.22,1,.36,1)}
+.appbar .pager > a:not(.nav-logo),.appbar .pager > .nav-logo{transition:opacity .2s cubic-bezier(.22,1,.36,1),filter .2s cubic-bezier(.22,1,.36,1),color var(--dur-2) var(--ease)}
+.appbar .pager.idle{background-color:transparent!important;box-shadow:none!important;transition:background-color .6s cubic-bezier(.22,1,.36,1),box-shadow .6s cubic-bezier(.22,1,.36,1)}
+.appbar .pager.idle::after{opacity:0!important}
+.appbar .pager.idle > a:not(.nav-logo){opacity:0;transition:opacity .6s cubic-bezier(.22,1,.36,1),color var(--dur-2) var(--ease)}
+.appbar .pager.idle > .nav-logo{opacity:.65;filter:grayscale(1);transition:opacity .6s cubic-bezier(.22,1,.36,1),filter .6s cubic-bezier(.22,1,.36,1)}
+@media (hover:none) and (pointer:coarse){ .appbar .pager.idle,.appbar .pager.idle > a{opacity:1!important;filter:none!important} }
+/* Argo's status / Privacy / Tester row clears the big avatar (pages.js measures --argo-shove; the move animates it) */
+html.v2 body #page-argo > header{padding-right:var(--argo-shove,0px)}
