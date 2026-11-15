@@ -17,6 +17,18 @@ talks you through the build one step at a time, and texts you a recap when you h
 > step by step. That story is where the word *mentor* comes from. This project tries to give that kind of guide
 > to anyone holding a phone and a pile of parts.
 
+## The Odyssey, mapped
+
+| In Homer | In Mentor |
+|---|---|
+| Telemachus, young and stuck, not knowing where to start | You, holding a board you've never used |
+| Athena arrives *disguised* as Mentor, an old friend | An AI that arrives as an ordinary FaceTime contact: no app, no new interface |
+| She doesn't sail the ship for him; she shows him what to do next | Mentor never does the build. It points at the next thing on *your* camera and waits for you |
+| The voyage, one island at a time | The build, one step at a time, each one checked on camera |
+| *Nostos*, the homecoming | "Done. You made it home." The LED blinks, and the recap arrives |
+
+**Every Telemachus deserves a Mentor.**
+
 ## The problem
 
 When you're stuck on something physical, like wiring a board, fixing a device or assembling a kit, text instructions

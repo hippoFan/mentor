@@ -22,7 +22,7 @@ import { startLive } from './live.mjs';
 if (!process.env.ELEVEN_API_KEY && process.env.ELEVENLABS_API_KEY) process.env.ELEVEN_API_KEY = process.env.ELEVENLABS_API_KEY;
 
 const GREETING = process.env.MENTOR_GREETING
-  || "Hi, I'm Mentor, an AI. Show me what you're building and tell me what you want it to do.";
+  || "Hi, I'm Mentor, an AI guide named after the one in Homer's Odyssey. Show me what you're building, and tell me where you want to get to.";
 const TASK = process.env.MENTOR_TASK || '';
 const VOICE = Boolean(process.env.ELEVEN_API_KEY);   // without an ElevenLabs key: video-only test mode, no voice
 const TEST_TURN = process.env.MENTOR_TEST_TURN || '';  // test hook: ask the brain this once the first camera frame arrives
@@ -150,7 +150,7 @@ const agent = defineAgent({
         if (seq !== turnSeq || ended) return;   // they spoke again while we were thinking; answer the newer turn
         marks = reply.marks; marksAt = Date.now();
         if (reply.step) caption = reply.step;
-        if (reply.done) caption = `Done! ${reply.step || ''}`.trim();
+        if (reply.done) caption = 'Done. You made it home.';   // nostos: the Odyssey's homecoming
         if (reply.step || reply.done) live.send({ type: 'step', text: caption, done: !!reply.done });
         console.log(`[say] ${reply.say}  marks=${JSON.stringify(reply.marks)}`);
         say(reply.say, reply.ms);

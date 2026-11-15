@@ -45,6 +45,7 @@ ${story?.next ? `<p class="next">Next: ${esc(story.next)}</p>` : ''}
 ${items}
 ${story?.code ? `<h2>Your code</h2><pre><code>${esc(story.code)}</code></pre>
 <p><a href="${WOKWI}">Try it in the Wokwi simulator</a>: open it, replace the sketch with this code, press play.</p>` : ''}
+<p class="next">Named for Mentor, the guide in Homer's Odyssey. Fair winds.</p>
 </main></body></html>`;
   await writeFile(`${runDir}index.html`, html);
   return `${runDir}index.html`;
@@ -58,6 +59,7 @@ export function recapText(story, steps, pageUrl) {
   if (story?.next) lines.push('', `Next: ${story.next}`);
   if (pageUrl) lines.push('', `Your annotated steps: ${pageUrl}`);
   if (story?.code) lines.push('', `Try it in a simulator: ${WOKWI}`);
+  lines.push('', 'Fair winds. Mentor');
   let text = lines.join('\n');
   if (story?.code) {
     const room = 3900 - text.length - 10;
