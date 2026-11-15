@@ -7,7 +7,8 @@
 **FaceTime an AI that can see your project and point at it.**
 
 You call it from the normal FaceTime app. It looks through your camera, draws on *your own live video*,<br>
-talks you through the build one step at a time, builds a 3D hologram twin on your laptop that you can take apart with your hands, and texts you a voyage log when you hang up.
+talks you through the build one step at a time, and builds a 3D hologram twin on your laptop that you can take apart, redesign and turn into a schematic,<br>
+all by voice or with your hands.
 
 [![HackUTA 2026](https://img.shields.io/badge/HackUTA-2026-1D1D1F?style=flat-square)](#built-at-hackuta-2026)
 [![FaceTime via Chert](https://img.shields.io/badge/FaceTime-via%20Chert-1D1D1F?style=flat-square)](https://www.trychert.com)
@@ -35,7 +36,8 @@ Ody is that person, on a FaceTime call:
 2. **It asks to see your parts** and works out exactly what you have (an UNO R3 is not an UNO R4).
 3. **It points on your own video.** Rings, labels and wires land on the real port, LED or pin, and stay on them as you move.
 4. **It talks you through it**, one short step at a time, and checks each step on camera before moving on.
-5. **It texts you a voyage log** when you hang up: every step with its annotated picture, your final code, and a runnable simulator project.
+5. **It builds it with you in 3D.** The board appears as a hologram on your laptop. Say "add a distance sensor" and Ody wires it on a 3D breadboard, writes the code, and guides you one wire at a time.
+6. **Take anything apart.** Scan any object, explode it into its real parts, remove or change them, and Ody judges the new design. In The Forge, any circuit becomes a schematic and KiCad files.
 
 <table>
 <tr>
@@ -52,7 +54,7 @@ Ody is that person, on a FaceTime call:
 | Athena arrives *disguised* as Mentor, an old friend | An AI that arrives as an ordinary FaceTime contact: no app, no new interface |
 | She doesn't sail the ship for him; she shows him what to do next | Ody never does the build. It points at the next thing on *your* camera and waits for you |
 | The voyage, one island at a time | The build, one leg at a time, each one checked on camera |
-| *Nostos*, the homecoming | "Done. You made it home." The LED blinks, and the voyage log arrives |
+| *Nostos*, the homecoming | "Done. You made it home." The LED blinks, and the voyage log is saved |
 
 **Every Telemachus deserves a Mentor.**
 
@@ -68,14 +70,13 @@ Ody is that person, on a FaceTime call:
 | **Any board, even custom** | Library boards (UNO, Mega, Nano, ESP32, Raspberry Pi 3/4/5, Pico, NodeMCU) get pin-exact wires. On a custom PCB, Ody reads each header (2.54 mm grid + silkscreen labels), snaps every hole to the real one, and wires to it. |
 | **Voice controls the hologram** | "Explode it", "put it back together", "rotate it", "reset the view", "make it look real", "export the model": instant, with no model call. |
 | **Always-on laptop page** | `hub.mjs` keeps `localhost:8790` up between calls; each call streams into it live (token-gated, local only). |
-| **Three pages** | `localhost:8790` opens on **Main** (status, real usage numbers or "Not tracked", the Demo plan, write-only model keys, Export to agent). **Argo** (←) is the hologram builder with the Argos dog; **The Forge** (→) holds past and imported designs. Edge tabs, the pager, ← → and swipes switch pages; a live call keeps updating Argo while another page shows. |
 | **Clean view by default** | Your phone shows just your camera. Ody draws only when you ask where, what, or how to connect something, and marks fade after about 10 s. Safety warnings always show. |
 | **Stop signs** | It circles a short, a missing resistor or reversed polarity in red and says "Stop," before you power on. |
 | **Knows your exact board** | It identifies the part first (UNO R3 USB-B vs UNO R4 USB-C) and points at *that* board's layout. |
 | **"Show me again"** | Instantly re-shows the last marks and repeats the last line, with no model call. |
 | **Your language** | `ODY_LANG=auto`: speak Spanish or Hindi and Ody answers in it. |
 | **Portrait, full-screen** | It finds your real picture inside FaceTime's frame, drops the self-view, and sends portrait video back that fills your phone. |
-| **Voyage log** | After the call: the steps as legs of a journey, each with its annotated picture, ending in "Home". It also writes `sketch.ino` and `diagram.json` for the Wokwi simulator. |
+| **Voyage log** | Saved on the laptop after the call: the steps as legs of a journey, each with its annotated picture, ending in "Home". It also writes `sketch.ino` and `diagram.json` for the Wokwi simulator. |
 | **Laptop screen + tester panel** | Judges see the call live. Press **T** to see what Ody sees, where it pointed, latency per answer, the model and the frame rate. |
 | **Asks first** | Before it sees anything, Ody says what it uses (Google, ElevenLabs, LiveKit) and waits for "yes". Nothing is sent to a model, scanned or saved until then; "stop recording" stops snapshots. Notice at [`PRIVACY.md`](PRIVACY.md) and `localhost:8790/privacy`. |
 | **Hears you, not the room** | Background-voice cancellation (Krisp, via LiveKit) keeps the closest speaker before speech-to-text. Optional wake word (`ODY_WAKE=1`): Ody only acts on sentences that start with "Ody, …". |
@@ -88,7 +89,7 @@ Ody is that person, on a FaceTime call:
 | **Backup demo + watchdog** | `npm run watchdog -- --arm 60` watches the hub, agent and line, and replays a real recorded call (honestly badged "Replay") if a live call can't happen. Every rehearsal call is recorded on the laptop. |
 | **Schematics on demand** | In **The Forge**, any design with a circuit gets a **Schematic** button: Ody draws the schematic, auto-routes a 2-layer carrier PCB and exports KiCad files (`.kicad_sch`, `.kicad_pcb`, `.kicad_pro`) plus a netlist, with readable pin names (D9, GND, VCC_5V). Nothing redraws automatically; results are cached per design. Uses the optional tscircuit library (`cd agent/blueprint && npm install`). |
 | **Arduino UNO Q** | Recognised by name, pin-exact on its UNO headers, and shown as its own 25-part hologram (Qualcomm QRB2210, STM32U585, LED matrix, Qwiic). The circuit builder warns that it's 3.3 V logic and keeps 5 V signals off the pins that can't take them. |
-| **Three pages on the laptop** | **Argo** (the hologram workbench), **Ody** (home: status, usage, plan) and **The Forge** (every design, 3D viewer, downloads, import, schematics), plus **Argos**, a chat that turns requests into OpenSCAD designs. Voice commands like "explode it" or "remove the Wi-Fi module" always jump to the board hologram. |
+| **The laptop app** | **Argo** (the hologram workbench), **Your workshop** (home: status, real usage numbers, the plan, write-only model keys), **The Forge** (every design, 3D viewer, downloads, import, schematics), plus Profile and Settings. **Argos** is a chat that turns requests into OpenSCAD designs. A live call keeps updating Argo while another page shows, and voice commands like "explode it" always jump to the hologram. |
 | **Robust brain** | Gemini, Claude, or (owner testing only) Claude Code. On a rate limit it falls through Gemini models. Acknowledgements like "okay" skip the model. |
 
 <table>
@@ -118,11 +119,11 @@ flowchart LR
     C --> O
     O -->|portrait video, 24 fps| R
     B -->|reply| T["ElevenLabs TTS"] -->|voice| R
-    B -.->|after the call| X["voyage log<br/>+ Wokwi project"]
+    B -.->|after the call| X["voyage log on the laptop<br/>+ Wokwi project"]
 ```
 
 - **[Chert](https://www.trychert.com)** gives the agent a real Apple line. It answers FaceTime, bridges the call into a
-  [LiveKit](https://livekit.io) room, and sends iMessages.
+  [LiveKit](https://livekit.io) room.
 - **The agent** (Node, `@livekit/agents`) reads the caller's camera and keeps only the newest frame. It crops away
   FaceTime's bars and self-view, and publishes its own portrait video track: your picture with Ody's tracked marks on top.
 - **ElevenLabs** listens (Scribe v2 realtime) and speaks (Flash v2.5).
@@ -202,7 +203,6 @@ Settings are named `ODY_*`. The older `MENTOR_*` names still work.
 | `ODY_CIRCUIT` | no | Voice circuit builder (default on) |
 | `ODY_KEEP_DAYS` | no | Delete local call folders older than this (default 7) |
 | `ELEVEN_VOICE_ID`, `ODY_GREETING` | no | Ody's voice and first line |
-| `CHERT_API_KEY`, `CHERT_PROJECT_ID`, `ODY_RECAP_TO`, `ODY_PUBLIC_URL`, `ODY_SEND_RECAP=1` | for the iMessage recap | Off unless `ODY_SEND_RECAP=1` |
 </details>
 
 <details>
@@ -219,7 +219,7 @@ agent/
   board.mjs            UNO registration: homography + pose from 4 corners, hole snapping, 3D jumper geometry
   data/uno-pins.json   UNO header hole positions (from wokwi-elements, MIT)
   live.mjs, monitor.html   the laptop screen (local only, Origin/Host checked)
-  recap.mjs, send-recap.mjs, serve-recaps.mjs   voyage log, Wokwi files, iMessage
+  recap.mjs, serve-recaps.mjs   voyage log and Wokwi files, saved on the laptop
   headers.mjs          custom PCBs: read headers on a 2.54 mm grid, snap to the real holes
   scan.mjs, research.mjs   scan anything; exact model guess; researched interiors (cached)
   circuit.mjs, connect.mjs   voice circuit builder; phone-side "how to connect it" wires
