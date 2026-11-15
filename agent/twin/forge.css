@@ -280,3 +280,30 @@
 .forge-drop::before{outline-color:var(--navy,#12233f);border-radius:var(--r-lg,var(--ody-radius-md))}
 .forge-drop p{color:var(--navy,#12233f)}
 html.reduce-motion .forge *,html.reduce-motion .forge *::before,html.reduce-motion .forge *::after{animation:none!important;transition-duration:1ms!important}
+
+/* ---------- schematic view (on demand; replaces the 3D stage while open) ---------- */
+.forge-stage[hidden]{display:none}
+.forge-side .forge-schematic[aria-disabled=true]{opacity:.55;cursor:not-allowed}
+.forge-side .forge-schematic[aria-disabled=true]:hover{background:transparent;box-shadow:inset 0 0 0 1.5px var(--line-2,#12233f5c)}
+.forge-schem-why[hidden]{display:none}
+.forge-schem{position:relative;flex:1;display:flex;flex-direction:column;gap:var(--ody-space-3);min-height:calc(var(--ody-space-unit) * 60);color:var(--navy,#12233f)}
+.forge-schem[hidden],.forge-schem-fig[hidden],.forge-schem-tabs[hidden]{display:none}
+.forge-schem-bar{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:var(--ody-space-2)}
+.forge-schem-tabs{display:flex;gap:var(--ody-space-2)}
+.forge-schem-msg{margin:0;font:500 var(--fs-sm,var(--ody-text-sm))/1.35 var(--f-body,"Cooper Hewitt",Arial,sans-serif);color:var(--text-2,#34445e)}
+.forge-schem-msg:empty{display:none}
+.forge-schem-fig{flex:1;display:flex;flex-direction:column;gap:var(--ody-space-2);min-height:0;margin:0}
+.forge-schem-frame{flex:1;min-height:calc(var(--ody-space-unit) * 50);display:flex;align-items:center;justify-content:center;overflow:auto;padding:var(--ody-space-3);
+  border-radius:var(--r-md,var(--ody-radius-md));background:var(--paper-3,#fffbe6);box-shadow:inset 0 0 0 1.5px #12233f40}
+.forge-schem-img{display:block;max-width:100%;max-height:100%;height:auto}
+/* tscircuit's own colours, themed without touching the SVG: the schematic's paper melts into the papyrus (multiply),
+   the PCB's black board becomes the Forge's night sea (screen) */
+.forge-schem-fig[data-view=schematic] .forge-schem-img{mix-blend-mode:multiply}
+.forge-schem-fig[data-view=pcb] .forge-schem-frame{background:radial-gradient(60% 70% at 50% 60%,#173a5c 0%,#0f2442 55%,#0a1830 100%)}
+.forge-schem-fig[data-view=pcb] .forge-schem-img{mix-blend-mode:screen}
+.forge-schem-cap{margin:0;font:500 var(--fs-sm,var(--ody-text-sm))/1.35 var(--f-body,"Cooper Hewitt",Arial,sans-serif);color:var(--text-2,#34445e)}
+.forge-schem-dl{display:flex;flex-wrap:wrap;gap:var(--ody-space-2)}
+.forge-schem-dl:empty{display:none}
+.forge-schem-dl .forge-btn{text-decoration:none}
+.forge-schem.is-busy::after{content:"";position:absolute;left:0;top:0;height:calc(var(--ody-space-unit) * 0.75);width:100%;background:linear-gradient(90deg,transparent,var(--torch,#ea872f),transparent);background-size:40% 100%;background-repeat:no-repeat}
+@media (prefers-reduced-motion:no-preference){.forge-schem.is-busy::after{animation:forge-sweep 1.2s linear infinite}}

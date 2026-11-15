@@ -9,13 +9,17 @@
 //   GET    /argos/designs                     list (newest first)
 //   GET    /argos/designs/<id>/<file>         source.scad | model.stl | model.obj | model.glb | photo.jpg | spec.json
 //   DELETE /argos/designs/<id>
+//   POST   /argos/designs/<id>/schematic      draw that design's circuit (tscircuit): schematic + routed PCB + KiCad + netlist
+//   GET    /argos/designs/<id>/schematic/<f>  schematic.svg | pcb.svg | netlist.json | ody-circuit.kicad_sch|_pcb|_pro
 //   POST   /argos/import?name=<file.ext>      raw file body  -> design
 //   GET    /argos/keys                        which keys are set + last 4 characters (never a key)
 //   POST   /argos/keys      {name, value}     set/clear one allowlisted key in .env (write-only, page Origin only, keys.mjs)
 //   GET    /argos/usage                       ElevenLabs credits + this hub's Argos call counts
 import { randomBytes } from 'node:crypto';
+import { blueprint, circuitKey, drawingsAvailable, netlist } from '../blueprint.mjs';
 import { createChat } from './chat.mjs';
-import { deleteDesign, designFile, FORGE, getDesign, importFile, listDesigns, pruneCallScans, saveRefined, saveScan } from './forge.mjs';
+import { deleteDesign, designCircuit, designFile, FORGE, getDesign, importFile, listDesigns, LIVE_CIRCUIT_ID, pruneCallScans, saveRefined, saveScan,
+  saveSchematic, SCHEMATIC_FILES, schematicFile, schematicInfo } from './forge.mjs';
 import { keyStatus, setKey } from './keys.mjs';
 import { providers, PROVIDER_IDS } from './providers.mjs';
 import { MODES, refine } from './refine.mjs';
@@ -38,6 +42,14 @@ function keyBudget(max = 60, ms = 60_000) {   // at most 60 key changes a minute
   const now = Date.now(); while (keyHits.length && now - keyHits[0] > ms) keyHits.shift();
   if (keyHits.length >= max) return false; keyHits.push(now); return true;
 }
+// Schematics: tscircuit output is trusted as little as model output. Each file is size-capped; SVGs lose scripts, event
+// attributes, foreignObject and javascript: links before they're saved and again before they're served, and are served
+// with a sandbox CSP (the page shows them with <img>, which runs nothing anyway).
+const SCHEMATIC = { maxFile: 6 * 1024 * 1024, timeout: 30_000 };
+const SVG_CSP = "default-src 'none'; style-src 'unsafe-inline'; img-src data:; font-src data:; sandbox";
+const cleanSvg = s => String(s)
+  .replace(/<script[\s\S]*?(?:<\/script\s*>|$)/gi, '').replace(/<foreignObject[\s\S]*?(?:<\/foreignObject\s*>|$)/gi, '')
+  .replace(/\son[a-z]+\s*=\s*(?:"[^"]*"|'[^']*'|[^\s>]+)/gi, '').replace(/((?:xlink:)?href\s*=\s*["']?)\s*javascript:/gi, '$1#');
 const cap = (s, n) => String(s ?? '').replace(/[\u0000-\u001f\u007f<>]/g, ' ').replace(/\s+/g, ' ').trim().slice(0, n);
 
 function readBody(req, max) {
@@ -101,6 +113,44 @@ export function createArgos({ send, callLive = () => false }) {
 
   const chat = createChat({ send, startRefine });
 
+  // POST /argos/designs/<id>/schematic: on demand only. The same circuit again returns the saved run at once.
+  // One run at a time (tscircuit routes on this process's thread, ~1-2 s): requests queue, so a second click on the same
+  // circuit gets the first one's saved result; more than 3 waiting -> 429.
+  let queue = Promise.resolve(), waiting = 0;
+  function queueSchematic(id) {
+    if (waiting >= 3) throw Object.assign(new Error('Schematics are already being drawn. Try again in a moment.'), { status: 429 });
+    waiting++;
+    const run = queue.then(() => drawSchematic(id)).finally(() => { waiting--; });
+    queue = run.catch(() => {});
+    return run;
+  }
+  async function drawSchematic(id) {
+    const live = id === LIVE_CIRCUIT_ID;
+    if (!live && !(await getDesign(id))) throw Object.assign(new Error('That design is gone.'), { status: 404 });
+    const st = live ? chat.circuit : await designCircuit(id);
+    if (!st?.components?.length) throw Object.assign(new Error('This design has no circuit to draw yet.'), { status: 422 });
+    const nets = netlist(st), key = circuitKey(st), base = `/argos/designs/${id}/schematic/`;
+    const out = (info, extra = {}) => {
+      const url = f => (info.files.includes(f) ? base + f : null);
+      return { schematicUrl: url('schematic.svg'), pcbUrl: url('pcb.svg'), netlistUrl: url('netlist.json'),
+        kicad: { sch: url('ody-circuit.kicad_sch'), pcb: url('ody-circuit.kicad_pcb'), pro: url('ody-circuit.kicad_pro') },
+        netlist: nets, traces: info.traces, errors: info.errors, ms: info.ms, ...extra };
+    };
+    const prev = await schematicInfo(id);
+    if (prev?.key === key && prev.files?.includes('schematic.svg')) return out(prev, { cached: true });
+    if (!(await drawingsAvailable())) throw Object.assign(new Error('Schematics need the optional drawing library (cd agent/blueprint && npm ci).'), { status: 503, netlist: nets });
+    const bp = await blueprint(st, { timeout: SCHEMATIC.timeout });
+    if (!bp) throw Object.assign(new Error("Ody couldn't draw this circuit (it failed or took too long). Try again."), { status: 504, netlist: nets });
+    const fit = s => (typeof s === 'string' && Buffer.byteLength(s) <= SCHEMATIC.maxFile ? s : null);
+    const files = { 'schematic.svg': fit(bp.schematicSvg) && cleanSvg(bp.schematicSvg), 'pcb.svg': fit(bp.pcbSvg) && cleanSvg(bp.pcbSvg),
+      'ody-circuit.kicad_sch': fit(bp.kicad?.sch), 'ody-circuit.kicad_pcb': fit(bp.kicad?.pcb), 'ody-circuit.kicad_pro': fit(bp.kicad?.pro),
+      'netlist.json': JSON.stringify({ board: st.board, nets }, null, 2) };
+    if (!files['schematic.svg']) throw Object.assign(new Error('The schematic came out too large to save.'), { status: 413, netlist: nets });
+    const info = { key, traces: Number(bp.traces) || 0, errors: (bp.errors || []).map(e => cap(e, 200)).slice(0, 5), ms: Number(bp.ms) || 0, at: Date.now() };
+    await saveSchematic(id, files, info);
+    return out({ ...info, files: Object.keys(files).filter(n => files[n]) });
+  }
+
   async function route(req, res) {
     const url = new URL(req.url, 'http://localhost'), p = url.pathname, method = req.method;
     try {
@@ -132,6 +182,21 @@ export function createArgos({ send, callLive = () => false }) {
         if (!body || !FILE_TYPES[m[2]]) return json(res, 404, { error: 'not found' });
         return res.writeHead(200, { 'content-type': FILE_TYPES[m[2]], ...HDR,
           'content-disposition': `${url.searchParams.has('download') ? 'attachment' : 'inline'}; filename="${m[1]}-${m[2]}"` }).end(body);
+      }
+      m = p.match(/^\/argos\/designs\/([a-z0-9-]{8,40})\/schematic\/([a-z-]+\.(?:svg|json|kicad_sch|kicad_pcb|kicad_pro))$/);
+      if (method === 'GET' && m) {
+        const type = SCHEMATIC_FILES[m[2]], body = type && await schematicFile(m[1], m[2]);
+        if (!body) return json(res, 404, { error: 'not found' });
+        const svg = type === 'image/svg+xml';
+        return res.writeHead(200, { 'content-type': type, ...HDR, ...(svg ? { 'content-security-policy': SVG_CSP } : {}),
+          'content-disposition': `${url.searchParams.has('download') ? 'attachment' : 'inline'}; filename="${m[2]}"` }).end(svg ? cleanSvg(body) : body);
+      }
+      m = p.match(/^\/argos\/designs\/([a-z0-9-]{8,40})\/schematic$/);
+      if (method === 'POST' && m) {
+        req.resume();
+        if (!pageOrigin(req)) return json(res, 403, { error: 'Only the Ody page on this laptop can draw schematics.' });
+        try { return json(res, 200, await queueSchematic(m[1])); }
+        catch (e) { return json(res, e?.status || 400, { error: cap(e?.message || 'failed', 300), ...(e?.netlist ? { netlist: e.netlist } : {}) }); }
       }
       m = p.match(/^\/argos\/designs\/([a-z0-9-]{8,40})$/);
       if (method === 'DELETE' && m) return json(res, (await deleteDesign(m[1])) ? 200 : 404, {});

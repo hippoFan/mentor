@@ -10,7 +10,8 @@ while Argos uses its own model key (Gemini by default).
 | `chat.mjs` | Chat mode. Routes each request to one of four places (see below). |
 | `refine.mjs` | Refinement: `single`, or `multicode` (manager, researcher, developer, auditor) |
 | `scad.mjs` | Scan to OpenSCAD, code checks, and OpenSCAD WASM compiles to STL (in a worker, with a time limit) |
-| `forge.mjs` | Design store in `designs/` (git-ignored): scans, refined versions, imports |
+| `forge.mjs` | Design store in `designs/` (git-ignored): scans, refined versions, imports, and each design's last schematic |
+| `../blueprint.mjs` | Schematics on demand: the circuit as a schematic, a routed 2-layer PCB, KiCad files and a netlist (tscircuit, optional: `cd agent/blueprint && npm ci`) |
 | `providers.mjs` | Gemini (default), Claude, any OpenAI-compatible API, and `claude-code` (owner testing only, see below). A provider that times out or fails is skipped for that request ("trying the next model"). |
 | `keys.mjs` | Keys for the Main page: write-only entry into `.env` (allowlisted names, validated values, atomic, mode 600); reads back set + last 4 only |
 | `stt.mjs` | Record button: ElevenLabs Scribe. Wispr Flow works with no setup because it types into the text box. |
@@ -43,6 +44,8 @@ How chat mode routes a request:
 | `GET /argos/designs` | | `{designs:[meta]}`, newest first |
 | `GET /argos/designs/<id>/<file>` | add `?download` to save the file | the file |
 | `POST /argos/designs/<id>/compile` | | builds an STL from the design's source and saves it as a new version |
+| `POST /argos/designs/<id>/schematic` | page Origin only; `<id>` may be `circuit-live` (the call's circuit) | `{schematicUrl, pcbUrl, kicad:{sch,pcb,pro}, netlistUrl, netlist, traces, errors, ms, cached?}`; 422 no circuit, 503 no tscircuit (with `netlist`) |
+| `GET /argos/designs/<id>/schematic/<file>` | add `?download` to save | `schematic.svg`, `pcb.svg` (sanitised, sandbox CSP), `ody-circuit.kicad_sch` / `.kicad_pcb` / `.kicad_pro`, `netlist.json` |
 | `DELETE /argos/designs/<id>` | | |
 | `POST /argos/import?name=<file>` | raw `.stl` / `.obj` / `.glb` / `.scad` file, 15 MB max | `{design}` |
 | `GET /argos/keys` | | `{keys:[{name, label, group, set, settable, last4?}], providers}`, never a key |

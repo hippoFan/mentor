@@ -89,6 +89,7 @@ export async function startMockForge({ port = 8798, dir } = {}) {
   const scratch = !dir;
   dir ||= await mkdtemp(join(tmpdir(), 'forge-'));
   process.env.ARGOS_DESIGNS_DIR = dir;
+  process.env.MENTOR_MONITOR_PORT = String(port);   // argos/server.mjs's own page-Origin check (schematics, keys) expects this page
   for (const k of ['GEMINI_API_KEY', 'GOOGLE_API_KEY', 'ANTHROPIC_API_KEY', 'OPENAI_API_KEY', 'ARGOS_OPENAI_KEY', 'ELEVENLABS_API_KEY']) delete process.env[k];
   const { createArgos } = await import(pathToFileURL(fileURLToPath(new URL('argos/server.mjs', AGENT))).href);
 
