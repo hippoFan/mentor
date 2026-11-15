@@ -272,7 +272,7 @@ export class ClaudeBrain {
     sanitizeReply(out);
     if (out.board.model !== 'none') this.lastBoard = out.board.model;
     out.ms = ms;
-    console.log(`[brain] ${ms}ms in=${response.usage?.input_tokens} cached=${response.usage?.cache_read_input_tokens} out=${response.usage?.output_tokens}`);
+    console.log(`[brain] ${MODEL} ${ms}ms in=${response.usage?.input_tokens} cached=${response.usage?.cache_read_input_tokens} out=${response.usage?.output_tokens}`);
     return out;
   }
 
@@ -298,7 +298,7 @@ export class ClaudeBrain {
     if (response.stop_reason === 'refusal') throw new Error('scan refused');
     const raw = JSON.parse(response.content.filter(b => b.type === 'text').map(b => b.text).join(''));
     const ms = Date.now() - t0;
-    console.log(`[brain] scan ${ms}ms in=${response.usage?.input_tokens} out=${response.usage?.output_tokens}`);
+    console.log(`[brain] scan ${MODEL} ${ms}ms in=${response.usage?.input_tokens} out=${response.usage?.output_tokens}`);
     return { ...sanitizeScan(raw, image.width, image.height), ms, model: MODEL };
   }
 

@@ -98,8 +98,13 @@ const r1 = n => Math.round(n * 10) / 10;
 /** The user message: the scan, compacted (what it is, its box, its outside parts). */
 export function researchAsk(scan, web = false) {
   const box = shellBox(scan);
+  const guess = clean(scan?.model_guess, 60), conf = Number(scan?.model_confidence) || 0, user = scan?.model_source === 'user';
+  const model = guess && (user || conf >= 0.3)
+    ? `\nIdentified model: ${guess} (${user ? 'confirmed by its owner' : `${Math.round(conf * 100)}% sure from the photo${scan.id_cues?.length ? `: ${scan.id_cues.slice(0, 3).map(c => clean(c, 48)).join('; ')}` : ''}`}).
+Research THIS exact model's teardown${web ? ` (search for "${guess} teardown")` : ''} and set model_guess to it${user ? '' : ', unless the photo clearly contradicts it (then say so in notes)'}.`
+    : '';
   const parts = (scan?.parts || []).slice(0, 25).map(p => `${p.name} (${p.shape}, ${p.material}) at ${r1(p.position_mm.x)},${r1(p.position_mm.y)},${r1(p.position_mm.z)} size ${r1(p.size_mm.x)}x${r1(p.size_mm.y)}x${r1(p.size_mm.z)}`);
-  return `Scanned object: ${clean(scan?.name, 60)}${scan?.category ? ` (${clean(scan.category, 30)})` : ''}
+  return `Scanned object: ${clean(scan?.name, 60)}${scan?.category ? ` (${clean(scan.category, 30)})` : ''}${model}
 Camera: ${scan?.camera_elev_deg ?? 60} deg above the table, photo mostly shows its ${scan?.top_face === 'xz' ? 'front (xz)' : 'top (xy)'}.
 Shell box (mm): x ${r1(box.min.x)}..${r1(box.max.x)}, y ${r1(box.min.y)}..${r1(box.max.y)}, z ${r1(box.min.z)}..${r1(box.max.z)}.
 Outside parts the scan saw:
@@ -239,6 +244,16 @@ export function fitInterior(interior, scan) {
 /** Teardown order is the order of the layers; this is the axis they stack along (in the scan's frame). */
 export function faceAxis(face) { const k = String(face || '+z')[1] || 'z'; return { axis: 'xyz'.includes(k) ? k : 'z', sign: String(face)[0] === '-' ? -1 : 1 }; }
 
+/**
+ * Cache / one-per-call key for a scan: its exact model when the caller confirmed it or the scan is fairly sure
+ * (model_confidence >= 0.6), else its name. So "Phone in black case" researched as a Galaxy S23 Ultra and, after
+ * "it's actually an S24 Ultra", as an S24 Ultra are two different cache entries.
+ */
+export function researchKey(scan) {
+  const g = clean(scan?.model_guess, 60);
+  return slugify(g && (scan?.model_source === 'user' || Number(scan?.model_confidence) >= 0.6) ? g : scan?.name);
+}
+
 /** File-safe id for an object name ("Phone in black MagSafe case" -> "phone-in-black-magsafe-case"). */
 export const slugify = name => String(name ?? '').toLowerCase().normalize('NFKD').replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 60).replace(/-+$/, '');
 
@@ -272,14 +287,14 @@ const timeout = (p, ms, onTimeout) => new Promise((resolve, reject) => {
 export async function researchInterior(brain, scan, opts = {}) {
   const { web = process.env.MENTOR_RESEARCH_WEB === '1', image = null, cacheDir = CACHE_DIR, tried = TRIED, fresh = false } = opts;
   const ms = Math.max(1000, Math.min(RESEARCH_TIMEOUT_MS, Number(opts.timeoutMs) || RESEARCH_TIMEOUT_MS));
-  const slug = slugify(scan?.name);
+  const slug = researchKey(scan);
   if (!slug || !Array.isArray(scan?.parts)) return null;
   if (!fresh) {
     const hit = await readCache(cacheDir, slug);
     if (hit) { const fit = fitInterior(hit.interior, scan); if (fit) return { ...fit, cached: true }; }
   }
   if (typeof brain?.research !== 'function') return null;
-  if (tried.has(slug)) return null;   // one research per new object per call, even if the first one failed
+  if (tried.has(slug) && !fresh) return null;   // one research per new object per call (fresh: the caller asked again)
   tried.add(slug);
   const t0 = Date.now(), ctl = new AbortController();
   try {
@@ -287,7 +302,9 @@ export async function researchInterior(brain, scan, opts = {}) {
     const interior = sanitizeInterior(res?.raw, scan, { found: res?.found });
     if (!interior) { console.warn('[research] nothing usable came back'); return null; }
     Object.assign(interior, { ms: Date.now() - t0, model: clean(res?.model, 60), web: !!res?.web });
-    await writeCache(cacheDir, slug, { at: new Date().toISOString(), name: clean(scan.name, 60), interior });
+    if (!interior.model_guess && scan.model_guess) interior.model_guess = clean(scan.model_guess, 60);
+    if (scan.model_source === 'user') interior.model_guess = clean(scan.model_guess, 60);   // the owner said so
+    await writeCache(cacheDir, slug, { at: new Date().toISOString(), name: clean(scan.name, 60), model: clean(scan.model_guess, 60), interior });
     const n = interior.layers.reduce((a, l) => a + l.parts.length, 0);
     console.log(`[research] ${interior.object}: ${interior.layers.length} layers, ${n} parts, ${interior.sources.length} sources, ${interior.ms} ms${interior.web ? ' (web)' : ''}`);
     return interior;

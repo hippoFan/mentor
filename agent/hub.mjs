@@ -13,7 +13,12 @@ const token = randomBytes(24).toString('hex');
 await mkdir(new URL('../logs/', import.meta.url), { recursive: true });
 await writeFile(new URL('../logs/hub.token', import.meta.url), token + '\n', { mode: 0o600 });
 
-const live = await createLiveServer();
+// Page -> agent: the laptop page's validated, rate-limited messages (parts on the stage, "analyze this combination")
+// go to the call that is publishing right now, and only to it.
+let publisher = null;
+const live = await createLiveServer({
+  onPageMessage: msg => { if (publisher?.readyState === 1) publisher.send(JSON.stringify(msg)); },
+});
 const server = createServer((req, res) => res.writeHead(404).end());
 const pub = new WebSocketServer({
   server, path: '/publish', maxPayload: 4 * 1024 * 1024,   // frames + scan photos
@@ -22,8 +27,9 @@ const pub = new WebSocketServer({
 pub.on('error', () => {}); server.on('error', e => { console.error('[hub] publish port error', e.message); process.exit(1); });
 pub.on('connection', ws => {
   console.log('[hub] a call connected');
+  publisher = ws;   // one call at a time on a line; the newest publisher gets the page's messages
   ws.on('message', data => { try { live.send(JSON.parse(String(data))); } catch { /* ignore junk */ } });
-  ws.on('close', () => { console.log('[hub] call disconnected'); live.send({ type: 'call', state: 'ended' }); });
+  ws.on('close', () => { if (publisher === ws) publisher = null; console.log('[hub] call disconnected'); live.send({ type: 'call', state: 'ended' }); });
   ws.on('error', () => {});
 });
 server.listen(HUB_PORT, '127.0.0.1', () => console.log(`[hub] laptop page always on; calls publish to 127.0.0.1:${HUB_PORT}`));

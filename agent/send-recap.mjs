@@ -10,7 +10,8 @@ const runDir = resolve(process.argv[2] || '') + '/';
 const noSend = process.argv.includes('--no-send');
 const saved = JSON.parse(await readFile(`${runDir}recap.json`, 'utf8'));
 const brain = await createBrain({ task: saved.task || '', provider: saved.provider });
-try { brain.messages = JSON.parse(await readFile(`${runDir}conversation.json`, 'utf8')); } catch { /* no turns */ }
+// conversation.json starts with the caller's consent records ({type:'consent', state, at}); the brain gets only its turns.
+try { brain.messages = JSON.parse(await readFile(`${runDir}conversation.json`, 'utf8')).filter(m => m?.type !== 'consent'); } catch { /* no turns */ }
 
 let story = null;
 try { story = await brain.finish(); } catch (e) { console.error('[recap] summary failed:', e?.status || '', e?.message || e); }

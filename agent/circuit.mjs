@@ -648,6 +648,7 @@ export async function structuredCall(brain, { system, prompt, schema, image = nu
     const r = await brain.client.beta.messages.create({ model: MODEL, max_tokens: 4000, betas: ['server-side-fallback-2026-07-01'], fallbacks: 'default',
       output_config: { effort: 'low', format: { type: 'json_schema', schema } }, system, messages: [{ role: 'user', content }] }, { timeout });
     if (r.stop_reason === 'refusal') throw new Error('refused');
+    console.log(`[brain] structured ${MODEL} ${Date.now() - t0}ms in=${r.usage?.input_tokens} out=${r.usage?.output_tokens}`);
     return { data: JSON.parse(r.content.filter(b => b.type === 'text').map(b => b.text).join('')), ms: Date.now() - t0, model: MODEL };
   }
   throw new Error('this brain has no structured() call');
