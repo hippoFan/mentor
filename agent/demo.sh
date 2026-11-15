@@ -21,7 +21,7 @@ keep() {   # keep <name> <log> <cmd...>
   done
 }
 : > "$LOGS/agent.log"; : > "$LOGS/chert-dev.log"; : > "$LOGS/hub.log"
-keep hub "$LOGS/hub.log" node hub.mjs &      # the laptop page, always on (http://localhost:8790 and /twin)
+keep hub "$LOGS/hub.log" node --env-file=../.env hub.mjs &      # the laptop page, always on (http://localhost:8790 and /twin)
 sleep 2
 keep record "$LOGS/record.log" node record.mjs &   # every call -> ../logs/sessions/<time>.jsonl (replay.mjs plays it back)
 keep agent "$LOGS/agent.log" node --env-file=../.env agent.mjs start &
